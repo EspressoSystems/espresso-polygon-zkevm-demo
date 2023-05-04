@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+  "contract-bindings",
+  "gen-bindings",
+  "hermez-adaptor",
+  "zkevm",
+]
