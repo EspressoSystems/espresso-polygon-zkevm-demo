@@ -124,3 +124,4 @@ availability.
 Move adaptor service into zkEVM node for a smoother integration.
 
 ![Architecture Diagram Phase III](./doc/architecture.svg)
+
