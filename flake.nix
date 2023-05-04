@@ -79,12 +79,6 @@
                 entry = "cargo clippy --workspace --all-features --all-targets -- -D warnings";
                 pass_filenames = false;
               };
-              forge-fmt = {
-                enable = true;
-                description = "Enforce forge fmt";
-                entry = "forge fmt";
-                pass_filenames = false;
-              };
             };
           };
         };
@@ -126,8 +120,6 @@
                 graphviz
                 plantuml
                 coreutils
-
-                solc
               ] ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
               shellHook = ''
                 # Prevent cargo aliases from using programs in `~/.cargo` to avoid conflicts
