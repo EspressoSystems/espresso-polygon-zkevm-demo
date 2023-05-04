@@ -25,7 +25,6 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
 
   inputs.flake-compat.url = "github:edolstra/flake-compat";
@@ -34,7 +33,7 @@
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
 
-  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, flake-compat, pre-commit-hooks, fenix, foundry, solc-bin, ... }:
+  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, flake-compat, pre-commit-hooks, fenix, solc-bin, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         info = builtins.split "\([a-zA-Z0-9_]+\)" system;
@@ -43,7 +42,6 @@
         RUST_LOG = "info,libp2p=off,isahc=error,surf=error";
         overlays = [
           (import rust-overlay)
-          foundry.overlay
           solc-bin.overlays.default
         ];
         pkgs = import nixpkgs {
@@ -129,7 +127,6 @@
                 plantuml
                 coreutils
 
-                foundry-bin
                 solc
               ] ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
               shellHook = ''
@@ -140,7 +137,6 @@
               RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
               RUST_BACKTRACE = 1;
               inherit RUST_LOG;
-              FOUNDRY_SOLC = "${solc}/bin/solc";
             };
         devShells.crossShell =
           let

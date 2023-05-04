@@ -12,6 +12,8 @@ ethers = { version = "2.0.3", features = ["abigen"] }
 ethers-solc = "2.0.3"
 glob = "0.3.1"
 hex = "0.4.3"
+hotshot-contract-bindings = { package = "contract-bindings", git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 serde_json = "1.0.91"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"

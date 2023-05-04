@@ -1,6 +1,6 @@
 use crate::{
     bindings::{
-        erc20_permit_mock::ERC20PermitMock, hot_shot::HotShot, polygon_zk_evm::PolygonZkEVM,
+        erc20_permit_mock::ERC20PermitMock, polygon_zk_evm::PolygonZkEVM,
         polygon_zk_evm_bridge::PolygonZkEVMBridge,
         polygon_zk_evm_global_exit_root::PolygonZkEVMGlobalExitRoot,
         polygon_zk_evm_global_exit_root_l2::PolygonZkEVMGlobalExitRootL2,
@@ -20,6 +20,7 @@ use ethers::{
 };
 use ethers_solc::HardhatArtifact;
 use hex::FromHex;
+use hotshot_contract_bindings::HotShot;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 
 type EthMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;

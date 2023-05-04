@@ -85,28 +85,6 @@ enabled.
 
 ### Developing contracts
 
-A foundry project for the contracts specific to HotShot can be found in the directory `contracts`.
-
-To compile
-```shell
-forge build
-```
-
-To run the tests
-```shell
-forge test
-```
-
-In order to avoid constant warnings about checksum mismatches with
-[svm-rs](https://github.com/roynalnaruto/svm-rs) managed `solc` we set
-`FOUNDRY_SRC` to solc installed via flake.nix.
-
-* To use the contrats from rust generate the rust contracts bindings: `just
-  update-contract-bindings`.
-* When adding a new contract edit `src/contract-bindings/src/deploy.rs`
-  * Add reference to new contract binding, e.g. `use crate::bindings::counter::Counter`
-  * Add call to `mk_deploy` macro, e.g. `mk_deploy!(ESPRESSO_CONTRACTS_PREFIX,Counter);`
-
 ### Working on Hermez contracts in zkevm-contracts
 
 - Ensure submodules are checkout out: `git submodule update --init --recursive`

@@ -1,5 +1,4 @@
 use ethers::prelude::{Abigen, MultiAbigen};
-use std::collections::HashSet;
 use std::env;
 use std::{
     path::{Path, PathBuf},
@@ -48,63 +47,6 @@ fn main() -> Result<(), ()> {
     {
         abigens.push(abigen.clone());
     }
-
-    // 3. Generate bindings for HotShot specific contracts
-    let hotshot_contracts_path = workspace_dir.join("contracts");
-
-    // Compile HotShot specific contracts
-    Command::new("forge")
-        .arg("build")
-        .arg("--force") // Forge sometimes doesn't recompile when it should.
-        .current_dir(&hotshot_contracts_path)
-        .output()
-        .expect("failed to execute process");
-
-    // Exclude foundry contracts from the bindings
-    let exclude: HashSet<String> = HashSet::from_iter(
-        vec![
-            "Base.sol",
-            "console2.sol",
-            "console.sol",
-            "Counter.s.sol",
-            "Counter.t.sol",
-            "IMulticall3.sol",
-            "Script.sol",
-            "StdAssertions.sol",
-            "StdChains.sol",
-            "StdCheats.sol",
-            "StdError.sol",
-            "StdInvariant.sol",
-            "StdJson.sol",
-            "StdMath.sol",
-            "StdStorage.sol",
-            "StdUtils.sol",
-            "test.sol",
-            "Test.sol",
-            "Vm.sol",
-        ]
-        .iter()
-        .map(|s| s.to_string()),
-    );
-
-    let artifacts: Vec<_> = find_paths(
-        hotshot_contracts_path.join("out").to_str().unwrap(),
-        ".json",
-    )
-    .into_iter()
-    .filter(|path| {
-        !exclude.contains(
-            &path
-                .parent()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string(),
-        )
-    })
-    .collect();
 
     for abigen in MultiAbigen::from_abigens(
         artifacts
