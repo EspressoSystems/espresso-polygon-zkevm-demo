@@ -12,15 +12,6 @@ demo:
     cargo run --all-features --bin zkevm-node -- --detach
     {{compose-espresso}} up -V --force-recreate --abort-on-container-exit || just down
 
-rollup-demo:
-    docker compose -f docker-compose-demo.yaml up   
-
-rollup-demo-down:
-    docker compose -f docker-compose-demo.yaml down
-
-down:
-    {{compose}} down -v --remove-orphans
-
 pull:
     {{compose}} pull && {{compose-anvil}} pull
 
@@ -55,13 +46,3 @@ build-docker: build-docker-l1-geth build-docker-zkevm-node
 
 test:
     cargo test --release --all-features
-
-# Helpful shortcuts for local development
-dev-cdn:
-    target/release/cdn-server -p 8080 -n 1 
-
-dev-sequencer:
-    target/release/sequencer --cdn-url tcp://127.0.0.1:8080 --port 8081 --storage-path storage
-
-dev-l1:
-    docker compose -f docker-compose-anvil.yaml up
