@@ -8,7 +8,7 @@ sequencer and Ethereum L1 DA.
 
 ## Development
 
-- Obtain code: `git clone --recursive git@github.com:EspressoSystems/espresso-sequencer`.
+- Obtain code: `git clone --recursive git@github.com:EspressoSystems/espresso-polygon-zkevm-demo`.
 - Make sure [nix](https://nixos.org/download.html) is installed.
 - Activate the environment with `nix-shell`, or `nix develop`, or `direnv allow`
   if using [direnv](https://direnv.net/).
@@ -21,13 +21,6 @@ sequencer and Ethereum L1 DA.
 ## Building figures
 
     make doc
-
-## Run the sequencer locally
-
-A sequencer network can be run locally for easy experimentation and testing. Docker images and a
-`docker-compose.yaml` are provided for convenience. The Docker-based demo fetches the images from
-the `ghcr` repository, where they are updated with every push to `main` on GitHub. For testing
-uncommitted changes, you can also run the same demo by manually building and running the services.
 
 ### Running with Docker
 
@@ -124,3 +117,4 @@ availability.
 Move adaptor service into zkEVM node for a smoother integration.
 
 ![Architecture Diagram Phase III](./doc/architecture.svg)
+
