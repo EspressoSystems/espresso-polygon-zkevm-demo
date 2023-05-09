@@ -89,7 +89,7 @@ jobs:
         uses: docker/metadata-action@v4
         id: hermez-adaptor
         with:
-          images: ghcr.io/espressosystems/espresso-sequencer/hermez-adaptor
+          images: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/hermez-adaptor
 
       - name: Build and push hermez-adaptor docker
         uses: docker/build-push-action@v4
