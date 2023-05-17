@@ -1881,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#11985decd5e71740b8c968db7fe263f3666233d7"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -3595,7 +3595,7 @@ dependencies = [
  "escargot",
  "ethers",
  "futures",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
  "hotshot-types",
  "http-types",
  "jsonrpc-v2",
@@ -7310,7 +7310,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#11985decd5e71740b8c968db7fe263f3666233d7"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
@@ -7328,7 +7328,7 @@ dependencies = [
  "futures",
  "hotshot",
  "hotshot-centralized-server",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
  "hotshot-testing",
  "hotshot-types",
  "jf-primitives",
@@ -7347,7 +7347,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#11985decd5e71740b8c968db7fe263f3666233d7"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
 dependencies = [
  "ark-serialize",
  "async-std",
@@ -7362,9 +7362,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.160"
+version = "1.0.163"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb2f3770c8bce3bcda7e149193a069a0f4365bda1fa5cd88e03bca26afc1216c"
+checksum = "2113ab51b87a539ae008b5c6c02dc020ffa39afd2d83cffcb3f4eb2722cebec2"
 dependencies = [
  "serde_derive",
 ]
@@ -7389,9 +7389,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.160"
+version = "1.0.163"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "291a097c63d8497e00160b166a967a4a79c64f3facdd01cbd7502231688d77df"
+checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
 dependencies = [
  "proc-macro2",
  "quote",
