@@ -33,7 +33,7 @@ surf = "2.3.2"
 surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.0" }
 tide = "0.16.0"
 tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.0" }
-toml = "0.5"
+toml = "0.7"
 tracing = "0.1"
 zkevm = { path = "../zkevm" }
 
