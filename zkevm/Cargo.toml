@@ -9,7 +9,7 @@ async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-co
 async-std = { version = "1.12", features = ["attributes"] }
 clap = { version = "4.0", features = ["derive", "env"] }
 contract-bindings = { path = "../contract-bindings" }
-ethers = "2.0.3"
+ethers = "2.0.4"
 sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 tracing = "0.1"
 url = "2.3"
