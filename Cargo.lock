@@ -1571,25 +1571,25 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.2.5"
+version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a1f23fa97e1d1641371b51f35535cb26959b8e27ab50d167a8b996b5bada819"
+checksum = "93aae7a4192245f70fe75dd9157fc7b4a5bf53e88d30bd4396f7d8f9284d5acc"
 dependencies = [
  "clap_builder",
- "clap_derive 4.2.0",
+ "clap_derive 4.3.0",
  "once_cell",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.2.5"
+version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fdc5d93c358224b4d6867ef1356d740de2303e9892edc06c5340daeccd96bab"
+checksum = "4f423e341edefb78c9caba2d9c7f7687d0e72e89df3ce3394554754393ac3990"
 dependencies = [
  "anstream",
  "anstyle",
  "bitflags",
- "clap_lex 0.4.1",
+ "clap_lex 0.5.0",
  "strsim 0.10.0",
 ]
 
@@ -1608,9 +1608,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.2.0"
+version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f9644cd56d6b87dbe899ef8b053e331c0637664e9e21a33dfcdc36093f5c5c4"
+checksum = "191d9573962933b4027f932c600cd252ce27a8ad5979418fe78e43c07996f27b"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -1629,9 +1629,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
+checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "cld"
@@ -1881,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -3588,7 +3588,7 @@ dependencies = [
  "async-compatibility-layer",
  "async-std",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "commit 0.2.2",
  "contract-bindings 0.1.0",
  "dotenvy",
@@ -3827,7 +3827,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "blake3 1.3.3",
- "clap 4.2.5",
+ "clap 4.3.0",
  "commit 0.1.0",
  "futures",
  "hotshot-types",
@@ -3854,7 +3854,7 @@ dependencies = [
  "async-std",
  "atomic_store",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "commit 0.2.2",
  "custom_debug",
  "derive_more",
@@ -3950,7 +3950,7 @@ dependencies = [
  "async-lock",
  "async-trait",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "commit 0.1.0",
  "futures",
  "hotshot-types",
@@ -7310,14 +7310,14 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "cld",
  "commit 0.2.2",
  "contract-bindings 0.1.0 (git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git)",
@@ -7347,7 +7347,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "ark-serialize",
  "async-std",
@@ -8285,7 +8285,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "config",
  "derive_more",
  "dirs",
@@ -8331,7 +8331,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.2.5",
+ "clap 4.3.0",
  "config",
  "derive_more",
  "dirs",
@@ -9608,7 +9608,7 @@ version = "0.1.0"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
- "clap 4.2.5",
+ "clap 4.3.0",
  "contract-bindings 0.1.0",
  "ethers",
  "sequencer",
