@@ -1881,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -5766,7 +5766,7 @@ dependencies = [
 [[package]]
 name = "nll"
 version = "1.0.0"
-source = "git+https://github.com/EspressoSystems/nll#6dada0ef22f4936d17d59cd5b29342166d8d4287"
+source = "git+https://github.com/EspressoSystems/nll#493b9e9fbabae36c6fe7b0abb2e05d51cec375e6"
 
 [[package]]
 name = "nohash-hasher"
@@ -7310,7 +7310,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
@@ -7347,7 +7347,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#000b616c79d9c29d09be93ba2c86d43673c379f9"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "ark-serialize",
  "async-std",
