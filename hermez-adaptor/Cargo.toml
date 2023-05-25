@@ -11,7 +11,7 @@ required-features = ["testing"]
 testing = ["portpicker"]
 
 [dependencies]
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.0.1", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
     "logging-utils",
 ] }
 async-std = "1.12"
