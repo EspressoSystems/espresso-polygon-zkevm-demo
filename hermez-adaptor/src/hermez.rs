@@ -1,10 +1,10 @@
 #![cfg(any(test, feature = "testing"))]
 
-use contract_bindings::TestHermezContracts;
 use portpicker::pick_unused_port;
 use sequencer_utils::wait_for_rpc;
 use snafu::Snafu;
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     process::Command,
     str::FromStr,
@@ -12,6 +12,7 @@ use std::{
     time::Duration,
 };
 use surf_disco::Url;
+use zkevm_contract_bindings::TestHermezContracts;
 
 #[derive(Clone, Debug)]
 pub struct ZkEvmEnv {
@@ -74,6 +75,25 @@ impl ZkEvmEnv {
             adaptor_query_port,
             sequencer_storage_path,
             sequencer_mnemonic,
+        }
+    }
+
+    pub fn from_dotenv() -> Self {
+        let dotenv: HashMap<_, _> = dotenvy::dotenv_iter()
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        Self {
+            cdn_server_port: dotenv["ESPRESSO_CDN_SERVER_PORT"].parse().unwrap(),
+            sequencer_api_port: dotenv["ESPRESSO_SEQUENCER_API_PORT"].parse().unwrap(),
+            sequencer_storage_path: dotenv["ESPRESSO_SEQUENCER_STORAGE_PATH"].parse().unwrap(),
+            l1_port: dotenv["ESPRESSO_ZKEVM_L1_PORT"].parse().unwrap(),
+            l2_port: dotenv["ESPRESSO_ZKEVM_L2_PORT"].parse().unwrap(),
+            l1_chain_id: None,
+            l2_chain_id: None,
+            sequencer_mnemonic: dotenv["ESPRESSO_ZKEVM_SEQUENCER_MNEMONIC"].clone(),
+            adaptor_rpc_port: dotenv["ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT"].parse().unwrap(),
+            adaptor_query_port: dotenv["ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT"].parse().unwrap(),
         }
     }
 

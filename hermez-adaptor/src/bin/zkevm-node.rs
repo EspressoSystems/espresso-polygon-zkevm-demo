@@ -1,5 +1,5 @@
 use clap::Parser;
-use hermez_adaptor::DemoZkEvmNode;
+use hermez_adaptor::{Layer1Backend, ZkEvmNode};
 
 #[derive(Parser)]
 struct Options {
@@ -11,7 +11,7 @@ struct Options {
 #[async_std::main]
 async fn main() {
     let opt = Options::parse();
-    let node = DemoZkEvmNode::start().await;
+    let node = ZkEvmNode::start("demo".to_string(), Layer1Backend::Geth).await;
 
     if opt.detach {
         std::mem::forget(node);

@@ -12,6 +12,9 @@ demo:
     cargo run --all-features --bin zkevm-node -- --detach
     {{compose-espresso}} up -V --force-recreate --abort-on-container-exit || just down
 
+down:
+   {{compose}} down
+
 pull:
     {{compose}} pull && {{compose-anvil}} pull
 

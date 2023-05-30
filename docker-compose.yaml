@@ -12,11 +12,18 @@ services:
 
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    # Run consensus *plus* the commitment task to post commitments to the
+    # hotshot contract.
+    command: /bin/sequencer commitment-task
     ports:
       - "$ESPRESSO_SEQUENCER_API_PORT:$ESPRESSO_SEQUENCER_API_PORT"
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
       - ESPRESSO_SEQUENCER_API_PORT
+      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ETH_MNEMONIC
+      - ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - QUERY_SERVICE_URL
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
     depends_on:
@@ -32,6 +39,7 @@ services:
       - RUST_LOG
     depends_on:
       - cdn-server
+      - sequencer0
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     ports:
@@ -43,6 +51,7 @@ services:
       - RUST_LOG
     depends_on:
       - cdn-server
+      - sequencer0
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     ports:
@@ -54,6 +63,7 @@ services:
       - RUST_LOG
     depends_on:
       - cdn-server
+      - sequencer0
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     ports:
@@ -65,6 +75,7 @@ services:
       - RUST_LOG
     depends_on:
       - cdn-server
+      - sequencer0
 
   hermez-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/hermez-adaptor:main

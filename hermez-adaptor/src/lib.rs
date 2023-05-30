@@ -44,10 +44,17 @@ impl Options {
 }
 
 mod hermez;
-
 #[cfg(any(test, feature = "testing"))]
 pub use hermez::*;
 
 mod demo;
 #[cfg(any(test, feature = "testing"))]
 pub use demo::*;
+
+mod random_client;
+#[cfg(any(test, feature = "testing"))]
+pub use random_client::*;
+
+mod demo_with_sequencer;
+#[cfg(any(test, feature = "testing"))]
+pub use demo_with_sequencer::*;

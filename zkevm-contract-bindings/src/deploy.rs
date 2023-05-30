@@ -9,6 +9,7 @@ use crate::{
     },
     polygon_zk_evm::InitializePackedParameters,
 };
+use contract_bindings::HotShot;
 use ethers::{
     abi::Tokenize,
     contract::Contract,
@@ -20,7 +21,6 @@ use ethers::{
 };
 use ethers_solc::HardhatArtifact;
 use hex::FromHex;
-use hotshot_contract_bindings::HotShot;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 
 type EthMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
@@ -224,6 +224,8 @@ impl TestHermezContracts {
             .send()
             .await
             .unwrap();
+
+        tracing::info!("Deployed HotShot at {:?}", hotshot.address());
 
         let verifier = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 

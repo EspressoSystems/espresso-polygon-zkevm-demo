@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::Options;
 use ethers::{
@@ -69,11 +69,15 @@ pub async fn eth_send_raw_transaction(
     let url = (*data).0.clone();
     let vmid = data.1;
 
+    tracing::info!("Received transaction: {:?}", raw_tx);
     let client = surf_disco::Client::<ClientError>::new(url.join("submit").unwrap());
 
-    client.connect(None).await;
+    if !client.connect(Some(Duration::from_secs(1))).await {
+        panic!("Failed to connect to sequencer: {url}");
+    }
 
     let txn = Transaction::new(vmid, raw_tx.to_vec());
+    tracing::info!("Submitting transaction: {:?}", txn);
 
     client
         .post::<()>("submit")
@@ -82,6 +86,7 @@ pub async fn eth_send_raw_transaction(
         .send()
         .await
         .unwrap();
+    tracing::info!("Submitted transaction: {:?}", txn);
 
     Ok(keccak256(raw_tx).into())
 }

@@ -1,6 +1,5 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::task::{sleep, spawn_local};
-use contract_bindings::PolygonZkEVM;
 use ethers::{prelude::*, providers::Middleware};
 use futures::{
     future::{ready, FutureExt},
@@ -15,6 +14,7 @@ use sequencer_utils::{connect_rpc, wait_for_http};
 use std::time::Duration;
 use tempfile::TempDir;
 use zkevm::ZkEvm;
+use zkevm_contract_bindings::PolygonZkEVM;
 
 #[async_std::test]
 async fn test_end_to_end() {

@@ -1863,24 +1863,6 @@ checksum = "13418e745008f7349ec7e449155f419a61b92b58a99cc3616942b926825ec76b"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-dependencies = [
- "async-compatibility-layer",
- "async-std",
- "async-trait",
- "contract-bindings 0.1.0 (git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git)",
- "ethers",
- "ethers-solc",
- "glob",
- "hex",
- "sequencer",
- "serde_json",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "contract-bindings"
-version = "0.1.0"
 source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
 dependencies = [
  "anyhow",
@@ -3585,24 +3567,26 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 name = "hermez-adaptor"
 version = "0.1.0"
 dependencies = [
+ "arbitrary",
  "async-compatibility-layer",
  "async-std",
  "bincode",
  "clap 4.3.0",
  "commit 0.2.2",
- "contract-bindings 0.1.0",
  "dotenvy",
  "escargot",
  "ethers",
  "futures",
- "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
+ "hotshot-query-service",
  "hotshot-types",
  "http-types",
  "jsonrpc-v2",
  "portpicker",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "sequencer",
  "sequencer-utils",
+ "serde",
  "serde_json",
  "snafu",
  "surf",
@@ -3613,6 +3597,7 @@ dependencies = [
  "toml 0.7.4",
  "tracing",
  "zkevm",
+ "zkevm-contract-bindings",
 ]
 
 [[package]]
@@ -7320,7 +7305,7 @@ dependencies = [
  "clap 4.3.0",
  "cld",
  "commit 0.2.2",
- "contract-bindings 0.1.0 (git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git)",
+ "contract-bindings",
  "derivative",
  "derive_more",
  "either",
@@ -7328,7 +7313,7 @@ dependencies = [
  "futures",
  "hotshot",
  "hotshot-centralized-server",
- "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
+ "hotshot-query-service",
  "hotshot-testing",
  "hotshot-types",
  "jf-primitives",
@@ -9609,11 +9594,29 @@ dependencies = [
  "async-compatibility-layer",
  "async-std",
  "clap 4.3.0",
- "contract-bindings 0.1.0",
  "ethers",
  "sequencer",
  "tracing",
  "url",
+ "zkevm-contract-bindings",
+]
+
+[[package]]
+name = "zkevm-contract-bindings"
+version = "0.1.0"
+dependencies = [
+ "async-compatibility-layer",
+ "async-std",
+ "async-trait",
+ "contract-bindings",
+ "ethers",
+ "ethers-solc",
+ "glob",
+ "hex",
+ "sequencer",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
