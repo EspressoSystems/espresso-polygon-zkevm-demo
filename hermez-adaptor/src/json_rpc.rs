@@ -66,10 +66,11 @@ pub async fn eth_send_raw_transaction(
     data: Data<RpcData>,
     Params((raw_tx,)): Params<(Bytes,)>,
 ) -> Result<H256, RpcError> {
+    tracing::debug!("Received transaction: {raw_tx:?}");
+
     let url = (*data).0.clone();
     let vmid = data.1;
 
-    tracing::info!("Received transaction: {:?}", raw_tx);
     let client = surf_disco::Client::<ClientError>::new(url.join("submit").unwrap());
 
     if !client.connect(Some(Duration::from_secs(1))).await {
@@ -77,7 +78,6 @@ pub async fn eth_send_raw_transaction(
     }
 
     let txn = Transaction::new(vmid, raw_tx.to_vec());
-    tracing::info!("Submitting transaction: {:?}", txn);
 
     client
         .post::<()>("submit")
@@ -86,7 +86,8 @@ pub async fn eth_send_raw_transaction(
         .send()
         .await
         .unwrap();
-    tracing::info!("Submitted transaction: {:?}", txn);
+
+    tracing::debug!("Submitted transaction: {txn:?}");
 
     Ok(keccak256(raw_tx).into())
 }
