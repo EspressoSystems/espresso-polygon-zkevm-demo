@@ -131,7 +131,6 @@ impl Run {
                                 "hash={hash:?} got receipt after: {:?}",
                                 start.elapsed()
                             );
-                            // Remove the first element
                         } else {
                             tracing::info!("hash={hash:?} no receipt after {:?}", start.elapsed());
                             self.pending.write().await.push_front(effect);
@@ -197,14 +196,5 @@ mod tests {
         let path = tmpdir.path().join("run.json");
         run.save(&path);
         assert_eq!(Run::load(&path).operations, run.operations);
-    }
-
-    #[test]
-    fn test_empty_run() {
-        let (sender, receiver) = std::sync::mpsc::channel();
-        assert!(receiver.try_recv().is_err());
-        sender.send(123).unwrap();
-        let recv = receiver.try_recv().unwrap();
-        assert_eq!(recv, 123);
     }
 }
