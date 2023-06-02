@@ -1881,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d59cdf6cf1258e5e097ce6485eae5783f2e37ff5"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -7310,7 +7310,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d59cdf6cf1258e5e097ce6485eae5783f2e37ff5"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
@@ -7347,7 +7347,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d59cdf6cf1258e5e097ce6485eae5783f2e37ff5"
 dependencies = [
  "ark-serialize",
  "async-std",
