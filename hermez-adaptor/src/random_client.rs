@@ -1,10 +1,4 @@
-use std::{
-    collections::VecDeque,
-    path::PathBuf,
-    sync::Arc,
-    time::{Duration, Instant},
-};
-
+use async_std::sync::RwLock;
 use ethers::{
     abi::Address,
     providers::Middleware as _,
@@ -13,7 +7,12 @@ use ethers::{
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 use sequencer_utils::Middleware;
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
+use std::{
+    collections::VecDeque,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Transfer {
@@ -88,8 +87,9 @@ impl Operation {
 #[derive(Clone, Debug, Default)]
 pub struct Run {
     pub operations: Vec<Operation>,
+    // New effects to await *must* be pushed to the back of this queue.
     pub pending: Arc<RwLock<VecDeque<Effect>>>,
-    done: Arc<RwLock<bool>>,
+    submit_operations_done: Arc<RwLock<bool>>,
 }
 
 impl Run {
@@ -101,10 +101,10 @@ impl Run {
             );
             let effect = operation.execute(client.clone()).await;
             if let Some(effect) = effect {
-                self.pending.write().unwrap().push_back(effect);
+                self.pending.write().await.push_back(effect);
             }
         }
-        *self.done.write().unwrap() = true;
+        *self.submit_operations_done.write().await = true;
         tracing::info!("Submitted all {} operations", self.operations.len());
     }
 
@@ -115,12 +115,16 @@ impl Run {
         loop {
             tracing::info!(
                 "Number of pending effects: {}",
-                self.pending.read().unwrap().len()
+                self.pending.read().await.len()
             );
             // This is to work around a clippy lint for holding the MutexGuard
             // across the await point, in the "if let" statement that follows.
             let effect = {
-                if let Some(effect) = self.pending.read().unwrap().get(0) {
+                // We check if the first element is done and remove it from the
+                // queue later if it is. This is one less write lock to take out
+                // compared to popping and putting it back if the item it's not
+                // done.
+                if let Some(effect) = self.pending.read().await.get(0) {
                     Some(effect.clone())
                 } else {
                     None
@@ -136,7 +140,8 @@ impl Run {
                             .is_some()
                         {
                             tracing::info!("Received receipt after: {:?}", start.elapsed());
-                            self.pending.write().unwrap().pop_front();
+                            // Remove the first element
+                            self.pending.write().await.pop_front();
                         } else {
                             tracing::info!("No receipt after {:?}", start.elapsed());
                             // No receipt for this transaction yet, wait a bit.
@@ -148,7 +153,7 @@ impl Run {
                 // There are no pending effects, wait a bit.
                 async_std::task::sleep(Duration::from_secs(5)).await;
             }
-            if *self.done.read().unwrap() && self.pending.read().unwrap().is_empty() {
+            if *self.submit_operations_done.read().await && self.pending.read().await.is_empty() {
                 tracing::info!("All effects completed!");
                 break;
             }
