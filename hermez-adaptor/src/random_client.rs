@@ -1,13 +1,19 @@
-use std::{collections::HashSet, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use ethers::{
     abi::Address,
     providers::Middleware as _,
-    types::{TransactionRequest, U256},
+    types::{TransactionRequest, H256, U256},
 };
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 use sequencer_utils::Middleware;
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Transfer {
@@ -27,125 +33,182 @@ impl Distribution<Transfer> for Standard {
 /// Currently only batches of transfers are supported. This is currently enough
 /// to cause the zkvem-node to sometimes run into problems.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum Action {
-    Transfers(Vec<Transfer>),
+pub enum Operation {
+    Transfer(Transfer),
+    Wait(Duration),
 }
 
-impl Distribution<Action> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Action {
-        match rng.gen_range(0..1) {
-            0 => {
-                let num_transfers = rng.gen_range(0..10);
-                Action::Transfers((0..num_transfers).map(|_| rng.gen()).collect())
-            }
+impl Distribution<Operation> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Operation {
+        match rng.gen_range(0..2) {
+            0 => Operation::Transfer(rng.gen()),
+            1 => Operation::Wait(Duration::from_millis(rng.gen_range(0..10000))),
             _ => unreachable!(),
         }
     }
 }
 
-impl Action {
-    /// Executes the actions.
-    ///
-    /// Currently this function waits for transaction receipts (up to a timeout)
-    /// before it returns. For more realistic concurrent load testing it may be
-    /// beneficial to instead store a handle, or the transaction hash for each
-    /// submitted transaction and await them somewhere else.
-    async fn execute(&self, client: Arc<Middleware>) {
-        match self {
-            Action::Transfers(transfers) => {
-                // Create and submit transactions.
-                let mut txs_pending = HashSet::new();
-                for Transfer { to, amount } in transfers {
-                    let tx = TransactionRequest {
-                        from: Some(client.inner().address()),
-                        to: Some((*to).into()),
-                        value: Some(*amount),
-                        ..Default::default()
-                    };
-                    tracing::info!("Transfer {} to {:?}", amount, to);
-                    let tx_hash = client.send_transaction(tx, None).await.unwrap().tx_hash();
-                    txs_pending.insert(tx_hash);
-                }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Effect {
+    PendingReceipt {
+        transfer: Transfer,
+        hash: H256,
+        start: Instant,
+    },
+}
 
-                // Poll for transaction receipts.
-                let mut txs_received = HashSet::new();
-                let now = std::time::Instant::now();
-                loop {
-                    let mut new_hashes = vec![]; // Work around txs_received being borrowed.
-                    for tx_hash in txs_pending.difference(&txs_received) {
-                        if let Some(receipt) =
-                            client.get_transaction_receipt(*tx_hash).await.unwrap()
-                        {
-                            tracing::info!("Transaction receipt: {:?}", receipt);
-                            new_hashes.push(*tx_hash);
-                        }
-                    }
-                    for tx_hash in new_hashes {
-                        txs_received.insert(tx_hash);
-                    }
-                    // If we have all receipts we are done.
-                    if txs_received == txs_pending {
-                        tracing::info!("Received all transaction receipts");
-                        break;
-                    // If we have not received all receipts after the timeout we panic.
-                    } else if now.elapsed() > Duration::from_secs(300) {
-                        panic!(
-                            "Did not receive all transaction receipts, missing {:?}",
-                            txs_pending.difference(&txs_received)
-                        );
-                    }
-                    // Wait a second, to then poll again
-                    async_std::task::sleep(Duration::from_secs(1)).await;
-                }
+impl Operation {
+    async fn execute(&self, client: Arc<Middleware>) -> Option<Effect> {
+        match self {
+            Operation::Transfer(transfer) => {
+                let Transfer { to, amount } = transfer;
+                let tx = TransactionRequest {
+                    from: Some(client.inner().address()),
+                    to: Some((*to).into()),
+                    value: Some(*amount),
+                    ..Default::default()
+                };
+                let hash = client.send_transaction(tx, None).await.unwrap().tx_hash();
+                tracing::info!("Submitted transaction: {:?}", hash);
+                Some(Effect::PendingReceipt {
+                    transfer: transfer.clone(),
+                    hash,
+                    start: Instant::now(),
+                })
+            }
+            Operation::Wait(duration) => {
+                async_std::task::sleep(*duration).await;
+                tracing::info!("Finished sleep of {:?}", duration);
+                None
             }
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 pub struct Run {
-    pub actions: Vec<Action>,
+    pub operations: Vec<Operation>,
+    pub pending: Arc<RwLock<VecDeque<Effect>>>,
+    done: Arc<RwLock<bool>>,
 }
 
 impl Run {
-    pub async fn run(&self, client: Arc<Middleware>) {
-        for action in &self.actions {
-            action.execute(client.clone()).await;
+    pub async fn submit_operations(&self, client: Arc<Middleware>) {
+        for (index, operation) in self.operations.iter().enumerate() {
+            tracing::info!(
+                "Submitting operation {index: >6} / {}: {operation:?}",
+                self.operations.len()
+            );
+            let effect = operation.execute(client.clone()).await;
+            if let Some(effect) = effect {
+                self.pending.write().unwrap().push_back(effect);
+            }
+        }
+        *self.done.write().unwrap() = true;
+        tracing::info!("Submitted all {} operations", self.operations.len());
+    }
+
+    pub async fn wait_for_effects(&self, client: Arc<Middleware>) {
+        // Currently this loop assumes the effects will resolve in order to
+        // reduce the number of requests it needs to make. If effects are
+        // expected to resolve out of order, we should change this.
+        loop {
+            tracing::info!(
+                "Number of pending effects: {}",
+                self.pending.read().unwrap().len()
+            );
+            // This is to work around a clippy lint for holding the MutexGuard
+            // across the await point, in the "if let" statement that follows.
+            let effect = {
+                if let Some(effect) = self.pending.read().unwrap().get(0) {
+                    Some(effect.clone())
+                } else {
+                    None
+                }
+            };
+            if let Some(effect) = effect {
+                match effect {
+                    Effect::PendingReceipt { hash, start, .. } => {
+                        if client
+                            .get_transaction_receipt(hash)
+                            .await
+                            .unwrap()
+                            .is_some()
+                        {
+                            tracing::info!("Received receipt after: {:?}", start.elapsed());
+                            self.pending.write().unwrap().pop_front();
+                        } else {
+                            tracing::info!("No receipt after {:?}", start.elapsed());
+                            // No receipt for this transaction yet, wait a bit.
+                            async_std::task::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                }
+            } else {
+                // There are no pending effects, wait a bit.
+                async_std::task::sleep(Duration::from_secs(5)).await;
+            }
+            if *self.done.read().unwrap() && self.pending.read().unwrap().is_empty() {
+                tracing::info!("All effects completed!");
+                break;
+            }
         }
     }
 
-    pub fn generate(num_transfer_blocks: usize) -> Self {
+    pub fn generate(total_duration: Duration) -> Self {
         let mut rng = rand::thread_rng();
-        let actions = (0..num_transfer_blocks)
-            .map(|_| rng.gen())
-            .collect::<Vec<_>>();
-        Self { actions }
+        let mut wait_time = Duration::from_secs(0);
+        let mut operations = vec![];
+        loop {
+            let operation: Operation = rng.gen();
+            if let Operation::Wait(duration) = operation {
+                wait_time += duration;
+            }
+            operations.push(operation);
+            if wait_time > total_duration {
+                break;
+            }
+        }
+        Self {
+            operations,
+            ..Default::default()
+        }
     }
 
     pub fn save(&self, path: &PathBuf) {
-        let data = serde_json::to_string_pretty(self).unwrap();
+        let data = serde_json::to_string_pretty(&self.operations).unwrap();
         std::fs::write(path, data).unwrap();
     }
 
     pub fn load(path: &PathBuf) -> Self {
         let data = std::fs::read_to_string(path).unwrap();
-        serde_json::from_str(&data).unwrap()
+        let operations = serde_json::from_str(&data).unwrap();
+        Self {
+            operations,
+            ..Default::default()
+        }
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_run() {
-        let num_transfer_blocks = 10;
-        let run = Run::generate(num_transfer_blocks);
-        assert_eq!(run.actions.len(), num_transfer_blocks);
-
+    fn test_run_serialization() {
+        let run = Run::generate(Duration::from_secs(100));
         let tmpdir = tempfile::tempdir().unwrap();
         let path = tmpdir.path().join("run.json");
         run.save(&path);
-        assert_eq!(Run::load(&path), run);
+        assert_eq!(Run::load(&path).operations, run.operations);
+    }
+
+    #[test]
+    fn test_empty_run() {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        assert!(receiver.try_recv().is_err());
+        sender.send(123).unwrap();
+        let recv = receiver.try_recv().unwrap();
+        assert_eq!(recv, 123);
     }
 }

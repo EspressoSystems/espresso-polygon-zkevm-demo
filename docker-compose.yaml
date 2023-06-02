@@ -9,6 +9,7 @@ services:
       - ESPRESSO_CDN_SERVER_NUM_NODES=5
       - ESPRESSO_CDN_SERVER_START_DELAY=5s
       - RUST_LOG
+      - RUST_LOG_FORMAT
 
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
@@ -26,6 +27,7 @@ services:
       - QUERY_SERVICE_URL
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
   sequencer1:
@@ -37,6 +39,7 @@ services:
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
       - sequencer0
@@ -49,6 +52,7 @@ services:
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
       - sequencer0
@@ -61,6 +65,7 @@ services:
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
       - sequencer0
@@ -73,6 +78,7 @@ services:
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
       - sequencer0
@@ -91,5 +97,6 @@ services:
       - ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT
       - ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT
       - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       - sequencer0
