@@ -117,19 +117,7 @@ impl Run {
                 "Number of pending effects: {}",
                 self.pending.read().await.len()
             );
-            // This is to work around a clippy lint for holding the MutexGuard
-            // across the await point, in the "if let" statement that follows.
-            let effect = {
-                // We check if the first element is done and remove it from the
-                // queue later if it is. This is one less write lock to take out
-                // compared to popping and putting it back if the item it's not
-                // done.
-                if let Some(effect) = self.pending.read().await.get(0) {
-                    Some(effect.clone())
-                } else {
-                    None
-                }
-            };
+            let effect = { self.pending.write().await.pop_front() };
             if let Some(effect) = effect {
                 match effect {
                     Effect::PendingReceipt { hash, start, .. } => {
@@ -139,11 +127,14 @@ impl Run {
                             .unwrap()
                             .is_some()
                         {
-                            tracing::info!("Received receipt after: {:?}", start.elapsed());
+                            tracing::info!(
+                                "hash={hash:?} got receipt after: {:?}",
+                                start.elapsed()
+                            );
                             // Remove the first element
-                            self.pending.write().await.pop_front();
                         } else {
-                            tracing::info!("No receipt after {:?}", start.elapsed());
+                            tracing::info!("hash={hash:?} no receipt after {:?}", start.elapsed());
+                            self.pending.write().await.push_front(effect);
                             // No receipt for this transaction yet, wait a bit.
                             async_std::task::sleep(Duration::from_secs(5)).await;
                         }
