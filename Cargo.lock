@@ -1881,7 +1881,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d89816d03ab656f723f5001ca9ef4badccf47a61"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -2969,9 +2969,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "2.0.4"
+version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "198ea9efa8480fa69f73d31d41b1601dace13d053c6fe4be6f5878d9dfcf0108"
+checksum = "6da5fa198af0d3be20c19192df2bd9590b92ce09a8421e793bec8851270f1b05"
 dependencies = [
  "arrayvec 0.7.2",
  "bytes 1.4.0",
@@ -2980,7 +2980,6 @@ dependencies = [
  "elliptic-curve",
  "ethabi",
  "generic-array",
- "getrandom 0.2.9",
  "hex",
  "k256",
  "num_enum",
@@ -3100,14 +3099,13 @@ dependencies = [
 
 [[package]]
 name = "ethers-solc"
-version = "2.0.4"
+version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2284784306de73d8ad1bc792ecc1b87da0268185683698d60fd096d23d168c99"
+checksum = "a81c89f121595cf8959e746045bb8b25a6a38d72588561e1a3b7992fc213f674"
 dependencies = [
  "cfg-if 1.0.0",
  "dunce",
  "ethers-core",
- "getrandom 0.2.9",
  "glob",
  "hex",
  "home",
@@ -3595,7 +3593,7 @@ dependencies = [
  "escargot",
  "ethers",
  "futures",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
  "hotshot-types",
  "http-types",
  "jsonrpc-v2",
@@ -4585,9 +4583,6 @@ name = "lalrpop-util"
 version = "0.19.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3c48237b9604c5a4702de6b824e02006c3214327564636aef27c1028a8fa0ed"
-dependencies = [
- "regex",
-]
 
 [[package]]
 name = "language-tags"
@@ -7310,7 +7305,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d89816d03ab656f723f5001ca9ef4badccf47a61"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
@@ -7328,7 +7323,7 @@ dependencies = [
  "futures",
  "hotshot",
  "hotshot-centralized-server",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.5 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git?tag=0.0.5)",
  "hotshot-testing",
  "hotshot-types",
  "jf-primitives",
@@ -7347,7 +7342,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#e8f6b7e4b0ae716e481ec7fc07ab4ecab98bc04d"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#d89816d03ab656f723f5001ca9ef4badccf47a61"
 dependencies = [
  "ark-serialize",
  "async-std",
@@ -7762,9 +7757,9 @@ dependencies = [
 
 [[package]]
 name = "solang-parser"
-version = "0.2.4"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c5ead679f39243782be98c2689e592fc0fc9489ca2e47c9e027bd30f948df31"
+checksum = "4a94494913728908efa7a25a2dd2e4f037e714897985c24273c40596638ed909"
 dependencies = [
  "itertools 0.10.5",
  "lalrpop",
