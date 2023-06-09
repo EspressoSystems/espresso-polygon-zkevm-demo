@@ -8,7 +8,7 @@ use futures::{
 };
 use hermez_adaptor::{Layer1Backend, ZkEvmNode};
 use hotshot_query_service::{availability::BlockQueryData, data_source::QueryData};
-use sequencer::hotshot_commitment::{run_hotshot_commitment_task, HotShotContractOptions};
+use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http};
 use std::time::Duration;
@@ -76,13 +76,13 @@ async fn test_end_to_end() {
         l2_chain_id: zkevm.chain_id,
         query_port: env.l2_adaptor_query_port(),
     };
-    let hotshot_contract_opt = HotShotContractOptions {
+    let hotshot_contract_opt = CommitmentTaskOptions {
         l1_provider: env.l1_provider(),
         sequencer_mnemonic: mnemonic.to_string(),
         sequencer_account_index: node.l1().clients.funded[0].index,
         hotshot_address,
         l1_chain_id: None,
-        query_service_url: env.sequencer(),
+        query_service_url: Some(env.sequencer()),
     };
     spawn_local(async move {
         join!(
