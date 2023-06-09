@@ -99,4 +99,5 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - sequencer0
+      sequencer0:
+        condition: service_started

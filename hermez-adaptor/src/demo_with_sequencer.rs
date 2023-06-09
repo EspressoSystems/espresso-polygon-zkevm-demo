@@ -75,6 +75,8 @@ impl SequencerZkEvmDemo {
             .await
             .unwrap();
 
+        tracing::info!("L1 ready");
+
         // Use a dummy URL for the trusted sequencer since we're not running one anyways.
         let l1 = TestHermezContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
 
@@ -93,7 +95,7 @@ impl SequencerZkEvmDemo {
                 format!("{:?}", l1.global_exit_root.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_HOTSHOT_ADDRESS",
+                "ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS",
                 format!("{:?}", l1.hotshot.address()),
             )
             .env(

@@ -31,7 +31,8 @@ services:
       - "-c"
       - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
     depends_on:
-      - zkevm-permissionless-node
+      zkevm-permissionless-node:
+        condition: service_healthy
 
   zkevm-state-db:
     image: postgres
@@ -101,7 +102,8 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+      # Sleep to wait for geth, see comment below.
+      - "sleep 2 && /app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
     depends_on:
       # This service does depend on `zkevm-mock-l1-network` but docker compose
       # v2.16.0 may decide to restart and recreate the `zkevm-mock-l1-network`

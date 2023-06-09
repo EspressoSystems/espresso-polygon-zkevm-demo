@@ -2,7 +2,7 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
 use futures::join;
 use hermez_adaptor::{Layer1Backend, Run, SequencerZkEvmDemo};
-use sequencer_utils::connect_rpc;
+use sequencer_utils::{connect_rpc, wait_for_rpc};
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
 /// Run a load test on the ZkEVM node.
@@ -42,6 +42,10 @@ pub struct Options {
         value_parser = |arg: &str| -> Result<Duration, ParseIntError> { Ok(60 * Duration::from_secs(arg.parse()?)) }
     )]
     pub mins: Duration,
+
+    /// Layer 1 backend to use.
+    #[arg(long, default_value = "geth")]
+    pub l1_backend: Layer1Backend,
 }
 
 #[async_std::main]
@@ -65,14 +69,17 @@ async fn main() {
     let project_name = "demo".to_string();
 
     // Start L1 and zkevm-node
-    let demo =
-        SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), Layer1Backend::Anvil).await;
+    let demo = SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), opt.l1_backend).await;
 
     // Get test setup from environment.
     let env = demo.env();
     let l2_provider = env.l2_provider();
     let mnemonic = env.funded_mnemonic();
     let l2_client = connect_rpc(&l2_provider, mnemonic, 0, None).await.unwrap();
+
+    wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 10)
+        .await
+        .unwrap();
 
     let submit_handle = run.submit_operations(l2_client.clone());
     let wait_handle = run.wait_for_effects(l2_client);
