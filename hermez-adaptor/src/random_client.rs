@@ -204,8 +204,8 @@ impl Run {
                                 tracing::info!("Removing all pending effects");
                                 // Keep a write lock to avoid adding more pending receipts.
                                 let mut pending = self.pending.write().await;
-                                while let Some(_effect) = pending.pop_front() {
-                                    tracing::info!("hash={hash:?}: receipt_clear");
+                                while let Some(effect) = pending.pop_front() {
+                                    tracing::info!("effect_clear: {effect:?}");
                                 }
                                 self.reinit_nonce_manager().await;
                             } else {
