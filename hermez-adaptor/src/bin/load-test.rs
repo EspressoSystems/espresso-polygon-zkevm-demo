@@ -134,6 +134,10 @@ async fn main() {
         .await
         .unwrap();
 
+    // At this point we may still get errors when talking to the RPC,
+    // so wait a bit.
+    async_std::task::sleep(Duration::from_secs(5)).await;
+
     let run = Run::new(operations, signer);
 
     let submit_handle = run.submit_operations();
