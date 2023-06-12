@@ -5,7 +5,7 @@ use sequencer_utils::wait_for_rpc;
 use snafu::Snafu;
 use std::{
     collections::HashMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     str::FromStr,
     sync::atomic::{AtomicUsize, Ordering},
@@ -265,7 +265,9 @@ impl ZkEvmNode {
         layer1_backend: &Layer1Backend,
     ) -> Command {
         let mut cmd = env.cmd("docker");
-        cmd.arg("compose")
+        let work_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        cmd.current_dir(work_dir)
+            .arg("compose")
             .arg("--project-name")
             .arg(project_name)
             .arg("-f")

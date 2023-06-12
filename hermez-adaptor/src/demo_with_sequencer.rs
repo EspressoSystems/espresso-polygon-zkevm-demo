@@ -1,7 +1,7 @@
 #![cfg(any(test, feature = "testing"))]
 use crate::{Layer1Backend, ZkEvmEnv};
 use sequencer_utils::wait_for_rpc;
-use std::{process::Command, time::Duration};
+use std::{path::Path, process::Command, time::Duration};
 use zkevm_contract_bindings::TestHermezContracts;
 
 /// A zkevm-node inside docker compose with custom contracts
@@ -35,7 +35,9 @@ impl SequencerZkEvmDemo {
         layer1_backend: &Layer1Backend,
     ) -> Command {
         let mut cmd = Command::new("docker");
-        cmd.arg("compose")
+        let work_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        cmd.current_dir(work_dir)
+            .arg("compose")
             .arg("--project-name")
             .arg(project_name)
             .arg("-f")
