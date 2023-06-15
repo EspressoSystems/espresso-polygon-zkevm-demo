@@ -1546,9 +1546,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.2"
+version = "4.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "401a4694d2bf92537b6867d94de48c4842089645fdcdf6c71865b175d836e9c2"
+checksum = "80672091db20273a15cf9fdd4e47ed43b5091ec9841bf4c6145c9dfbbcae09ed"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1557,9 +1557,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.1"
+version = "4.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72394f3339a76daf211e57d4bcb374410f3965dcc606dd0e03738c7888766980"
+checksum = "c1458a1df40e1e2afebb7ab60ce55c1fa8f431146205aa5f4887e0b111c27636"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1782,7 +1782,7 @@ dependencies = [
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#6d8a8593e380d24b21187d6fff7af8900b3f391f"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#8fcae43307f28ce27ab89f38c6077de18f380c5c"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -3410,14 +3410,14 @@ dependencies = [
  "async-compatibility-layer",
  "async-std",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "commit",
  "contract-bindings 0.1.0",
  "dotenvy",
  "escargot",
  "ethers",
  "futures",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.6",
  "hotshot-types",
  "http-types",
  "jsonrpc-v2",
@@ -3645,7 +3645,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "blake3 1.4.0",
- "clap 4.3.2",
+ "clap 4.3.4",
  "futures",
  "hotshot-types",
  "hotshot-utils",
@@ -3671,7 +3671,7 @@ dependencies = [
  "async-std",
  "atomic_store",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "commit",
  "custom_debug",
  "derive_more",
@@ -3686,6 +3686,34 @@ dependencies = [
  "snafu",
  "spin_sleep",
  "tide-disco 0.4.0",
+ "toml 0.5.11",
+ "tracing",
+]
+
+[[package]]
+name = "hotshot-query-service"
+version = "0.0.6"
+source = "git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git#9080c5034411cf2f8a944787ff7ba80647482d23"
+dependencies = [
+ "async-compatibility-layer",
+ "async-std",
+ "atomic_store",
+ "bincode",
+ "clap 4.3.4",
+ "commit",
+ "custom_debug",
+ "derive_more",
+ "either",
+ "futures",
+ "hotshot",
+ "hotshot-types",
+ "hotshot-utils",
+ "itertools 0.10.5",
+ "prometheus",
+ "serde",
+ "snafu",
+ "spin_sleep",
+ "tide-disco 0.4.1",
  "toml 0.5.11",
  "tracing",
 ]
@@ -3767,7 +3795,7 @@ dependencies = [
  "async-lock",
  "async-trait",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "futures",
  "hotshot-types",
  "hotshot-utils",
@@ -6971,14 +6999,14 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#6d8a8593e380d24b21187d6fff7af8900b3f391f"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#8fcae43307f28ce27ab89f38c6077de18f380c5c"
 dependencies = [
  "ark-bls12-381",
  "async-compatibility-layer",
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "cld",
  "commit",
  "contract-bindings 0.1.0 (git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git)",
@@ -6989,7 +7017,7 @@ dependencies = [
  "futures",
  "hotshot",
  "hotshot-centralized-server",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.5",
  "hotshot-testing",
  "hotshot-types",
  "jf-primitives",
@@ -7008,7 +7036,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#6d8a8593e380d24b21187d6fff7af8900b3f391f"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#8fcae43307f28ce27ab89f38c6077de18f380c5c"
 dependencies = [
  "ark-serialize",
  "async-std",
@@ -7971,7 +7999,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "config",
  "derive_more",
  "dirs",
@@ -8017,7 +8045,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "bincode",
- "clap 4.3.2",
+ "clap 4.3.4",
  "config",
  "derive_more",
  "dirs",
@@ -9276,7 +9304,7 @@ version = "0.1.0"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
- "clap 4.3.2",
+ "clap 4.3.4",
  "contract-bindings 0.1.0",
  "ethers",
  "sequencer",
