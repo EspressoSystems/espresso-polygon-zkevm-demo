@@ -4,7 +4,7 @@ This repo contains a demo where Polygon zkEVM's sequencing and data availability
 (DA) are provided by the Espresso Sequencer & DA instead of Polygon zkEVM's
 sequencer and Ethereum L1 DA.
 
-![Architecture diagram](./doc/architecture.svg)
+![Architecture diagram](./doc/architecture_phase2.svg)
 
 ## Development
 
@@ -26,11 +26,11 @@ sequencer and Ethereum L1 DA.
 
 #### Authenticate with GitHub container registry
 
-* Go to your github profile
-* Developer Settings > Personal access tokens > Personal access tokens (classic)
-* Generate a new token
-  * for the scope options of the token, tick the *repo* box.
-* Run ``docker login ghcr.io --username <you_github_id> --password <your_personal_access_token>``
+- Go to your github profile
+- Developer Settings > Personal access tokens > Personal access tokens (classic)
+- Generate a new token
+  - for the scope options of the token, tick the _repo_ box.
+- Run `docker login ghcr.io --username <you_github_id> --password <your_personal_access_token>`
 
 #### Run the demo
 
@@ -47,7 +47,7 @@ To build the docker images locally: `just build-docker`. To revert to the CI doc
 
 #### Run the integration tests
 
-* ``cargo test --all-features end_to_end``
+- `cargo test --all-features end_to_end`
 
 ### Running natively
 
@@ -65,6 +65,7 @@ Once you have started the CDN server, you must connect `$N` sequencer nodes to i
 network will start up automatically. To start one node, run
 `target/release/sequencer --cdn-url tcp://localhost:$PORT`. A useful Bash snippet for running `$N`
 nodes simultaneously in the background of your shell is:
+
 ```bash
 for i in `seq $N`; do
     target/release/sequencer --cdn-url tcp://localhost:$PORT &
@@ -85,36 +86,30 @@ enabled.
 - Compile the contracts `just hardhat compile`
 - Update the rust bindings: `just update-contract-bindings`
 - Update the zkevm-node contract bindings to match zkevm-contracts: `just
-  update-zkevm-node-contract-bindings`
+update-zkevm-node-contract-bindings`
 
 ### Handling git submodules
 
-The project requires to use git submodules. 
+The project requires to use git submodules.
 In order to avoid corrupting the state of one of those submodules you can:
-* run `git submodule update` before making changes,
-* or configure git to automatically update submodules for the repository with `git config submodule.recurse true` 
-   inside the repository. 
+
+- run `git submodule update` before making changes,
+- or configure git to automatically update submodules for the repository with `git config submodule.recurse true`
+  inside the repository.
 
 ## Implementation Plan
 
 We will work towards the architecture illustrated above in three phases.
 
-### Phase I: Basic Sequencing
+### Phase I: Basic Sequencing (done)
 
 Replace the Hermez trusted sequencer with a HotShot-based permissionless sequencer.
 
-![Architecture Diagram Phase I](./doc/architecture_phase1.svg)
-
-### Phase II: Off-Chain Data Availability
+### Phase II: Off-Chain Data Availability (done)
 
 Only store batch commitments, not full batches, in the rollup contract. Use HotShot for data
 availability.
 
-![Architecture Diagram Phase II](./doc/architecture_phase2.svg)
-
 ### Phase III: Final Integration
 
 Move adaptor service into zkEVM node for a smoother integration.
-
-![Architecture Diagram Phase III](./doc/architecture.svg)
-
