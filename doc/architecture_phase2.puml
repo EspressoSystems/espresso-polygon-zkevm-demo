@@ -25,7 +25,7 @@ package "Decentralized Sequencer" {
         component "Events" as HotShotEvents
       }
     }
-    component "HotShot Commitment" as HotShotCommitment
+    component "HotShot Commitment Service" as HotShotCommitment
     note right of HotShotCommitment
       Permissionless service. Monitors
       batches and posts them to the
