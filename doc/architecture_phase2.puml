@@ -25,7 +25,12 @@ package "Decentralized Sequencer" {
         component "Events" as HotShotEvents
       }
     }
-    component "HotShot commitment" as HotShotCommitment
+    component "HotShot Commitment" as HotShotCommitment
+    note right of HotShotCommitment
+      Permissionless service. Monitors
+      batches and posts them to the
+      HotShot contract alongside QCs.
+    end note
   }
 }
 
@@ -40,7 +45,6 @@ package "Ethereum L1" as L1 {
     longer store batches.
   end note
   component "HotShot Contract" as HotShotContract
-  ' component "Bridge L1" as BridgeL1 #PaleGreen
 }
 
 
@@ -62,7 +66,6 @@ package "L2 (zkevm-node)" as L2 {
       Merkle Tree
     ]
   }
-  'component "Bridge L2" as BridgeL2 #PaleGreen
   component Etherman #LightPink
   note left of Etherman
     Etherman modified to fetch
@@ -77,17 +80,13 @@ package "L2 (zkevm-node)" as L2 {
 }
 
 User -left-> JsonRPC: EVM txn\nEVM query
-'User -[hidden]> Submit
-'positions the User box in a better place
-'User -[hidden]> L2
 
 JsonRPC -> AdaptorSubmit: EVM txn
 AdaptorSubmit -> Submit: EVM txn
 
 GossipInternal <-up-> GossipExternal
 
-' QueryService -left-> Adaptor: batch_commit
-Rollup <- HotShotContract: batch_commit
+Rollup <- HotShotContract: batch commit
 JsonRPC --> State: EVM query
 
 State -> L2DB: read
@@ -98,18 +97,16 @@ Aggregator --> State: fetch\nprover\ninput
 Aggregator --> Etherman: proof
 Aggregator --> Prover: generate\nproof
 Etherman --> Rollup: proof
-Etherman <-right- HotShotContract: batch_commit
-Etherman <- Adaptor: batch
+Etherman <-right- HotShotContract: batch commit
+Etherman <- Adaptor: batch transactions\nfiltered by rollup ID
 Adaptor <- QueryService: batch
 Synchronizer <-- Etherman: batch\nglobal exit root
 State <-- Synchronizer: batch\nglobal exit root\nstate
 
-' Prover ..> BridgeL2
-' User --> BridgeL1
 Submit -> App: wrap in HotShot txn
 HotShotEvents -down-> QueryService
 
-QueryService -down-> HotShotCommitment: batch_commit, QC
-HotShotCommitment -down-> HotShotContract: batch_commit, QC
+QueryService -down-> HotShotCommitment: batch commit, QC
+HotShotCommitment -down-> HotShotContract: batch commit, QC
 
 @enduml
