@@ -9,8 +9,11 @@ use futures::{
 };
 use hermez_adaptor::{Layer1Backend, ZkEvmNode};
 use hotshot_query_service::{availability::BlockQueryData, data_source::QueryData};
-use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
 use sequencer::SeqTypes;
+use sequencer::{
+    hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions},
+    transaction::SequencerTransaction,
+};
 use sequencer_utils::{connect_rpc, wait_for_http};
 use std::time::Duration;
 use tempfile::TempDir;
@@ -116,6 +119,31 @@ async fn test_end_to_end() {
         .await
         .unwrap();
 
+    // Send a malformed transaction to test that the system can handle it
+    // gracefully and remains operational.
+    let malformed_tx_payload = b"\xde\xad\xbe\xef";
+    let malformed_tx_hash = l2
+        .send_raw_transaction(malformed_tx_payload.into())
+        .await
+        .unwrap()
+        .tx_hash();
+    tracing::info!("malformed transaction hash: {:?}", malformed_tx_hash);
+
+    // Wait for the malformed transaction to be included in a block.
+    'block: loop {
+        let block: BlockQueryData<SeqTypes> = blocks.next().await.unwrap().unwrap();
+        tracing::info!("got block {:?}", block);
+        for txn in block.block().transactions() {
+            if let SequencerTransaction::Wrapped(txn) = txn {
+                assert_eq!(txn.payload(), malformed_tx_payload);
+                tracing::info!("malformed transaction sequenced");
+                break 'block;
+            } else {
+                tracing::info!("unknown transaction sequenced");
+            }
+        }
+    }
+
     // Create a few test transactions.
     let transfer_amount = 1.into();
     let num_txns = 2u64;
@@ -200,4 +228,11 @@ async fn test_end_to_end() {
             break;
         }
     }
+
+    // Check that the malformed transaction is not present by the zkevm-node.
+    assert!(l2
+        .get_transaction_receipt(malformed_tx_hash)
+        .await
+        .unwrap()
+        .is_none());
 }
