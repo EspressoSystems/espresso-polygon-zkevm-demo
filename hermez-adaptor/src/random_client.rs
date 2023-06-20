@@ -156,8 +156,7 @@ impl Run {
                 self.operations.0.len()
             );
             // Get a lock before executing the operation to avoid adding pending
-            // receipts in case we are resetting the nonce manager, it wouldn't
-            // really necessary for the wait operations though.
+            // receipts in case we are resetting the nonce manager.
             if let Operation::Transfer(_) = operation {
                 let mut pending = self.pending.write().await;
                 let effect = operation.execute(self.client.read().await.clone()).await;

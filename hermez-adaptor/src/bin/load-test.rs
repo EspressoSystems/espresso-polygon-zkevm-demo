@@ -83,7 +83,7 @@ pub async fn connect_rpc_simple(
     {
         Ok(mnemonic) => mnemonic,
         Err(err) => {
-            tracing::error!("error building walletE: {}", err);
+            tracing::error!("error building wallet: {}", err);
             return None;
         }
     };
@@ -135,8 +135,8 @@ async fn main() {
         .unwrap();
 
     // At this point we may still get errors when talking to the RPC,
-    // so wait a bit.
-    async_std::task::sleep(Duration::from_secs(5)).await;
+    // so wait a bit more.
+    async_std::task::sleep(Duration::from_secs(10)).await;
 
     let run = Run::new(operations, signer);
 
