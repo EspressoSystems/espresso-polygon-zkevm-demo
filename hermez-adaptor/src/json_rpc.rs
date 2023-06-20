@@ -73,8 +73,8 @@ pub async fn eth_send_raw_transaction(
 
     let client = surf_disco::Client::<ClientError>::new(url.join("submit").unwrap());
 
-    if !client.connect(Some(Duration::from_secs(1))).await {
-        panic!("Failed to connect to sequencer: {url}");
+    if !client.connect(Some(Duration::from_secs(5))).await {
+        return Err(RpcError::INTERNAL_ERROR);
     }
 
     let txn = Transaction::new(vmid, raw_tx.to_vec());
