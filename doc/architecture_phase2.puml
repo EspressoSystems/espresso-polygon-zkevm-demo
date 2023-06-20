@@ -25,35 +25,40 @@ package "Decentralized Sequencer" {
         component "Events" as HotShotEvents
       }
     }
+    component "HotShot Commitment Service" as HotShotCommitment
+    note right of HotShotCommitment
+      Permissionless service. Monitors
+      batches and posts them to the
+      HotShot contract alongside QCs.
+    end note
   }
 }
 
 package "L2 Adaptor" as Adaptor {
-  interface "JSON-RPC (submit only)" as AdaptorSubmit
+  component "JSON-RPC\n(submit only)" as AdaptorSubmit
 }
 
 package "Ethereum L1" as L1 {
   component "Rollup Contract" as Rollup #LightPink
   note left of Rollup
-    Contract modified to store batch commitments
-    instead of batches. ForceBatches replaced by
-    Sequence, which validates a QC and stores a
-    batch commitment (associated with a GER).
+    Contract modified to no
+    longer store batches.
   end note
-  ' component "Bridge L1" as BridgeL1 #PaleGreen
+  component "HotShot Contract" as HotShotContract
 }
 
 
 package "L2 (zkevm-node)" as L2 {
   component JsonRPC #PaleGreen
   note left of JsonRPC
-    Configured to forward transactions
-    to the Submit API of the L2 adaptor.
+    Configured to forward
+    transactions to the Submit
+    API of the L2 adaptor.
   end note
   database L2DB #PaleGreen [
     L2 Blockchain DB
   ]
-  package "Hermez Prover" as HermezProver {
+  package "Polygon zkEVM Prover" as zkEVMProver {
     component Prover #PaleGreen
     component Executor #PaleGreen
     database Tree #PaleGreen [
@@ -61,31 +66,27 @@ package "L2 (zkevm-node)" as L2 {
       Merkle Tree
     ]
   }
-  'component "Bridge L2" as BridgeL2 #PaleGreen
   component Etherman #LightPink
   note left of Etherman
-    Etherman modified to fetch batch commits,
-    not batches, from contract, and to fetch
-    the full batches from the HotShot Query Service.
+    Etherman modified to fetch
+    batch commits, not batches,
+    from contract, and to fetch
+    the full batches from the
+    HotShot Query Service.
   end note
   component Aggregator #PaleGreen
   component "State\nLibrary" as State #PaleGreen
   component Synchronizer #PaleGreen
 }
 
-User -> JsonRPC: EVM txn\nEVM query
-'User -[hidden]> Submit
-'positions the User box in a better place
-'User -[hidden]> L2
+User -left-> JsonRPC: EVM txn\nEVM query
 
 JsonRPC -> AdaptorSubmit: EVM txn
 AdaptorSubmit -> Submit: EVM txn
 
-GossipInternal <-> GossipExternal
+GossipInternal <-up-> GossipExternal
 
-QueryService -> Adaptor: batch_commit
-Adaptor -> Rollup: Sequence(batch_commit, QC)
-
+Rollup <- HotShotContract: batch commit
 JsonRPC --> State: EVM query
 
 State -> L2DB: read
@@ -96,14 +97,16 @@ Aggregator --> State: fetch\nprover\ninput
 Aggregator --> Etherman: proof
 Aggregator --> Prover: generate\nproof
 Etherman --> Rollup: proof
-Etherman <- Rollup: batch commit\nglobal exit root
-Etherman <- QueryService: batch
+Etherman <-right- HotShotContract: batch commit
+Etherman <- Adaptor: batch transactions\nfiltered by rollup ID
+Adaptor <- QueryService: batch
 Synchronizer <-- Etherman: batch\nglobal exit root
 State <-- Synchronizer: batch\nglobal exit root\nstate
 
-' Prover ..> BridgeL2
-' User --> BridgeL1
-Submit -up-> App: wrap in HotShot txn
+Submit -> App: wrap in HotShot txn
 HotShotEvents -down-> QueryService
+
+QueryService -down-> HotShotCommitment: batch commit, QC
+HotShotCommitment -down-> HotShotContract: batch commit, QC
 
 @enduml
