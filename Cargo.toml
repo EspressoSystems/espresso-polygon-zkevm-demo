@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+  "faucet",
   "gen-bindings",
   "hermez-adaptor",
   "zkevm",
