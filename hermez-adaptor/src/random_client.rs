@@ -1,3 +1,4 @@
+#![cfg(any(test, feature = "testing"))]
 use async_std::sync::RwLock;
 use ethers::{
     abi::Address,
@@ -123,12 +124,18 @@ impl Operations {
 }
 
 #[derive(Debug, Clone)]
+struct State {
+    pending: VecDeque<Effect>,
+    submit_operations_done: bool,
+    client: Arc<Middleware>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Run {
     operations: Operations,
-    pending: Arc<RwLock<VecDeque<Effect>>>,
-    submit_operations_done: Arc<RwLock<bool>>,
+    // The signer is used to re-initialize the nonce manager when necessary.
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    client: Arc<RwLock<Arc<Middleware>>>,
+    state: Arc<RwLock<State>>,
 }
 
 impl Run {
@@ -138,13 +145,15 @@ impl Run {
     ) -> Self {
         Self {
             operations,
-            pending: Default::default(),
-            submit_operations_done: Default::default(),
             signer: signer.clone(),
-            client: Arc::new(RwLock::new(Arc::new(NonceManagerMiddleware::new(
-                signer.clone(),
-                signer.address(),
-            )))),
+            state: Arc::new(RwLock::new(State {
+                pending: Default::default(),
+                submit_operations_done: Default::default(),
+                client: Arc::new(NonceManagerMiddleware::new(
+                    signer.clone(),
+                    signer.address(),
+                )),
+            })),
         }
     }
 
@@ -154,25 +163,26 @@ impl Run {
                 "Submitting operation {index: >6} / {}: {operation:?}",
                 self.operations.0.len()
             );
-            // Get a lock before executing the operation to avoid adding pending
-            // receipts in case we are resetting the nonce manager.
             if let Operation::Transfer(_) = operation {
-                let mut pending = self.pending.write().await;
-                let effect = operation.execute(self.client.read().await.clone()).await;
+                let effect = operation
+                    .execute(self.state.read().await.client.clone())
+                    .await;
                 if let Some(effect) = effect {
-                    pending.push_back(effect);
+                    self.state.write().await.pending.push_back(effect);
                 }
             } else {
-                operation.execute(self.client.read().await.clone()).await;
+                operation
+                    .execute(self.state.read().await.client.clone())
+                    .await;
             }
         }
-        *self.submit_operations_done.write().await = true;
+        self.state.write().await.submit_operations_done = true;
         tracing::info!("Submitted all {} operations", self.operations.0.len());
     }
 
     async fn reinit_nonce_manager(&self) {
         tracing::info!("Reinitializing nonce manager");
-        *self.client.write().await = Arc::new(NonceManagerMiddleware::new(
+        self.state.write().await.client = Arc::new(NonceManagerMiddleware::new(
             self.signer.clone(),
             self.signer.address(),
         ));
@@ -180,15 +190,19 @@ impl Run {
 
     pub async fn wait_for_effects(&self) {
         loop {
-            tracing::info!("num_pending_effects={}", self.pending.read().await.len());
-            let effect = { self.pending.write().await.pop_front() };
+            tracing::info!(
+                "num_pending_effects={}",
+                self.state.read().await.pending.len()
+            );
+            let effect = { self.state.write().await.pending.pop_front() };
             if let Some(effect) = effect {
                 match effect {
                     Effect::PendingReceipt { hash, start, .. } => {
                         if self
-                            .client
+                            .state
                             .read()
                             .await
+                            .client
                             .get_transaction_receipt(hash)
                             .await
                             .unwrap()
@@ -201,13 +215,13 @@ impl Run {
                                 tracing::info!("hash={hash:?} receipt_timeout");
                                 tracing::info!("Removing all pending effects");
                                 // Keep a write lock to avoid adding more pending receipts.
-                                let mut pending = self.pending.write().await;
-                                while let Some(effect) = pending.pop_front() {
+                                let mut state = self.state.write().await;
+                                while let Some(effect) = state.pending.pop_front() {
                                     tracing::info!("effect_clear: {effect:?}");
                                 }
                                 self.reinit_nonce_manager().await;
                             } else {
-                                self.pending.write().await.push_back(effect);
+                                self.state.write().await.pending.push_back(effect);
                                 // No receipt for this transaction yet, wait a bit.
                                 async_std::task::sleep(Duration::from_millis(1000)).await;
                             }
@@ -218,7 +232,8 @@ impl Run {
                 // There are no pending effects, wait a bit.
                 async_std::task::sleep(Duration::from_secs(5)).await;
             }
-            if *self.submit_operations_done.read().await && self.pending.read().await.is_empty() {
+            let state = self.state.read().await;
+            if state.submit_operations_done && state.pending.is_empty() {
                 tracing::info!("All effects completed!");
                 break;
             }
