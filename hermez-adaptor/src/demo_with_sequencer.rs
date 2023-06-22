@@ -49,8 +49,6 @@ impl SequencerZkEvmDemo {
 
     /// Start the L1, deploy contracts, start the L2
     pub async fn start_with_sequencer(project_name: String, layer1_backend: Layer1Backend) -> Self {
-        // Add a unique number to `project_name` to ensure that all instances use a unique name.
-
         let env = ZkEvmEnv::from_dotenv();
 
         tracing::info!("Starting ZkEvmNode with env: {:?}", env);
