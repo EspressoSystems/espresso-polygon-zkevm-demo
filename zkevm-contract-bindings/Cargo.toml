@@ -1,5 +1,5 @@
 [package]
-name = "contract-bindings"
+name = "zkevm-contract-bindings"
 version = "0.1.0"
 edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,11 +8,11 @@ edition = "2021"
 async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = ["logging-utils", "async-std-executor", "channel-async-std"] }
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 async-trait = "0.1.63"
+contract-bindings = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 ethers = { version = "2.0.4", features = ["abigen"] }
 ethers-solc = "2.0.3"
 glob = "0.3.1"
 hex = "0.4.3"
-hotshot-contract-bindings = { package = "contract-bindings", git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 serde_json = "1.0.91"
 tracing = "0.1.37"

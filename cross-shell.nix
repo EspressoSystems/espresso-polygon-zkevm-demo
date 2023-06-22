@@ -16,10 +16,17 @@ pkgs.mkShell rec {
     # Crate dependencies
     cargoDeps.openssl-sys
     protobuf # required by libp2p
+
+    openssh
   ];
   # Libraries essential to build the service binaries
   buildInputs = with pkgs; [
     # Enable Rust cross-compilation support
     rustCrossHook
   ];
+  shellHook = ''
+    # Prevent cargo aliases from using programs in `~/.cargo` to avoid conflicts
+    # with rustup installations.
+    export CARGO_HOME=$HOME/.cargo-nix
+  '';
 }

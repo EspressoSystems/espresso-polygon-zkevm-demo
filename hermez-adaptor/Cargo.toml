@@ -7,6 +7,14 @@ edition = "2021"
 name = "zkevm-node"
 required-features = ["testing"]
 
+[[bin]]
+name = "demo"
+required-features = ["testing"]
+
+[[bin]]
+name = "load-test"
+required-features = ["testing"]
+
 [features]
 testing = ["portpicker"]
 
@@ -17,7 +25,6 @@ async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-co
 async-std = "1.12"
 bincode = "1.3"
 clap = { version = "4.3", features = ["derive", "env"] }
-contract-bindings = { path = "../contract-bindings" }
 dotenvy = "0.15.6"
 escargot = "0.5.7"
 ethers = "2.0"
@@ -36,9 +43,12 @@ tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.
 toml = "0.7"
 tracing = "0.1"
 zkevm = { path = "../zkevm" }
+zkevm-contract-bindings = { path = "../zkevm-contract-bindings" }
 
 # Dependencies for feature "testing".
 portpicker = { version = "0.1", optional = true }
+rand = "0.8.5"
+serde = "1.0.163"
 snafu = "0.7.4"
 
 [dev-dependencies]

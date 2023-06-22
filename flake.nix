@@ -128,6 +128,7 @@
               '' + self.checks.${system}.pre-commit-check.shellHook;
               RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
               RUST_BACKTRACE = 1;
+              RUST_LOG_FORMAT = "full";
               inherit RUST_LOG;
             };
         devShells.crossShell =
