@@ -7,12 +7,9 @@ use futures::{
     stream::StreamExt,
 };
 use hermez_adaptor::{Layer1Backend, ZkEvmNode};
-use hotshot_query_service::{availability::BlockQueryData, data_source::QueryData};
+use hotshot_query_service::availability::BlockQueryData;
+use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
 use sequencer::SeqTypes;
-use sequencer::{
-    hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions},
-    transaction::SequencerTransaction,
-};
 use sequencer_utils::{connect_rpc, wait_for_http};
 use std::time::Duration;
 use tempfile::TempDir;
@@ -61,13 +58,15 @@ async fn test_end_to_end() {
     let nodes = sequencer::testing::init_hotshot_handles().await;
     let api_node = nodes[0].clone();
     let sequencer_store = TempDir::new().unwrap();
-    sequencer::api::serve(
-        QueryData::create(sequencer_store.path(), ()).unwrap(),
-        Box::new(move |_| ready((api_node, 0)).boxed()),
-        env.sequencer_port(),
-    )
-    .await
-    .unwrap();
+    let options = sequencer::api::Options {
+        port: env.sequencer_port(),
+        storage_path: sequencer_store.path().into(),
+        reset_store: true,
+    };
+
+    sequencer::api::serve(options, Box::new(move |_| ready((api_node, 0)).boxed()))
+        .await
+        .unwrap();
     for node in nodes {
         node.start().await;
     }
@@ -133,14 +132,10 @@ async fn test_end_to_end() {
     'block: loop {
         let block: BlockQueryData<SeqTypes> = blocks.next().await.unwrap().unwrap();
         tracing::info!("got block {:?}", block);
-        for txn in block.block().transactions() {
-            if let SequencerTransaction::Wrapped(txn) = txn {
-                assert_eq!(txn.payload(), malformed_tx_payload);
-                tracing::info!("malformed transaction sequenced");
-                break 'block;
-            } else {
-                tracing::info!("unknown transaction sequenced");
-            }
+        if let Some(txn) = block.block().clone().transactions().next() {
+            assert_eq!(txn.payload(), malformed_tx_payload);
+            tracing::info!("malformed transaction sequenced");
+            break 'block;
         }
     }
 

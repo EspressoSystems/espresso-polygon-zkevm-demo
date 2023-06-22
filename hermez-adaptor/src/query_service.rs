@@ -74,7 +74,6 @@ mod test {
     use async_std::task::spawn;
     use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction};
     use futures::future::ready;
-    use hotshot_query_service::data_source::QueryData;
     use portpicker::pick_unused_port;
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
     use sequencer::Vm;
@@ -94,13 +93,14 @@ mod test {
         let nodes = sequencer::testing::init_hotshot_handles().await;
         let api_node = nodes[0].clone();
         let sequencer_store = TempDir::new().unwrap();
-        sequencer::api::serve(
-            QueryData::create(sequencer_store.path(), ()).unwrap(),
-            Box::new(move |_| ready((api_node, 0)).boxed()),
-            sequencer_port,
-        )
-        .await
-        .unwrap();
+        let options = sequencer::api::Options {
+            port: sequencer_port,
+            storage_path: sequencer_store.path().into(),
+            reset_store: true,
+        };
+        sequencer::api::serve(options, Box::new(move |_| ready((api_node, 0)).boxed()))
+            .await
+            .unwrap();
         for node in &nodes {
             node.start().await;
         }
@@ -138,10 +138,7 @@ mod test {
         let txn = EvmTransaction::new(txn, sig);
 
         // Sequence the transaction.
-        nodes[0]
-            .submit_transaction(zkevm.wrap(&txn).into())
-            .await
-            .unwrap();
+        nodes[0].submit_transaction(zkevm.wrap(&txn)).await.unwrap();
 
         // Wait for it to be sequenced.
         let expected = encode_transactions(vec![&txn]);
