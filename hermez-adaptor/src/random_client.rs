@@ -125,7 +125,6 @@ impl Operations {
 #[derive(Debug, Clone)]
 pub struct Run {
     operations: Operations,
-    // New effects to await *must* be pushed to the back of this queueimplim    pub pending: Arc<RwLock<VecDeque<Effect>>>,
     pending: Arc<RwLock<VecDeque<Effect>>>,
     submit_operations_done: Arc<RwLock<bool>>,
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
