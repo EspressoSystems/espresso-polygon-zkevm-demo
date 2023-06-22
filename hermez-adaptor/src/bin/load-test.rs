@@ -95,7 +95,6 @@ pub async fn connect_rpc_simple(
         }
     };
     let wallet = wallet.with_chain_id(chain_id);
-    let _address = wallet.address();
     Some(SignerMiddleware::new(provider, wallet))
 }
 
