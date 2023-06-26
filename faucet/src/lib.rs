@@ -7,6 +7,7 @@ use ethers::{
 };
 use std::{
     collections::{HashMap, VecDeque},
+    fmt::Display,
     sync::Arc,
     time::Duration,
 };
@@ -41,6 +42,13 @@ struct State {
     // num_pending_client_funding_transfers: usize, // not needed?
 }
 
+// Alternative flow
+// 1. Select a pending transfer.
+// 2. iterate through clients
+//     if balance is sufficient, send transfer.
+//       mark sending client as unavailable
+//     otherwise add a priority transfer to fund the client
+
 // Client state
 // 1. available, funded
 // 2. inflight, funded
@@ -61,8 +69,8 @@ struct State {
 struct Options {
     num_clients: usize,
     mnemonic: String,
-    faucet_amount: U256,
-    funding_amount: U256,
+    faucet_grant_amount: U256,
+    client_funding_amount: U256,
 }
 
 #[derive(Debug, Clone)]
@@ -105,7 +113,7 @@ impl Faucet {
         let mut state = self.state.write().await;
         while let Some(receiver) = state.unfunded_clients.pop() {
             state.requested_transfers.push_front(RequestedTransfer {
-                amount: self.config.funding_amount,
+                amount: self.config.client_funding_amount,
                 to: receiver.address(),
             });
             state.pending_clients.insert(receiver.address(), receiver);
@@ -124,25 +132,38 @@ impl Faucet {
         // Create transfer requests for available clients.
         loop {
             // TODO: This may keep the lock for too long!
-            let mut state = self.state.write().await;
-            while let (Some(sender), Some(transfer)) = (
-                state.available_clients.pop(),
-                state.requested_transfers.pop_front(),
-            ) {
+            let mut clients = vec![];
+            let mut transfers = vec![];
+
+            {
+                let mut state = self.state.write().await;
+                while let (Some(sender), Some(transfer)) = (
+                    state.available_clients.pop(),
+                    state.requested_transfers.pop_front(),
+                ) {
+                    clients.push(sender);
+                    transfers.push(transfer);
+                }
+            }
+
+            for (sender, transfer) in clients.into_iter().zip(transfers.into_iter()) {
                 tracing::info!("Sending transfer: {:?}", transfer);
                 let tx = sender
                     .send_transaction(
-                        TransactionRequest::pay(transfer.to, self.config.faucet_amount),
+                        TransactionRequest::pay(transfer.to, self.config.faucet_grant_amount),
                         None,
                     )
                     .await
                     .expect("failed to send transaction"); // TODO handle this error
-                state
-                    .pending_clients
-                    .insert(sender.address(), sender.clone());
-                state
-                    .pending_transfers
-                    .insert(tx.tx_hash(), PendingTransfer(transfer));
+                {
+                    let mut state = self.state.write().await;
+                    state
+                        .pending_clients
+                        .insert(sender.address(), sender.clone());
+                    state
+                        .pending_transfers
+                        .insert(tx.tx_hash(), PendingTransfer(transfer));
+                }
             }
             // Wait a bit to avoid a busy loop.
             async_std::task::sleep(Duration::from_secs(1)).await;
@@ -160,14 +181,18 @@ impl Faucet {
             .unwrap()
             .flat_map(|block| futures::stream::iter(block.transactions));
 
+        let mut counter = 0usize;
         while let Some(tx_hash) = stream.next().await {
-            tracing::info!("Got tx hash: {:?}", tx_hash);
-            tracing::info!("Self {:?}", self);
+            counter += 1;
+            tracing::info!("Got tx hash: {} {:?}", counter, tx_hash);
             // TODO it's inefficient to query every transaction receipt.
             let tx = self.provider.get_transaction_receipt(tx_hash).await;
             if let Ok(Some(tx)) = tx {
                 // This transaction is no longer pending
                 let pending_transfer = self.state.write().await.pending_transfers.remove(&tx_hash);
+                if let Some(PendingTransfer(transfer)) = pending_transfer {
+                    tracing::info!("Transfer completed: {:?}", transfer);
+                }
 
                 // If the transaction succeeded, update the state. Note that
                 // it's possible that the transaction is an external
@@ -186,7 +211,7 @@ impl Faucet {
                             {
                                 let balance =
                                     self.provider.get_balance(address, None).await.unwrap(); // TODO: error handling
-                                if balance >= self.config.faucet_amount {
+                                if balance >= self.config.client_funding_amount {
                                     let mut state = self.state.write().await;
                                     if let Some(client) = state.pending_clients.remove(&address) {
                                         tracing::info!(
@@ -211,7 +236,7 @@ impl Faucet {
 
                     // TODO: consider using an enum for the two types of
                     // transfers we are making.
-                    if transfer.0.amount == self.config.funding_amount {
+                    if transfer.0.amount == self.config.client_funding_amount {
                         self.state
                             .write()
                             .await
@@ -235,6 +260,7 @@ impl Faucet {
 mod test {
     use super::*;
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
+    use async_std::task::spawn;
     use sequencer_utils::AnvilOptions;
 
     const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
@@ -253,23 +279,36 @@ mod test {
             .expect("Unable to make websocket connection to L1");
 
         let options = Options {
-            num_clients: 2,
+            num_clients: 10,
             mnemonic: TEST_MNEMONIC.to_string(),
-            faucet_amount: 100.into(),
-            funding_amount: 1000.into(),
+            faucet_grant_amount: 100.into(),
+            client_funding_amount: 1000.into(),
         };
         let chain_id = 31337;
-        let faucet = Faucet::new(options, chain_id, provider);
+        let faucet = Faucet::new(options, chain_id, provider.clone());
         faucet.start().await;
 
-        for _ in 0..10 {
+        let recipient = Address::random();
+        for _ in 0..20 {
             let transfer = RequestedTransfer {
                 amount: 100.into(),
-                to: Address::zero(),
+                to: recipient,
             };
             faucet.request_transfer(transfer).await;
         }
 
-        futures::join!(faucet.execute_transfers(), faucet.monitor_transactions());
+        let futures = async move {
+            futures::join!(faucet.execute_transfers(), faucet.monitor_transactions())
+        };
+        let _handle = spawn(futures);
+
+        loop {
+            let balance = provider.get_balance(recipient, None).await.unwrap();
+            tracing::info!("Balance is {balance}");
+            if balance == 1000.into() {
+                break;
+            }
+            async_std::task::sleep(Duration::from_secs(1)).await;
+        }
     }
 }
