@@ -157,9 +157,7 @@ impl Faucet {
             let mut transfers = vec![];
             {
                 let mut state = self.state.write().await;
-                let num_executable =
-                    std::cmp::min(state.available_clients.len(), state.transfer_queue.len());
-                for _ in 0..num_executable {
+                while !state.available_clients.is_empty() && !state.transfer_queue.is_empty() {
                     let sender = state.available_clients.pop().unwrap();
                     let transfer = state.transfer_queue.pop_front().unwrap();
                     clients.push(sender);
