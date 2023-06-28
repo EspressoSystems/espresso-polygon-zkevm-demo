@@ -3572,7 +3572,7 @@ dependencies = [
 [[package]]
 name = "hotshot"
 version = "0.3.3"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-ec 0.3.0",
@@ -3601,7 +3601,7 @@ dependencies = [
  "hotshot-types",
  "hotshot-utils",
  "hotshot-web-server",
- "itertools 0.10.5",
+ "itertools 0.11.0",
  "jf-primitives",
  "libp2p",
  "libp2p-identity",
@@ -3621,7 +3621,7 @@ dependencies = [
 [[package]]
 name = "hotshot-centralized-server"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
@@ -3643,7 +3643,7 @@ dependencies = [
 [[package]]
 name = "hotshot-consensus"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3665,7 +3665,7 @@ dependencies = [
 [[package]]
 name = "hotshot-orchestrator"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3720,7 +3720,7 @@ dependencies = [
 [[package]]
 name = "hotshot-testing"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -3746,7 +3746,7 @@ dependencies = [
 [[package]]
 name = "hotshot-types"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "arbitrary",
  "ark-serialize 0.3.0",
@@ -3780,7 +3780,7 @@ dependencies = [
 [[package]]
 name = "hotshot-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "bincode",
 ]
@@ -3788,7 +3788,7 @@ dependencies = [
 [[package]]
 name = "hotshot-web-server"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -4185,6 +4185,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -4752,7 +4761,7 @@ dependencies = [
 [[package]]
 name = "libp2p-networking"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#4844372c900777f29f3be412e1aec6f00be0e955"
+source = "git+https://github.com/EspressoSystems/hotshot#477739a33de0d631689f14909f4a58864f27e7d9"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
