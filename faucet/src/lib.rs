@@ -173,7 +173,6 @@ impl Faucet {
             );
 
             for (sender, transfer) in clients.into_iter().zip(transfers.into_iter()) {
-                tracing::info!("Sending transfer: {:?}", transfer);
                 let amount = match transfer {
                     Transfer::Faucet { amount, .. } => amount,
                     Transfer::Funding { .. } => {
@@ -191,6 +190,7 @@ impl Faucet {
                     .await
                     .unwrap();
                 let tx_hash = tx.hash(&signature);
+                tracing::info!("Sending transfer: {:?} hash={:?}", transfer, tx_hash);
                 {
                     let mut state = self.state.write().await;
                     state
@@ -316,12 +316,13 @@ mod test {
     use super::*;
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
     use async_std::task::spawn;
+    use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
     use sequencer_utils::AnvilOptions;
 
     const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
 
     #[async_std::test]
-    async fn test_faucet() {
+    async fn test_faucet_anvil() {
         setup_logging();
         setup_backtrace();
 
@@ -347,6 +348,59 @@ mod test {
         let transfer_amount = 100.into();
         let mut total_transfer_amount = U256::zero();
         for _ in 0..3 {
+            let transfer = Transfer::faucet(recipient, transfer_amount);
+            faucet.request_transfer(transfer).await;
+            total_transfer_amount += transfer_amount;
+        }
+
+        let futures = async move {
+            futures::join!(faucet.execute_transfers(), faucet.monitor_transactions())
+        };
+        let _handle = spawn(futures);
+
+        loop {
+            let balance = provider.get_balance(recipient, None).await.unwrap();
+            tracing::info!("Balance is {balance}");
+            if balance == total_transfer_amount {
+                break;
+            }
+            async_std::task::sleep(Duration::from_secs(1)).await;
+        }
+    }
+
+    #[async_std::test]
+    async fn test_faucet_zkevm_node() {
+        setup_logging();
+        setup_backtrace();
+
+        let demo = SequencerZkEvmDemo::start_with_sequencer(
+            "faucet-test".to_string(),
+            Layer1Backend::Anvil,
+        )
+        .await;
+        let env = demo.env();
+
+        let mut ws_url = env.l2_provider();
+        ws_url.set_scheme("ws").unwrap();
+        ws_url.set_port(Some(8133)).unwrap(); // zkevm-node uses 8133 for websockets
+        let provider = Provider::<Ws>::connect(ws_url)
+            .await
+            .expect("Unable to make websocket connection to JsonRPC");
+
+        let options = Options {
+            num_clients: 2,
+            mnemonic: TEST_MNEMONIC.to_string(),
+            faucet_grant_amount: 100.into(),
+            client_funding_amount: 1000.into(),
+        };
+        let chain_id = 1001;
+        let faucet = Faucet::new(options, chain_id, provider.clone());
+        faucet.start().await;
+
+        let recipient = Address::random();
+        let transfer_amount = 100.into();
+        let mut total_transfer_amount = U256::zero();
+        for _ in 0..2 {
             let transfer = Transfer::faucet(recipient, transfer_amount);
             faucet.request_transfer(transfer).await;
             total_transfer_amount += transfer_amount;

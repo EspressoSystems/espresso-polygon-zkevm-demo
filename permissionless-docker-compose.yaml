@@ -76,6 +76,7 @@ services:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
     ports:
       - $ESPRESSO_ZKEVM_L2_PORT:$ESPRESSO_ZKEVM_L2_PORT
+      - $ESPRESSO_ZKEVM_L2_WS_PORT:$ESPRESSO_ZKEVM_L2_WS_PORT
     environment:
       - ZKEVM_NODE_TRUSTED=false
       - ZKEVM_NODE_STATEDB_USER=state_user
@@ -87,6 +88,7 @@ services:
       - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
       - ZKEVM_NODE_POOL_DB_HOST=zkevm-state-db
       - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_L2_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_L2_WS_PORT
       - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_ADAPTOR_RPC_URL
       - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_ROLLUP_ADDRESS
