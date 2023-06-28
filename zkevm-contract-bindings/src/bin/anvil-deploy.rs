@@ -1,5 +1,4 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-use contract_bindings::TestHermezContracts;
 use std::{
     fs::File,
     io::{self, BufRead, Write},
@@ -7,6 +6,7 @@ use std::{
     process::{Command, Stdio},
     time::Duration,
 };
+use zkevm_contract_bindings::TestHermezContracts;
 
 /// This script works but loading the state back into anvil currently does not
 /// set the block number correctly and the zkevm-node cannot handle this.

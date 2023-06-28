@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::Options;
 use ethers::{
@@ -66,12 +66,16 @@ pub async fn eth_send_raw_transaction(
     data: Data<RpcData>,
     Params((raw_tx,)): Params<(Bytes,)>,
 ) -> Result<H256, RpcError> {
+    tracing::debug!("Received transaction: {raw_tx:?}");
+
     let url = (*data).0.clone();
     let vmid = data.1;
 
     let client = surf_disco::Client::<ClientError>::new(url.join("submit").unwrap());
 
-    client.connect(None).await;
+    if !client.connect(Some(Duration::from_secs(5))).await {
+        return Err(RpcError::INTERNAL_ERROR);
+    }
 
     let txn = Transaction::new(vmid, raw_tx.to_vec());
 
@@ -82,6 +86,8 @@ pub async fn eth_send_raw_transaction(
         .send()
         .await
         .unwrap();
+
+    tracing::debug!("Submitted transaction: {txn:?}");
 
     Ok(keccak256(raw_tx).into())
 }

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+HOST=$1
+
+function copy() {
+    # docker save $1 | ssh $HOST "cat - | docker import - $1"
+    docker save $1 | ssh -C $HOST docker load
+}
+
+copy ghcr.io/espressosystems/zkevm-node:hotshot-integration
+copy ghcr.io/espressosystems/zkevm-node:hotshot-integration
+copy ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration
+
+copy ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+copy ghcr.io/espressosystems/espresso-sequencer/cdn-server:main
+copy ghcr.io/espressosystems/espresso-sequencer/polygon-zkevm-adaptor:main
+
+copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main

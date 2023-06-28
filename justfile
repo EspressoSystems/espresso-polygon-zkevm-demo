@@ -9,8 +9,10 @@ zkevm-node:
     cargo run --all-features --bin zkevm-node
 
 demo:
-    cargo run --all-features --bin zkevm-node -- --detach
-    {{compose-espresso}} up -V --force-recreate --abort-on-container-exit || just down
+    cargo run --all-features --bin demo
+
+down:
+   {{compose}} down
 
 pull:
     {{compose}} pull && {{compose-anvil}} pull

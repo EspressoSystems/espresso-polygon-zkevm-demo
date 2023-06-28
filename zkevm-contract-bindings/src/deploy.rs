@@ -9,6 +9,7 @@ use crate::{
     },
     polygon_zk_evm::InitializePackedParameters,
 };
+use contract_bindings::HotShot;
 use ethers::{
     abi::Tokenize,
     contract::Contract,
@@ -20,7 +21,6 @@ use ethers::{
 };
 use ethers_solc::HardhatArtifact;
 use hex::FromHex;
-use hotshot_contract_bindings::HotShot;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 
 type EthMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
@@ -219,11 +219,24 @@ impl TestHermezContracts {
         let clients = TestClients::new(&provider, chain_id);
         let deployer = clients.deployer.provider.clone();
 
-        let hotshot = HotShot::deploy(deployer.clone(), ())
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
+        // Sometimes geth isn't ready despite the RPC being up.
+        let max_tries = 5;
+        let mut tries = 0;
+        let interval = Duration::from_secs(1);
+        let hotshot = loop {
+            if let Ok(contract) = HotShot::deploy(deployer.clone(), ()).unwrap().send().await {
+                break contract;
+            }
+            if tries < max_tries {
+                tries += 1;
+                tracing::info!("Failed to deploy HotShot contract, retrying in {interval:?}");
+                async_std::task::sleep(interval).await;
+            } else {
+                panic!("Failed to deploy HotShot contract");
+            }
+        };
+
+        tracing::info!("Deployed HotShot at {:?}", hotshot.address());
 
         let verifier = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 

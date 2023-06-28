@@ -8,8 +8,8 @@ edition = "2021"
 async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = ["logging-utils"] }
 async-std = { version = "1.12", features = ["attributes"] }
 clap = { version = "4.3", features = ["derive", "env"] }
-contract-bindings = { path = "../contract-bindings" }
 ethers = "2.0.4"
 sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 tracing = "0.1"
 url = "2.3"
+zkevm-contract-bindings = { path = "../zkevm-contract-bindings" }
