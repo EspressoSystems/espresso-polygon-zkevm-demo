@@ -72,7 +72,6 @@ impl Transfer {
 #[derive(Debug, Clone, Default)]
 struct State {
     available_clients: Vec<Arc<Middleware>>,
-    unfunded_clients: Vec<Arc<Middleware>>,
     faucet_request: Vec<FaucetRequest>,
     inflight_clients: HashMap<Address, Arc<Middleware>>,
     inflight_transfers: HashMap<H256, Transfer>,
@@ -87,9 +86,8 @@ impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "State: available={} unfunded={} faucet_requests={} inflight_clients={} inflight_transfers={} transfer_queue={}",
+            "State: available={} faucet_requests={} inflight_clients={} inflight_transfers={} transfer_queue={}",
             self.available_clients.len(),
-            self.unfunded_clients.len(),
             self.faucet_request.len(),
             self.inflight_clients.len(),
             self.inflight_transfers.len(),
