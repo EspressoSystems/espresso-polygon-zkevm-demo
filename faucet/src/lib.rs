@@ -1,18 +1,24 @@
-use anyhow::Result;
-use async_std::sync::RwLock;
+use anyhow::{Error, Result};
+use async_std::{
+    channel::{Receiver, Sender},
+    sync::RwLock,
+    task::JoinHandle,
+};
+use clap::Parser;
 use ethers::{
     prelude::SignerMiddleware,
-    providers::{Middleware as _, Provider, ProviderError, StreamExt, Ws},
+    providers::{Middleware as _, Provider, StreamExt, Ws},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::{Address, TransactionRequest, H256, U256},
+    utils::{parse_ether, ConversionError},
 };
+use futures::future::Join;
 use std::{
     collections::{BinaryHeap, HashMap, VecDeque},
     fmt::Display,
     sync::Arc,
     time::Duration,
 };
-use thiserror::Error;
 use url::Url;
 
 // TODO
@@ -28,14 +34,46 @@ use url::Url;
 
 pub type Middleware = SignerMiddleware<Provider<Ws>, LocalWallet>;
 
-#[derive(Error, Debug)]
-enum FaucetError {
-    #[error("Error querying JsonRPC: {0}")]
-    Rpc(ProviderError),
+#[derive(Parser, Debug, Clone)]
+pub struct Options {
+    /// Number of Ethereum accounts to use for the faucet.
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS", default_value = "10")]
+    num_clients: usize,
+
+    /// The mnemonic of the faucet wallet.
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_MNEMONIC")]
+    mnemonic: String,
+
+    /// Port on which to serve the API. (TODO: use for healthchecks)
+    #[arg(
+        short,
+        long,
+        env = "ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT",
+        default_value = "8545"
+    )]
+    port: u16,
+
+    /// The amount of funds to grant to each account on startup in Ethers.
+    #[arg(
+        long,
+        env = "ESPRESSO_ZKEVM_FAUCET_GRANT_AMOUNT_ETHERS",
+        value_parser = |arg: &str| -> Result<U256, ConversionError> { Ok(parse_ether(arg)?) }
+    )]
+    faucet_grant_amount: U256,
+
+    /// The URL of the JsonRPC the faucet connects to.
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_PROVIDER_URL")]
+    provider_url: Url,
 }
 
+// #[derive(Error, Debug)]
+// enum FaucetError {
+//     #[error("Error querying JsonRPC: {0}")]
+//     Rpc(ProviderError),
+// }
+
 #[derive(Debug, Clone, Copy)]
-enum Transfer {
+pub enum Transfer {
     Faucet { to: Address, amount: U256 },
     Funding { to: Address },
 }
@@ -93,40 +131,20 @@ struct State {
     // the front.
     transfer_queue: VecDeque<Transfer>,
     monitoring_started: bool,
-    // num_pending_client_funding_transfers: usize, // not needed?
-}
-
-impl Display for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "State: available={} inflight_clients={} inflight_transfers={} transfer_queue={}",
-            self.available_clients.len(),
-            self.inflight_clients.len(),
-            self.inflight_transfers.len(),
-            self.transfer_queue.len(),
-        )
-    }
 }
 
 #[derive(Debug, Clone)]
-struct Options {
-    num_clients: usize,
-    mnemonic: String,
-    faucet_grant_amount: U256,
-    provider_url: Url,
-}
-
-#[derive(Debug, Clone)]
-struct Faucet {
+pub struct Faucet {
     config: Options,
     state: Arc<RwLock<State>>,
     /// Used to monitor Ethereum transactions.
     provider: Provider<Ws>,
+    /// Channel to receive faucet requests.
+    faucet_receiver: Arc<RwLock<Receiver<Address>>>,
 }
 
 impl Faucet {
-    pub async fn create(options: Options) -> Result<Self> {
+    pub async fn create(options: Options, faucet_receiver: Receiver<Address>) -> Result<Self> {
         let provider = Provider::<Ws>::connect(options.provider_url.clone()).await?;
         let chain_id = provider.get_chainid().await?.as_u64();
 
@@ -167,12 +185,29 @@ impl Faucet {
             config: options,
             state: Arc::new(RwLock::new(state)),
             provider,
+            faucet_receiver: Arc::new(RwLock::new(faucet_receiver)),
         })
+    }
+
+    pub async fn start(self) -> JoinHandle<((), (), Result<(), Error>)> {
+        let futures = async move {
+            futures::join!(
+                self.monitor_transactions(),
+                self.monitor_faucet_requests(),
+                self.execute_transfers()
+            )
+        };
+        async_std::task::spawn(futures)
     }
 
     async fn request_transfer(&self, transfer: Transfer) {
         tracing::info!("Adding transfer to queue: {:?}", transfer);
         self.state.write().await.transfer_queue.push_back(transfer);
+    }
+
+    pub async fn request_faucet_transfer(&self, to: Address) {
+        let transfer = Transfer::faucet(to, self.config.faucet_grant_amount);
+        self.request_transfer(transfer).await;
     }
 
     async fn execute_transfers(&self) -> Result<()> {
@@ -198,7 +233,6 @@ impl Faucet {
                     transfers.push(transfer);
                 }
             }
-            tracing::info!("Executing {} transfers", transfers.len(),);
             let mut failed = vec![];
             for (sender, transfer) in clients.into_iter().zip(transfers.into_iter()) {
                 if let Err(err) = self.execute_transfer(sender.clone(), transfer).await {
@@ -260,8 +294,7 @@ impl Faucet {
     }
 
     async fn handle_receipt(&self, tx_hash: H256) -> Result<()> {
-        tracing::info!("Got tx hash {:?}", tx_hash);
-        tracing::info!("State: {}", self.state.read().await);
+        tracing::debug!("Got tx hash {:?}", tx_hash);
 
         let transfer = {
             if let Some(transfer) = self.state.write().await.inflight_transfers.remove(&tx_hash) {
@@ -344,6 +377,18 @@ impl Faucet {
         }
         unreachable!();
     }
+
+    async fn monitor_faucet_requests(&self) {
+        loop {
+            if let Ok(address) = self.faucet_receiver.write().await.recv().await {
+                self.request_transfer(Transfer::Faucet {
+                    to: address,
+                    amount: self.config.faucet_grant_amount,
+                })
+                .await;
+            }
+        }
+    }
 }
 
 // Tests
@@ -375,22 +420,20 @@ mod test {
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
             provider_url: ws_url,
+            port: 11223,
         };
-        let faucet = Faucet::create(options).await?;
+        let (sender, receiver) = async_std::channel::unbounded();
+
+        let faucet = Faucet::create(options.clone(), receiver).await?;
 
         let recipient = Address::random();
-        let transfer_amount = 100.into();
         let mut total_transfer_amount = U256::zero();
         for _ in 0..3 {
-            let transfer = Transfer::faucet(recipient, transfer_amount);
-            faucet.request_transfer(transfer).await;
-            total_transfer_amount += transfer_amount;
+            sender.send(recipient).await;
+            total_transfer_amount += options.faucet_grant_amount;
         }
 
-        let futures = async move {
-            futures::join!(faucet.execute_transfers(), faucet.monitor_transactions())
-        };
-        let _handle = spawn(futures);
+        let _handle = faucet.start().await;
 
         loop {
             let balance = provider.get_balance(recipient, None).await.unwrap();
@@ -428,22 +471,20 @@ mod test {
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
             provider_url: ws_url,
+            port: 11223,
         };
-        let faucet = Faucet::create(options).await?;
+        let (sender, receiver) = async_std::channel::unbounded();
+
+        let faucet = Faucet::create(options.clone(), receiver).await?;
 
         let recipient = Address::random();
-        let transfer_amount = 100.into();
         let mut total_transfer_amount = U256::zero();
         for _ in 0..2 {
-            let transfer = Transfer::faucet(recipient, transfer_amount);
-            faucet.request_transfer(transfer).await;
-            total_transfer_amount += transfer_amount;
+            sender.send(recipient).await.unwrap();
+            total_transfer_amount += options.faucet_grant_amount;
         }
 
-        let futures = async move {
-            futures::join!(faucet.execute_transfers(), faucet.monitor_transactions())
-        };
-        let _handle = spawn(futures);
+        let _handle = faucet.start().await;
 
         loop {
             let balance = provider.get_balance(recipient, None).await.unwrap();
