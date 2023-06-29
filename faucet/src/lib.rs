@@ -17,14 +17,13 @@ use url::Url;
 
 // TODO
 // - [X] Funding on startup.
-// - Separate web server for faucet for easier testing
 // - Webserver
+// - Separate web servers for faucet for easier testing?
 // - Healthcheck
 // - [X] Move receipt processing into separate method.
 // - [X] Only process receipts of tracked transfers
 // - Keep track of processed blocks.
 // - Add method of fetching missed blocks (or just query all pending transactions for receipts on startup?) and process them.
-// - Maybe create an enum for receipts (funding, faucet) so it's easier to process incoming receipts
 // - Error handling
 
 pub type Middleware = SignerMiddleware<Provider<Ws>, LocalWallet>;
@@ -190,7 +189,7 @@ impl Faucet {
         self.state.write().await.transfer_queue.push_back(transfer);
     }
 
-    async fn execute_transfers(&self) {
+    async fn execute_transfers(&self) -> Result<()> {
         // Create transfer requests for available clients.
         loop {
             if self.state.read().await.monitoring_started {
@@ -203,6 +202,7 @@ impl Faucet {
         loop {
             let mut clients = vec![];
             let mut transfers = vec![];
+            // Execute as many of the transfers as clients available.
             {
                 let mut state = self.state.write().await;
                 while !state.available_clients.is_empty() && !state.transfer_queue.is_empty() {
@@ -212,48 +212,61 @@ impl Faucet {
                     transfers.push(transfer);
                 }
             }
-
-            tracing::info!(
-                "Executing {} transfers, inflight {}, in queue {}",
-                transfers.len(),
-                self.state.read().await.inflight_transfers.len(),
-                self.state.read().await.transfer_queue.len()
-            );
-
+            tracing::info!("Executing {} transfers", transfers.len(),);
+            let mut failed = vec![];
             for (sender, transfer) in clients.into_iter().zip(transfers.into_iter()) {
-                let amount = match transfer {
-                    Transfer::Faucet { amount, .. } => amount,
-                    Transfer::Funding { .. } => {
-                        // Send half the balance to the new receiving client.
-                        sender.get_balance(sender.address(), None).await.unwrap() / 2
-                    }
-                };
-                let mut tx = TransactionRequest::pay(transfer.to(), amount).into();
-                sender
-                    .fill_transaction(&mut tx, None)
-                    .await
-                    .expect("failed to fill transaction"); // TODO handle this error
-                let signature = sender
-                    .sign_transaction(&tx, sender.address())
-                    .await
-                    .unwrap();
-                let tx_hash = tx.hash(&signature);
-                tracing::info!("Sending transfer: {:?} hash={:?}", transfer, tx_hash);
-                {
-                    let mut state = self.state.write().await;
-                    state
-                        .inflight_clients
-                        .insert(sender.address(), sender.clone());
-                    state.inflight_transfers.insert(tx_hash, transfer);
+                if let Err(err) = self.execute_transfer(sender.clone(), transfer).await {
+                    tracing::error!("Failed to execute {transfer:?} {sender:?} {err:?}");
+                    failed.push((sender, transfer));
                 }
-                sender
-                    .send_raw_transaction(tx.rlp_signed(&signature))
+            }
+            for (sender, transfer) in failed.iter() {
+                // TODO: Need to figure out a way to handle it gracefully if
+                // we're not able to talk to the JsonRPC at all.
+                let balance = self.balance(sender.address()).await.unwrap_or_else(|err| {
+                    panic!("Failed to get balance for {:?} {err}", sender.address())
+                });
+                // Put the client and transfer back in the queue.
+                self.state
+                    .write()
                     .await
-                    .unwrap();
+                    .available_clients
+                    .push(balance, sender.clone());
+                self.request_transfer(*transfer).await;
             }
             // Wait a bit to avoid a busy loop.
             async_std::task::sleep(Duration::from_secs(1)).await;
         }
+    }
+
+    async fn execute_transfer(&self, sender: Arc<Middleware>, transfer: Transfer) -> Result<()> {
+        let amount = match transfer {
+            Transfer::Faucet { amount, .. } => amount,
+            Transfer::Funding { .. } => {
+                // Send half the balance to the new receiving client.
+                self.balance(sender.address()).await? / 2
+            }
+        };
+        let tx = sender
+            .send_transaction(TransactionRequest::pay(transfer.to(), amount), None)
+            .await?;
+        tracing::info!("Sending transfer: {:?} hash={:?}", transfer, tx.tx_hash());
+
+        // Note: if running against an *extremely* fast chain , it is possible
+        // that the transaction is mined before we have a chance to add it to
+        // the inflight transfers. In that case, the receipt handler may not yet
+        // find the transaction and fail to process it correctly. I think the
+        // risk of this happening outside of local testing is neglible. We could
+        // sign the tx locally first and then insert it but this also means we
+        // would have to remove it again if the submission fails.
+        {
+            let mut state = self.state.write().await;
+            state
+                .inflight_clients
+                .insert(sender.address(), sender.clone());
+            state.inflight_transfers.insert(tx.tx_hash(), transfer);
+        }
+        Ok(())
     }
 
     async fn balance(&self, address: Address) -> Result<U256> {
@@ -295,15 +308,14 @@ impl Faucet {
             );
         }
 
-        // If the transaction succeeded, update the state of for funding
-        // transfers.
+        // If the transaction succeeded, make the funded client available.
         if receipt.status == Some(1.into()) {
             // For funding transfer mark recipient as available.
             if let Transfer::Funding { to, .. } = transfer {
                 if let Some(client) = state.inflight_clients.remove(&to) {
                     let balance = self.balance(client.address()).await?;
                     tracing::info!("Client {to:?} funded @ {balance}");
-                    let balance = state.available_clients.push(balance, client);
+                    state.available_clients.push(balance, client);
                 } else {
                     tracing::warn!(
                         "Recipient of funding transfer not found in inflight clients: {:?}",
