@@ -7,12 +7,13 @@ use ethers::{
     types::{Address, TransactionRequest, H256, U256},
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BinaryHeap, HashMap, VecDeque},
     fmt::Display,
     sync::Arc,
     time::Duration,
 };
 use thiserror::Error;
+use url::Url;
 
 // TODO
 // - [X] Funding on startup.
@@ -70,11 +71,38 @@ impl Transfer {
 }
 
 #[derive(Debug, Clone, Default)]
+struct ClientPool {
+    clients: HashMap<Address, Arc<Middleware>>,
+    priority: BinaryHeap<(U256, Address)>,
+}
+
+impl ClientPool {
+    pub fn pop(&mut self) -> Option<Arc<Middleware>> {
+        let (_, address) = self.priority.pop()?;
+        let client = self.clients.remove(&address)?;
+        Some(client)
+    }
+
+    pub fn push(&mut self, balance: U256, client: Arc<Middleware>) {
+        self.clients.insert(client.address(), client.clone());
+        self.priority.push((balance, client.address()));
+    }
+
+    pub fn len(&self) -> usize {
+        self.clients.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.clients.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 struct State {
-    available_clients: Vec<Arc<Middleware>>,
+    available_clients: ClientPool,
     faucet_request: Vec<FaucetRequest>,
-    inflight_clients: HashMap<Address, Arc<Middleware>>,
     inflight_transfers: HashMap<H256, Transfer>,
+    inflight_clients: HashMap<Address, Arc<Middleware>>,
     // Funding wallets has priority, these transfer requests must be pushed to
     // the front.
     transfer_queue: VecDeque<Transfer>,
@@ -101,6 +129,7 @@ struct Options {
     num_clients: usize,
     mnemonic: String,
     faucet_grant_amount: U256,
+    provider_url: Url,
 }
 
 #[derive(Debug, Clone)]
@@ -112,55 +141,48 @@ struct Faucet {
 }
 
 impl Faucet {
-    pub fn new(options: Options, chain_id: u64, provider: Provider<Ws>) -> Self {
-        // Create the clients
+    pub async fn create(options: Options) -> Result<Self> {
+        let provider = Provider::<Ws>::connect(options.provider_url.clone()).await?;
+        let chain_id = provider.get_chainid().await?.as_u64();
+
         let mut state = State::default();
+        let mut balances = vec![];
+        let mut total_balance = U256::zero();
+
+        // Create clients
         for index in 0..options.num_clients {
             let wallet = MnemonicBuilder::<English>::default()
                 .phrase(&options.mnemonic[..])
-                .index(index as u32)
-                .unwrap()
-                .build()
-                .unwrap()
+                .index(index as u32)?
+                .build()?
                 .with_chain_id(chain_id);
             let client = Arc::new(Middleware::new(provider.clone(), wallet));
-            tracing::info!("Created client {} {}", index, client.address());
-            state.available_clients.push(client);
-        }
-        Self {
-            config: options,
-            state: Arc::new(RwLock::new(state)),
-            provider,
-        }
-    }
 
-    pub async fn start(&self) -> Result<()> {
-        let mut balances = vec![];
-        let mut total_balance = U256::zero();
-        let mut state = self.state.write().await;
-        for client in state.available_clients.iter() {
-            let balance = self.balance(client.address()).await?;
-            tracing::info!("Initial balance {:?}: {}", client.address(), balance);
-            balances.push(balance);
+            let balance = provider.get_balance(client.address(), None).await?;
             total_balance += balance;
-        }
-        let mut clients = vec![];
-        clients.append(&mut state.available_clients);
+            balances.push(balance);
 
-        // Fund all clients who have less that (1 / num_clients) of the total.
-        for (client, balance) in clients.iter().zip(balances) {
-            if balance < total_balance / clients.len() {
+            tracing::info!(
+                "Created client {index} {} with balance {balance}",
+                client.address(),
+            );
+
+            // Fund all clients who have less than average balance.
+            if balance < total_balance / options.num_clients {
                 tracing::info!("Queuing funding transfer for {:?}", client.address());
                 let transfer = Transfer::funding(client.address());
                 state.transfer_queue.push_back(transfer);
-                state
-                    .inflight_clients
-                    .insert(client.address(), client.clone());
+                state.inflight_clients.insert(client.address(), client);
             } else {
-                state.available_clients.push(client.clone());
+                state.available_clients.push(balance, client);
             }
         }
-        Ok(())
+
+        Ok(Self {
+            config: options,
+            state: Arc::new(RwLock::new(state)),
+            provider,
+        })
     }
 
     async fn request_transfer(&self, transfer: Transfer) {
@@ -264,7 +286,8 @@ impl Faucet {
         // Mark the sender as available
         let mut state = self.state.write().await;
         if let Some(client) = state.inflight_clients.remove(&receipt.from) {
-            state.available_clients.push(client);
+            let balance = self.balance(client.address()).await?;
+            state.available_clients.push(balance, client);
         } else {
             tracing::warn!(
                 "Sender of transfer not found in inflight clients: {:?}",
@@ -278,8 +301,9 @@ impl Faucet {
             // For funding transfer mark recipient as available.
             if let Transfer::Funding { to, .. } = transfer {
                 if let Some(client) = state.inflight_clients.remove(&to) {
-                    tracing::info!("Client funded: {:?}", client.address());
-                    state.available_clients.push(client);
+                    let balance = self.balance(client.address()).await?;
+                    tracing::info!("Client {to:?} funded @ {balance}");
+                    let balance = state.available_clients.push(balance, client);
                 } else {
                     tracing::warn!(
                         "Recipient of funding transfer not found in inflight clients: {:?}",
@@ -336,7 +360,7 @@ mod test {
     const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
 
     #[async_std::test]
-    async fn test_faucet_anvil() {
+    async fn test_faucet_anvil() -> Result<()> {
         setup_logging();
         setup_backtrace();
 
@@ -344,7 +368,7 @@ mod test {
 
         let mut ws_url = anvil.url();
         ws_url.set_scheme("ws").unwrap();
-        let provider = Provider::<Ws>::connect(ws_url)
+        let provider = Provider::<Ws>::connect(ws_url.clone())
             .await
             .expect("Unable to make websocket connection to L1");
 
@@ -352,10 +376,9 @@ mod test {
             num_clients: 12, // With anvil 10 clients are pre-funded
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
+            provider_url: ws_url,
         };
-        let chain_id = 31337;
-        let faucet = Faucet::new(options, chain_id, provider.clone());
-        faucet.start().await.unwrap();
+        let faucet = Faucet::create(options).await?;
 
         let recipient = Address::random();
         let transfer_amount = 100.into();
@@ -379,10 +402,12 @@ mod test {
             }
             async_std::task::sleep(Duration::from_secs(1)).await;
         }
+
+        Ok(())
     }
 
     #[async_std::test]
-    async fn test_faucet_zkevm_node() {
+    async fn test_faucet_zkevm_node() -> Result<()> {
         setup_logging();
         setup_backtrace();
 
@@ -396,7 +421,7 @@ mod test {
         let mut ws_url = env.l2_provider();
         ws_url.set_scheme("ws").unwrap();
         ws_url.set_port(Some(8133)).unwrap(); // zkevm-node uses 8133 for websockets
-        let provider = Provider::<Ws>::connect(ws_url)
+        let provider = Provider::<Ws>::connect(ws_url.clone())
             .await
             .expect("Unable to make websocket connection to JsonRPC");
 
@@ -404,10 +429,9 @@ mod test {
             num_clients: 2,
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
+            provider_url: ws_url,
         };
-        let chain_id = 1001;
-        let faucet = Faucet::new(options, chain_id, provider.clone());
-        faucet.start().await.unwrap();
+        let faucet = Faucet::create(options).await?;
 
         let recipient = Address::random();
         let transfer_amount = 100.into();
@@ -431,5 +455,6 @@ mod test {
             }
             async_std::task::sleep(Duration::from_secs(1)).await;
         }
+        Ok(())
     }
 }

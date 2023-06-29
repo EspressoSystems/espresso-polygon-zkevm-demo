@@ -15,6 +15,7 @@ serenity = { version = "0.11", default-features = false, features = ["client", "
 thiserror = "1.0.40"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
+url = "2.4.0"
 
 [dev-dependencies]
 async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = ["logging-utils", "async-std-executor", "channel-async-std"] }
