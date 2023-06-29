@@ -191,14 +191,13 @@ impl Faucet {
         async_std::task::spawn(futures)
     }
 
+    async fn balance(&self, address: Address) -> Result<U256> {
+        Ok(self.provider.get_balance(address, None).await?)
+    }
+
     async fn request_transfer(&self, transfer: Transfer) {
         tracing::info!("Adding transfer to queue: {:?}", transfer);
         self.state.write().await.transfer_queue.push_back(transfer);
-    }
-
-    pub async fn request_faucet_transfer(&self, to: Address) {
-        let transfer = Transfer::faucet(to, self.config.faucet_grant_amount);
-        self.request_transfer(transfer).await;
     }
 
     async fn execute_transfers(&self) -> Result<()> {
@@ -278,10 +277,6 @@ impl Faucet {
             state.inflight_transfers.insert(tx.tx_hash(), transfer);
         }
         Ok(())
-    }
-
-    async fn balance(&self, address: Address) -> Result<U256> {
-        Ok(self.provider.get_balance(address, None).await?)
     }
 
     async fn handle_receipt(&self, tx_hash: H256) -> Result<()> {
