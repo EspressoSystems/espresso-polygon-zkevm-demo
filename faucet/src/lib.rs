@@ -1,3 +1,4 @@
+use anyhow::Result;
 use async_std::{
     channel::{Receiver, Sender},
     sync::RwLock,
@@ -5,7 +6,7 @@ use async_std::{
 use derive_more::From;
 use ethers::{
     prelude::SignerMiddleware,
-    providers::{Http, Middleware as _, Provider, StreamExt, Ws},
+    providers::{Http, Middleware as _, Provider, ProviderError, StreamExt, Ws},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::{Address, TransactionRequest, H256, U256},
 };
@@ -15,8 +16,27 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use thiserror::Error;
+
+// TODO
+// - Funding plan for initial setup, add from field to funding transfer.
+// - Separate web server for faucet for easier testing
+// - Webserver
+// - Healthcheck
+// - [X] Move receipt processing into separate method.
+// - [X] Only process receipts of tracked transfers
+// - Keep track of processed blocks.
+// - Add method of fetching missed blocks (or just query all pending transactions for receipts on startup?) and process them.
+// - Maybe create an enum for receipts (funding, faucet) so it's easier to process incoming receipts
+// - Error handling
 
 pub type Middleware = SignerMiddleware<Provider<Ws>, LocalWallet>;
+
+#[derive(Error, Debug)]
+enum FaucetError {
+    #[error("Error querying JsonRPC: {0}")]
+    Rpc(ProviderError),
+}
 
 #[derive(Debug, Clone)]
 struct FaucetRequest;
@@ -71,7 +91,7 @@ impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "State: available={} unfunded={} faucet_requests={} pending_clients={} pending_transfers={} transfer_queue={}",
+            "State: available={} unfunded={} faucet_requests={} inflight_clients={} inflight_transfers={} transfer_queue={}",
             self.available_clients.len(),
             self.unfunded_clients.len(),
             self.faucet_request.len(),
@@ -208,25 +228,72 @@ impl Faucet {
         }
     }
 
-    // async fn clients(&self) -> Vec<Clients> {
-    // }
-    // async fn funding_loop(&self) {
-    //     loop {
-    //         self.state.read().await.available_clients.pop() {
-    //             let balance = self
-    //                 .provider
-    //                 .get_balance(client.address(), None)
-    //                 .await
-    //                 .unwrap();
-    //             if balance < self.config.client_funding_amount {
-    //                 tracing::info!("Adding transfer request for {:?}", client.address());
-    //                 self.request_transfer(TransferInfo {
-    //                     amount: ,
-    //                     to: client.address(),
-    //                 })
-    //                 .await;
-    //             }
-    //         }
+    async fn balance(&self, address: Address) -> Result<U256> {
+        Ok(self.provider.get_balance(address, None).await?)
+    }
+
+    async fn handle_receipt(&self, tx_hash: H256) -> Result<()> {
+        tracing::info!("Got tx hash {:?}", tx_hash);
+        tracing::info!("State: {}", self.state.read().await);
+
+        let transfer = {
+            if let Some(transfer) = self.state.write().await.inflight_transfers.remove(&tx_hash) {
+                transfer
+            } else {
+                // Not a transaction we are monitoring.
+                return Ok(());
+            }
+        };
+
+        // In case there is a race condition and the receipt is not yet available, wait for it.
+        let receipt = loop {
+            if let Ok(Some(tx)) = self.provider.get_transaction_receipt(tx_hash).await {
+                break tx;
+            }
+            async_std::task::sleep(Duration::from_secs(1)).await;
+        };
+
+        tracing::info!("Received receipt for {:?}", transfer);
+
+        // Mark the sender as available
+        let mut state = self.state.write().await;
+        if let Some(client) = state.inflight_clients.remove(&receipt.from) {
+            state.available_clients.push(client);
+        } else {
+            tracing::warn!(
+                "Sender of transfer not found in inflight clients: {:?}",
+                receipt.from
+            );
+        }
+
+        // If the transaction succeeded, update the state of for funding
+        // transfers.
+        if receipt.status == Some(1.into()) {
+            // For funding transfer mark recipient as available.
+            if let Transfer::Funding { to, .. } = transfer {
+                if let Some(client) = state.inflight_clients.remove(&to) {
+                    tracing::info!("Client funded: {:?}", client.address());
+                    state.available_clients.push(client);
+                } else {
+                    tracing::warn!(
+                        "Recipient of funding transfer not found in inflight clients: {:?}",
+                        to
+                    );
+                }
+            };
+
+        // If the transaction failed resend it.
+        } else {
+            tracing::warn!(
+                "Transfer failed tx_hash={:?}, will resend: {:?}",
+                tx_hash,
+                transfer
+            );
+            state.transfer_queue.push_back(transfer);
+        }
+
+        Ok(())
+    }
 
     async fn monitor_transactions(&self) {
         let mut stream = self
@@ -235,76 +302,9 @@ impl Faucet {
             .await
             .unwrap()
             .flat_map(|block| futures::stream::iter(block.transactions));
-
-        let mut counter = 0usize;
         self.state.write().await.monitoring_started = true;
-
         while let Some(tx_hash) = stream.next().await {
-            counter += 1;
-            tracing::info!("Got tx hash: {} {:?}", counter, tx_hash);
-            tracing::info!("State: {}", self.state.read().await);
-            // TODO it's inefficient to query every transaction receipt.
-            let tx = loop {
-                if let Ok(Some(tx)) = self.provider.get_transaction_receipt(tx_hash).await {
-                    break tx;
-                }
-                async_std::task::sleep(Duration::from_secs(1)).await;
-            };
-            // This transaction is no longer pending
-            let pending_transfer = self.state.write().await.inflight_transfers.remove(&tx_hash);
-            if let Some(transfer) = pending_transfer {
-                tracing::info!("Transfer completed: {:?}", transfer);
-            }
-
-            // If the transaction succeeded, update the state. Note that
-            // it's possible that the transaction is an external
-            // transfer that we are not tracking but may still involve
-            // our accounts.
-            if tx.status == Some(1.into()) && pending_transfer.is_some() {
-                if let Some(recipient) = tx.to {
-                    // Update the state for the parties involved in the transfer.
-                    for address in [tx.from, recipient] {
-                        // if self
-                        //     .state
-                        //     .read()
-                        //     .await
-                        //     .inflight_clients
-                        //     .contains_key(&address)
-                        // {
-                        let balance = self.provider.get_balance(address, None).await.unwrap(); // TODO: error handling
-                                                                                               // if balance >= self.config.client_funding_amount {
-                        let mut state = self.state.write().await;
-                        if let Some(client) = state.inflight_clients.remove(&address) {
-                            tracing::info!(
-                                "Client funded: {:?} balance={:?}",
-                                client.address(),
-                                balance,
-                            );
-                            state.available_clients.push(client);
-                        }
-                        // } else {
-                        //     tracing::info!(
-                        //         "Client not funded: {:?} balance={:?}",
-                        //         address,
-                        //         balance,
-                        //     );
-                        // // }
-                        // }
-                    }
-                }
-            // If the transaction failed and is a faucet transaction. We
-            // need to send it again.
-            } else if let Some(transfer) = pending_transfer {
-                tracing::warn!(
-                    "Transfer failed tx_hash={:?}, will resend: {:?}",
-                    tx_hash,
-                    transfer
-                );
-
-                self.state.write().await.transfer_queue.push_back(transfer);
-            } else {
-                tracing::warn!("Ignoring transaction: {:?}", tx);
-            }
+            self.handle_receipt(tx_hash).await;
         }
         unreachable!();
     }
