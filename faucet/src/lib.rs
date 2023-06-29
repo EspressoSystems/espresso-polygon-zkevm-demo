@@ -1,12 +1,8 @@
 use anyhow::Result;
-use async_std::{
-    channel::{Receiver, Sender},
-    sync::RwLock,
-};
-use derive_more::From;
+use async_std::sync::RwLock;
 use ethers::{
     prelude::SignerMiddleware,
-    providers::{Http, Middleware as _, Provider, ProviderError, StreamExt, Ws},
+    providers::{Middleware as _, Provider, ProviderError, StreamExt, Ws},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::{Address, TransactionRequest, H256, U256},
 };
@@ -19,7 +15,7 @@ use std::{
 use thiserror::Error;
 
 // TODO
-// - Funding plan for initial setup, add from field to funding transfer.
+// - [X] Funding on startup.
 // - Separate web server for faucet for easier testing
 // - Webserver
 // - Healthcheck
@@ -107,7 +103,6 @@ struct Options {
     num_clients: usize,
     mnemonic: String,
     faucet_grant_amount: U256,
-    client_funding_amount: U256,
 }
 
 #[derive(Debug, Clone)]
@@ -131,13 +126,8 @@ impl Faucet {
                 .unwrap()
                 .with_chain_id(chain_id);
             let client = Arc::new(Middleware::new(provider.clone(), wallet));
-            // TODO: we can check balance to determine what is funded
             tracing::info!("Created client {} {}", index, client.address());
-            if index == 0 {
-                state.available_clients.push(client);
-            } else {
-                state.unfunded_clients.push(client);
-            }
+            state.available_clients.push(client);
         }
         Self {
             config: options,
@@ -146,21 +136,40 @@ impl Faucet {
         }
     }
 
-    pub async fn start(&self) {
-        // Fund all unfunded clients
+    pub async fn start(&self) -> Result<()> {
+        let mut balances = vec![];
+        let mut total_balance = U256::zero();
         let mut state = self.state.write().await;
-        while let Some(receiver) = state.unfunded_clients.pop() {
-            let transfer = Transfer::funding(receiver.address());
-            tracing::info!("Adding transfer to queue: {:?}", transfer);
-            state.transfer_queue.push_back(transfer);
-            state.inflight_clients.insert(receiver.address(), receiver);
+        for client in state.available_clients.iter() {
+            let balance = self.balance(client.address()).await?;
+            tracing::info!("Initial balance {:?}: {}", client.address(), balance);
+            balances.push(balance);
+            total_balance += balance;
         }
+        let mut clients = vec![];
+        clients.append(&mut state.available_clients);
+
+        // Fund all clients who have less that (1 / num_clients) of the total.
+        for (client, balance) in clients.iter().zip(balances) {
+            if balance < total_balance / clients.len() {
+                tracing::info!("Queuing funding transfer for {:?}", client.address());
+                let transfer = Transfer::funding(client.address());
+                state.transfer_queue.push_back(transfer);
+                state
+                    .inflight_clients
+                    .insert(client.address(), client.clone());
+            } else {
+                state.available_clients.push(client.clone());
+            }
+        }
+        Ok(())
     }
 
     async fn request_transfer(&self, transfer: Transfer) {
         tracing::info!("Adding transfer to queue: {:?}", transfer);
         self.state.write().await.transfer_queue.push_back(transfer);
     }
+
     async fn execute_transfers(&self) {
         // Create transfer requests for available clients.
         loop {
@@ -172,7 +181,6 @@ impl Faucet {
             }
         }
         loop {
-            // TODO: This may keep the lock for too long!
             let mut clients = vec![];
             let mut transfers = vec![];
             {
@@ -283,6 +291,7 @@ impl Faucet {
             };
 
         // If the transaction failed resend it.
+        // TODO: this code is currently untested.
         } else {
             tracing::warn!(
                 "Transfer failed tx_hash={:?}, will resend: {:?}",
@@ -291,6 +300,13 @@ impl Faucet {
             );
             state.transfer_queue.push_back(transfer);
         }
+
+        // TODO: I think for transactions with bad nonces we would not even get
+        // a transactions receipt. As a result the sending client would remain
+        // stuck. As a workaround we could add a timeout to the inflight clients
+        // and unlock them after a while. It may be difficult to set a good
+        // fixed value for the timeout because the zkevm-node currently waits
+        // for hotshot blocks being sequenced in the contract.
 
         Ok(())
     }
@@ -335,14 +351,13 @@ mod test {
             .expect("Unable to make websocket connection to L1");
 
         let options = Options {
-            num_clients: 10,
+            num_clients: 12, // With anvil 10 clients are pre-funded
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
-            client_funding_amount: 1000.into(),
         };
         let chain_id = 31337;
         let faucet = Faucet::new(options, chain_id, provider.clone());
-        faucet.start().await;
+        faucet.start().await.unwrap();
 
         let recipient = Address::random();
         let transfer_amount = 100.into();
@@ -391,11 +406,10 @@ mod test {
             num_clients: 2,
             mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: 100.into(),
-            client_funding_amount: 1000.into(),
         };
         let chain_id = 1001;
         let faucet = Faucet::new(options, chain_id, provider.clone());
-        faucet.start().await;
+        faucet.start().await.unwrap();
 
         let recipient = Address::random();
         let transfer_amount = 100.into();
