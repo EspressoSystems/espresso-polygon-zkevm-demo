@@ -2,7 +2,7 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::channel::Sender;
 use clap::Parser;
 use ethers::types::Address;
-use faucet::{Faucet, Options, Transfer};
+use faucet::{Faucet, Options};
 use regex::Regex;
 use serenity::async_trait;
 use serenity::model::channel::Message;

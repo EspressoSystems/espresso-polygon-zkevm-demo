@@ -1,9 +1,5 @@
 use anyhow::{Error, Result};
-use async_std::{
-    channel::{Receiver, Sender},
-    sync::RwLock,
-    task::JoinHandle,
-};
+use async_std::{channel::Receiver, sync::RwLock, task::JoinHandle};
 use clap::Parser;
 use ethers::{
     prelude::SignerMiddleware,
@@ -12,10 +8,9 @@ use ethers::{
     types::{Address, TransactionRequest, H256, U256},
     utils::{parse_ether, ConversionError},
 };
-use futures::future::Join;
+
 use std::{
     collections::{BinaryHeap, HashMap, VecDeque},
-    fmt::Display,
     sync::Arc,
     time::Duration,
 };
@@ -113,10 +108,6 @@ impl ClientPool {
         self.priority.push((balance, client.address()));
     }
 
-    pub fn len(&self) -> usize {
-        self.clients.len()
-    }
-
     pub fn is_empty(&self) -> bool {
         self.clients.is_empty()
     }
@@ -189,7 +180,7 @@ impl Faucet {
         })
     }
 
-    pub async fn start(self) -> JoinHandle<((), (), Result<(), Error>)> {
+    pub async fn start(self) -> JoinHandle<(Result<(), Error>, (), Result<(), Error>)> {
         let futures = async move {
             futures::join!(
                 self.monitor_transactions(),
@@ -216,7 +207,7 @@ impl Faucet {
             if self.state.read().await.monitoring_started {
                 break;
             } else {
-                tracing::info!("Waiting for monitoring to start...");
+                tracing::info!("Waiting for transaction monitoring to start...");
                 async_std::task::sleep(Duration::from_secs(1)).await;
             }
         }
@@ -332,6 +323,7 @@ impl Faucet {
             // For funding transfer mark recipient as available.
             if let Transfer::Funding { to, .. } = transfer {
                 if let Some(client) = state.inflight_clients.remove(&to) {
+                    // TODO should not hold write lock over this external call.
                     let balance = self.balance(client.address()).await?;
                     tracing::info!("Client {to:?} funded @ {balance}");
                     state.available_clients.push(balance, client);
@@ -343,7 +335,7 @@ impl Faucet {
                 }
             };
 
-        // If the transaction failed resend it.
+        // If the transaction failed send it again.
         // TODO: this code is currently untested.
         } else {
             tracing::warn!(
@@ -364,7 +356,7 @@ impl Faucet {
         Ok(())
     }
 
-    async fn monitor_transactions(&self) {
+    async fn monitor_transactions(&self) -> Result<()> {
         let mut stream = self
             .provider
             .subscribe_blocks()
@@ -372,8 +364,9 @@ impl Faucet {
             .unwrap()
             .flat_map(|block| futures::stream::iter(block.transactions));
         self.state.write().await.monitoring_started = true;
+        tracing::info!("Transaction monitoring started ...");
         while let Some(tx_hash) = stream.next().await {
-            self.handle_receipt(tx_hash).await;
+            self.handle_receipt(tx_hash).await?;
         }
         unreachable!();
     }
@@ -396,7 +389,7 @@ impl Faucet {
 mod test {
     use super::*;
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-    use async_std::task::spawn;
+
     use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
     use sequencer_utils::AnvilOptions;
 
@@ -429,7 +422,7 @@ mod test {
         let recipient = Address::random();
         let mut total_transfer_amount = U256::zero();
         for _ in 0..3 {
-            sender.send(recipient).await;
+            sender.send(recipient).await.unwrap();
             total_transfer_amount += options.faucet_grant_amount;
         }
 
