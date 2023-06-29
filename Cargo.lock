@@ -1631,9 +1631,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.8"
+version = "4.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9394150f5b4273a1763355bd1c2ec54cc5a2593f790587bcd6b2c947cfa9211"
+checksum = "bba77a07e4489fb41bd90e8d4201c3eb246b3c2c9ea2ba0bddd6c1d1df87db7d"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1642,9 +1642,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.8"
+version = "4.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a78fbdd3cc2914ddf37ba444114bc7765bbdcb55ec9cbe6fa054f0137400717"
+checksum = "2c9b4a88bb4bc35d3d6f65a21b0f0bafe9c894fa00978de242c555ec28bea1c0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1839,7 +1839,7 @@ checksum = "21a53c0a4d288377e7415b53dcfc3c04da5cdc2cc95c8d5ac178b58f0b861ad6"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2eb4f6c09e81cc0c1965fcc3ea12fb454740c0d6"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#c3b4c89aa24afa5dd1fb166b7cf8ee8f8ce28e0f"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -6953,7 +6953,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2eb4f6c09e81cc0c1965fcc3ea12fb454740c0d6"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#c3b4c89aa24afa5dd1fb166b7cf8ee8f8ce28e0f"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-serialize 0.4.2",
@@ -6992,7 +6992,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2eb4f6c09e81cc0c1965fcc3ea12fb454740c0d6"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#c3b4c89aa24afa5dd1fb166b7cf8ee8f8ce28e0f"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
