@@ -34,18 +34,6 @@ enum FaucetError {
     Rpc(ProviderError),
 }
 
-#[derive(Debug, Clone)]
-struct FaucetRequest;
-
-#[derive(Debug, Clone)]
-struct Client;
-
-#[derive(Debug, Clone, Copy)]
-enum TransferKind {
-    Funding,
-    Faucet,
-}
-
 #[derive(Debug, Clone, Copy)]
 enum Transfer {
     Faucet { to: Address, amount: U256 },
@@ -99,7 +87,6 @@ impl ClientPool {
 #[derive(Debug, Clone, Default)]
 struct State {
     available_clients: ClientPool,
-    faucet_request: Vec<FaucetRequest>,
     inflight_transfers: HashMap<H256, Transfer>,
     inflight_clients: HashMap<Address, Arc<Middleware>>,
     // Funding wallets has priority, these transfer requests must be pushed to
@@ -113,9 +100,8 @@ impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "State: available={} faucet_requests={} inflight_clients={} inflight_transfers={} transfer_queue={}",
+            "State: available={} inflight_clients={} inflight_transfers={} transfer_queue={}",
             self.available_clients.len(),
-            self.faucet_request.len(),
             self.inflight_clients.len(),
             self.inflight_transfers.len(),
             self.transfer_queue.len(),
