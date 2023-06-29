@@ -6,6 +6,7 @@ use crate::Options;
 use async_std::sync::RwLock;
 use futures::{FutureExt, StreamExt, TryFutureExt};
 use hotshot_query_service::availability::BlockQueryData;
+use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
 use sequencer::{Block, SeqTypes};
 use tide_disco::{error::ServerError, App};
 use zkevm::{hermez::encode_transactions, ZkEvm};
@@ -64,7 +65,9 @@ pub async fn serve(opt: &Options) {
 }
 
 fn encode_block(zkevm: ZkEvm, block: &Block) -> String {
-    encode_transactions(block.vm_transactions(&zkevm)).to_string()
+    let proof = block.get_namespace_proof(&zkevm);
+    let transactions = proof.get_namespace_leaves();
+    encode_transactions(transactions.iter().flat_map(|txn| txn.as_vm(&zkevm))).to_string()
 }
 
 #[cfg(test)]
