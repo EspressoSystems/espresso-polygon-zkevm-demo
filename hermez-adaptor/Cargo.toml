@@ -32,6 +32,7 @@ futures = "0.3"
 hotshot-query-service = { git = "ssh://git@github.com/EspressoSystems/hotshot-query-service.git" }
 hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = ["async-std-executor", "channel-async-std"] }
 http-types = "2.12.0"
+jf-primitives = { git = "https://github.com/EspressoSystems/jellyfish" }
 jsonrpc-v2 = "0.11.0"
 sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
 sequencer-utils = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
