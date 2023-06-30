@@ -104,7 +104,7 @@ pub async fn main() -> io::Result<()> {
     };
 
     let faucet_handle = spawn(faucet.start());
-    let api_handle = spawn(serve(opts.port(), state));
+    let api_handle = spawn(serve(opts.port, state));
 
     if let Some(mut discord) = discord_client {
         let _result = futures::join!(faucet_handle, api_handle, discord.start());

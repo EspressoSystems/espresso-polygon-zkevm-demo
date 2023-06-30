@@ -26,11 +26,11 @@ pub struct Options {
     /// parallel. Each client can only do about one request per block_time
     /// (which is 12 seconds for public Ethereum networks.)
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS", default_value = "10")]
-    num_clients: usize,
+    pub num_clients: usize,
 
     /// The mnemonic of the faucet wallet.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_MNEMONIC")]
-    mnemonic: String,
+    pub mnemonic: String,
 
     /// Port on which to serve the API.
     #[arg(
@@ -39,7 +39,7 @@ pub struct Options {
         env = "ESPRESSO_ZKEVM_FAUCET_PORT",
         default_value = "8111"
     )]
-    port: u16,
+    pub port: u16,
 
     /// The amount of funds to grant to each account on startup in Ethers.
     #[arg(
@@ -47,33 +47,11 @@ pub struct Options {
         env = "ESPRESSO_ZKEVM_FAUCET_GRANT_AMOUNT_ETHERS",
         value_parser = |arg: &str| -> Result<U256, ConversionError> { Ok(parse_ether(arg)?) }
     )]
-    faucet_grant_amount: U256,
+    pub faucet_grant_amount: U256,
 
     /// The URL of the JsonRPC the faucet connects to.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS")]
-    provider_url: Url,
-}
-
-impl Options {
-    pub fn num_clients(&self) -> usize {
-        self.num_clients
-    }
-
-    pub fn mnemonic(&self) -> &str {
-        &self.mnemonic
-    }
-
-    pub fn port(&self) -> u16 {
-        self.port
-    }
-
-    pub fn faucet_grant_amount(&self) -> U256 {
-        self.faucet_grant_amount
-    }
-
-    pub fn provider_url(&self) -> &Url {
-        &self.provider_url
-    }
+    pub provider_url: Url,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -145,7 +123,7 @@ pub struct Faucet {
 
 impl Faucet {
     pub async fn create(options: Options, faucet_receiver: Receiver<Address>) -> Result<Self> {
-        let provider = Provider::<Ws>::connect(options.provider_url()).await?;
+        let provider = Provider::<Ws>::connect(options.provider_url.clone()).await?;
         let chain_id = provider.get_chainid().await?.as_u64();
 
         let mut state = State::default();
@@ -153,9 +131,9 @@ impl Faucet {
         let mut total_balance = U256::zero();
 
         // Create clients
-        for index in 0..options.num_clients() {
+        for index in 0..options.num_clients {
             let wallet = MnemonicBuilder::<English>::default()
-                .phrase(options.mnemonic())
+                .phrase(options.mnemonic.as_str())
                 .index(index as u32)?
                 .build()?
                 .with_chain_id(chain_id);
@@ -390,116 +368,9 @@ impl Faucet {
     async fn monitor_faucet_requests(&self) -> Result<()> {
         loop {
             if let Ok(address) = self.faucet_receiver.write().await.recv().await {
-                self.request_transfer(Transfer::faucet(address, self.config.faucet_grant_amount()))
+                self.request_transfer(Transfer::faucet(address, self.config.faucet_grant_amount))
                     .await;
             }
         }
-    }
-}
-
-// Tests
-#[cfg(test)]
-mod test {
-    use super::*;
-    use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-
-    use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
-    use sequencer_utils::AnvilOptions;
-
-    const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
-
-    #[async_std::test]
-    async fn test_faucet_anvil() -> Result<()> {
-        setup_logging();
-        setup_backtrace();
-
-        let anvil = AnvilOptions::default().spawn().await;
-
-        let mut ws_url = anvil.url();
-        ws_url.set_scheme("ws").unwrap();
-        let provider = Provider::<Ws>::connect(ws_url.clone())
-            .await
-            .expect("Unable to make websocket connection to L1");
-
-        let options = Options {
-            num_clients: 12, // With anvil 10 clients are pre-funded
-            mnemonic: TEST_MNEMONIC.to_string(),
-            faucet_grant_amount: 100.into(),
-            provider_url: ws_url,
-            port: 11223,
-        };
-        let (sender, receiver) = async_std::channel::unbounded();
-
-        let faucet = Faucet::create(options.clone(), receiver).await?;
-
-        let recipient = Address::random();
-        let mut total_transfer_amount = U256::zero();
-        for _ in 0..3 {
-            sender.send(recipient).await.unwrap();
-            total_transfer_amount += options.faucet_grant_amount();
-        }
-
-        let _handle = faucet.start().await;
-
-        loop {
-            let balance = provider.get_balance(recipient, None).await.unwrap();
-            tracing::info!("Balance is {balance}");
-            if balance == total_transfer_amount {
-                break;
-            }
-            async_std::task::sleep(Duration::from_secs(1)).await;
-        }
-
-        Ok(())
-    }
-
-    #[async_std::test]
-    async fn test_faucet_zkevm_node() -> Result<()> {
-        setup_logging();
-        setup_backtrace();
-
-        let demo = SequencerZkEvmDemo::start_with_sequencer(
-            "faucet-test".to_string(),
-            Layer1Backend::Anvil,
-        )
-        .await;
-        let env = demo.env();
-
-        let mut ws_url = env.l2_provider();
-        ws_url.set_scheme("ws").unwrap();
-        ws_url.set_port(Some(8133)).unwrap(); // zkevm-node uses 8133 for websockets
-        let provider = Provider::<Ws>::connect(ws_url.clone())
-            .await
-            .expect("Unable to make websocket connection to JsonRPC");
-
-        let options = Options {
-            num_clients: 2,
-            mnemonic: TEST_MNEMONIC.to_string(),
-            faucet_grant_amount: 100.into(),
-            provider_url: ws_url,
-            port: 11223,
-        };
-        let (sender, receiver) = async_std::channel::unbounded();
-
-        let faucet = Faucet::create(options.clone(), receiver).await?;
-
-        let recipient = Address::random();
-        let mut total_transfer_amount = U256::zero();
-        for _ in 0..2 {
-            sender.send(recipient).await.unwrap();
-            total_transfer_amount += options.faucet_grant_amount();
-        }
-
-        let _handle = faucet.start().await;
-
-        loop {
-            let balance = provider.get_balance(recipient, None).await.unwrap();
-            tracing::info!("Balance is {balance}");
-            if balance == total_transfer_amount {
-                break;
-            }
-            async_std::task::sleep(Duration::from_secs(1)).await;
-        }
-        Ok(())
     }
 }

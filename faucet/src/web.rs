@@ -89,3 +89,96 @@ impl State {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::faucet::{Faucet, Options};
+    use anyhow::Result;
+    use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
+    use ethers::{
+        providers::{Middleware, Provider, Ws},
+        types::U256,
+    };
+    use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
+    use sequencer_utils::AnvilOptions;
+    use std::time::Duration;
+
+    const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
+
+    async fn run_faucet_test(options: Options) -> Result<()> {
+        let (sender, receiver) = async_std::channel::unbounded();
+
+        let faucet = Faucet::create(options.clone(), receiver).await?;
+
+        let recipient = Address::random();
+        let mut total_transfer_amount = U256::zero();
+        for _ in 0..3 {
+            sender.send(recipient).await.unwrap();
+            total_transfer_amount += options.faucet_grant_amount;
+        }
+
+        let _handle = faucet.start().await;
+
+        let provider = Provider::<Ws>::connect(options.provider_url).await?;
+        loop {
+            let balance = provider.get_balance(recipient, None).await.unwrap();
+            tracing::info!("Balance is {balance}");
+            if balance == total_transfer_amount {
+                break;
+            }
+            async_std::task::sleep(Duration::from_secs(1)).await;
+        }
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn test_faucet_anvil() -> Result<()> {
+        setup_logging();
+        setup_backtrace();
+
+        let anvil = AnvilOptions::default().spawn().await;
+
+        let mut ws_url = anvil.url();
+        ws_url.set_scheme("ws").unwrap();
+
+        let options = Options {
+            num_clients: 12, // With anvil 10 clients are pre-funded
+            mnemonic: TEST_MNEMONIC.to_string(),
+            faucet_grant_amount: 100.into(),
+            provider_url: ws_url,
+            port: 11223,
+        };
+
+        run_faucet_test(options).await?;
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn test_faucet_zkevm_node() -> Result<()> {
+        setup_logging();
+        setup_backtrace();
+
+        let demo = SequencerZkEvmDemo::start_with_sequencer(
+            "faucet-test".to_string(),
+            Layer1Backend::Anvil,
+        )
+        .await;
+        let env = demo.env();
+
+        let mut ws_url = env.l2_provider();
+        ws_url.set_scheme("ws").unwrap();
+        ws_url.set_port(Some(8133)).unwrap(); // zkevm-node uses 8133 for websockets
+
+        let options = Options {
+            num_clients: 2,
+            mnemonic: TEST_MNEMONIC.to_string(),
+            faucet_grant_amount: 100.into(),
+            provider_url: ws_url,
+            port: 11223,
+        };
+        run_faucet_test(options).await?;
+        Ok(())
+    }
+}
