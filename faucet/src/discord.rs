@@ -1,14 +1,15 @@
+//! A discord event handler for the faucet.
+//!
+//! Suggestions for improvements:
+//!   - After starting up, process messages sent since last online.
 use crate::serve;
-use crate::State;
+use crate::WebState;
 use crate::{Faucet, Options};
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-
 use async_std::task::spawn;
 use clap::Parser;
 use ethers::types::Address;
-
 use regex::Regex;
-
 use serenity::async_trait;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
@@ -16,11 +17,8 @@ use serenity::prelude::*;
 use std::env;
 use std::io;
 
-// Suggestions for improvements:
-// - After starting up, process messages sent since last online.
-
 #[async_trait]
-impl EventHandler for State {
+impl EventHandler for WebState {
     // Set a handler for the `message` event - so that whenever a new message
     // is received - the closure (or function) passed will be called.
     //
@@ -82,7 +80,7 @@ pub async fn main() -> io::Result<()> {
     // automatically prepend your bot token with "Bot ", which is a requirement
     // by Discord for bot users.
     let (sender, receiver) = async_std::channel::unbounded();
-    let state = State::new(sender);
+    let state = WebState::new(sender);
     let faucet = Faucet::create(opts.clone(), receiver)
         .await
         .expect("Failed to create faucet");

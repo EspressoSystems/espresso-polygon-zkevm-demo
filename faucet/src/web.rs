@@ -1,3 +1,9 @@
+//! Web server for the discord faucet.
+//!
+//! Serves these purposes:
+//! 1. Provide a healthcheck endpoint for the discord bot, so it can be automatically
+//!    restarted if it fails.
+//! 2. Test and use the faucet locally without connecting to Discord.
 use async_std::channel::Sender;
 use async_std::sync::RwLock;
 use ethers::types::Address;
@@ -36,7 +42,7 @@ impl From<RequestError> for FaucetError {
     }
 }
 
-pub(crate) async fn serve(port: u16, state: State) -> io::Result<()> {
+pub(crate) async fn serve(port: u16, state: WebState) -> io::Result<()> {
     let mut app = App::<_, FaucetError>::with_state(RwLock::new(state));
     app.with_version(env!("CARGO_PKG_VERSION").parse().unwrap());
 
@@ -44,7 +50,7 @@ pub(crate) async fn serve(port: u16, state: State) -> io::Result<()> {
     let toml = toml::from_str::<toml::value::Value>(include_str!("api.toml"))
         .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
 
-    let mut api = Api::<RwLock<State>, FaucetError>::new(toml).unwrap();
+    let mut api = Api::<RwLock<WebState>, FaucetError>::new(toml).unwrap();
     api.with_version(env!("CARGO_PKG_VERSION").parse().unwrap());
 
     // Can invoke with
@@ -69,11 +75,11 @@ pub(crate) async fn serve(port: u16, state: State) -> io::Result<()> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct State {
+pub(crate) struct WebState {
     faucet_queue: Sender<Address>,
 }
 
-impl State {
+impl WebState {
     pub fn new(faucet_queue: Sender<Address>) -> Self {
         Self { faucet_queue }
     }
@@ -96,29 +102,37 @@ mod test {
     use crate::faucet::{Faucet, Options};
     use anyhow::Result;
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
+    use async_std::task::spawn;
     use ethers::{
         providers::{Middleware, Provider, Ws},
         types::U256,
+        utils::parse_ether,
     };
     use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
     use sequencer_utils::AnvilOptions;
     use std::time::Duration;
+    use surf_disco::Client;
 
     const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
 
     async fn run_faucet_test(options: Options) -> Result<()> {
-        let (sender, receiver) = async_std::channel::unbounded();
-
-        let faucet = Faucet::create(options.clone(), receiver).await?;
+        let client =
+            Client::<FaucetError>::new(format!("http://localhost:{}", options.port).parse()?);
+        // Avoids waiting 10 seconds for the retry in `connect`.
+        async_std::task::sleep(Duration::from_millis(100)).await;
+        client.connect(None).await;
 
         let recipient = Address::random();
         let mut total_transfer_amount = U256::zero();
+
         for _ in 0..3 {
-            sender.send(recipient).await.unwrap();
+            client
+                .post(&format!("faucet/request/{recipient:?}"))
+                .send()
+                .await?;
+
             total_transfer_amount += options.faucet_grant_amount;
         }
-
-        let _handle = faucet.start().await;
 
         let provider = Provider::<Ws>::connect(options.provider_url).await?;
         loop {
@@ -143,13 +157,24 @@ mod test {
         let mut ws_url = anvil.url();
         ws_url.set_scheme("ws").unwrap();
 
+        // With anvil 10 clients are pre-funded. We use more than that to make
+        // sure the funding logic runs.
         let options = Options {
-            num_clients: 12, // With anvil 10 clients are pre-funded
+            num_clients: 12,
             mnemonic: TEST_MNEMONIC.to_string(),
-            faucet_grant_amount: 100.into(),
+            faucet_grant_amount: parse_ether(1).unwrap(),
             provider_url: ws_url,
             port: 11223,
         };
+
+        let (sender, receiver) = async_std::channel::unbounded();
+
+        // Start the faucet
+        let faucet = Faucet::create(options.clone(), receiver).await?;
+        let _handle = faucet.start().await;
+
+        // Start the web server
+        spawn(async move { serve(options.port, WebState::new(sender)).await });
 
         run_faucet_test(options).await?;
         Ok(())
@@ -160,6 +185,10 @@ mod test {
         setup_logging();
         setup_backtrace();
 
+        // Use fewer clients to shorten test time.
+        let num_clients = 2;
+        std::env::set_var("ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS", num_clients.to_string());
+
         let demo = SequencerZkEvmDemo::start_with_sequencer(
             "faucet-test".to_string(),
             Layer1Backend::Anvil,
@@ -167,16 +196,17 @@ mod test {
         .await;
         let env = demo.env();
 
+        // Connect to the faucet running inside the docker compose environment.
         let mut ws_url = env.l2_provider();
         ws_url.set_scheme("ws").unwrap();
         ws_url.set_port(Some(8133)).unwrap(); // zkevm-node uses 8133 for websockets
 
         let options = Options {
-            num_clients: 2,
+            num_clients,
             mnemonic: TEST_MNEMONIC.to_string(),
-            faucet_grant_amount: 100.into(),
+            faucet_grant_amount: parse_ether(1000).unwrap(), // Needs to match the faucet grant amount the .env file
             provider_url: ws_url,
-            port: 11223,
+            port: 8111,
         };
         run_faucet_test(options).await?;
         Ok(())

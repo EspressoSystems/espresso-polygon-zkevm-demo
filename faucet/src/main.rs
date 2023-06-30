@@ -1,6 +1,4 @@
-use std::io;
-
 #[async_std::main]
-async fn main() -> io::Result<()> {
+async fn main() -> std::io::Result<()> {
     faucet::main()
 }
