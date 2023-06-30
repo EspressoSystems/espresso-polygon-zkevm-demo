@@ -13,18 +13,18 @@ use std::env;
 // Suggestions for improvements:
 // - After starting up, process messages sent since last online.
 
-struct Handler {
+struct DiscordHandler {
     faucet_queue: Sender<Address>,
 }
 
-impl Handler {
+impl DiscordHandler {
     fn new(faucet_queue: Sender<Address>) -> Self {
         Self { faucet_queue }
     }
 }
 
 #[async_trait]
-impl EventHandler for Handler {
+impl EventHandler for DiscordHandler {
     // Set a handler for the `message` event - so that whenever a new message
     // is received - the closure (or function) passed will be called.
     //
@@ -38,11 +38,11 @@ impl EventHandler for Handler {
 
         // Try to find an ethereum address in the message body.
         let re = Regex::new("0x[a-fA-F0-9]{40}").unwrap();
-        let mut reply = "".to_string();
+        let mut chat_response = Default::default();
 
         if let Some(matched) = re.captures(&msg.content) {
             if let Some(addr) = matched.get(0) {
-                reply = format!("Sending funds to {}", addr.as_str());
+                chat_response = format!("Sending funds to {}", addr.as_str());
                 if let Ok(address) = addr.as_str().parse::<Address>() {
                     if let Err(err) = self.faucet_queue.send(address).await {
                         tracing::error!("Failed make faucet request for address: {}", err);
@@ -55,9 +55,9 @@ impl EventHandler for Handler {
                 // TODO actually send funds
             }
         } else {
-            reply = "No address found!".to_string();
+            chat_response = "No address found!".to_string();
         }
-        if let Err(why) = msg.reply(&ctx.http, reply).await {
+        if let Err(why) = msg.reply(&ctx.http, chat_response).await {
             tracing::error!("Error sending message: {:?}", why);
         }
     }
@@ -77,6 +77,8 @@ async fn main() {
     setup_logging();
     setup_backtrace();
 
+    let opts = Options::parse();
+
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
     // Set gateway intents, which decides what events the bot will be notified about
     let intents = GatewayIntents::GUILD_MESSAGES
@@ -86,14 +88,13 @@ async fn main() {
     // Create a new instance of the Client, logging in as a bot. This will
     // automatically prepend your bot token with "Bot ", which is a requirement
     // by Discord for bot users.
-    let opts = Options::parse();
     let (sender, receiver) = async_std::channel::unbounded();
     let faucet = Faucet::create(opts, receiver)
         .await
         .expect("Failed to create faucet");
 
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler::new(sender))
+        .event_handler(DiscordHandler::new(sender))
         .await
         .expect("Err creating client");
     let _handle = faucet.start().await;

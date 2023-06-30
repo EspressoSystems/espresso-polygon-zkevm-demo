@@ -60,6 +60,7 @@ jobs:
           name: x86_64-unknown-linux-musl-services
           path: |
             target/x86_64-unknown-linux-musl/release/hermez-adaptor
+            target/x86_64-unknown-linux-musl/release/faucet
 
   static-dockers:
     runs-on: ubuntu-latest
@@ -100,3 +101,19 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.hermez-adaptor.outputs.tags }}
           labels: ${{ steps.hermez-adaptor.outputs.labels }}
+
+      - name: Generate faucet docker metadata
+        uses: docker/metadata-action@v4
+        id: faucet
+        with:
+          images: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet
+
+      - name: Build and push faucet docker
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./docker/faucet.Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.faucet.outputs.tags }}
+          labels: ${{ steps.faucet.outputs.labels }}
