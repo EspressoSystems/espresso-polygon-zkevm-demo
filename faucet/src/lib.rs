@@ -39,12 +39,12 @@ pub struct Options {
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_MNEMONIC")]
     mnemonic: String,
 
-    /// Port on which to serve the API. (TODO: use for healthchecks)
+    /// Port on which to serve the API.
     #[arg(
         short,
         long,
-        env = "ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT",
-        default_value = "8545"
+        env = "ESPRESSO_ZKEVM_FAUCET_PORT",
+        default_value = "8111"
     )]
     port: u16,
 
@@ -57,15 +57,31 @@ pub struct Options {
     faucet_grant_amount: U256,
 
     /// The URL of the JsonRPC the faucet connects to.
-    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_PROVIDER_URL")]
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS")]
     provider_url: Url,
 }
 
-// #[derive(Error, Debug)]
-// enum FaucetError {
-//     #[error("Error querying JsonRPC: {0}")]
-//     Rpc(ProviderError),
-// }
+impl Options {
+    pub fn num_clients(&self) -> usize {
+        self.num_clients
+    }
+
+    pub fn mnemonic(&self) -> &str {
+        &self.mnemonic
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    pub fn faucet_grant_amount(&self) -> U256 {
+        self.faucet_grant_amount
+    }
+
+    pub fn provider_url(&self) -> &Url {
+        &self.provider_url
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Transfer {
@@ -152,7 +168,17 @@ impl Faucet {
                 .with_chain_id(chain_id);
             let client = Arc::new(Middleware::new(provider.clone(), wallet));
 
-            let balance = provider.get_balance(client.address(), None).await?;
+            // On startup we may get a "[-32000] failed to get the last block
+            // number from state" error even after the request for getChainId is
+            // successful.
+            let balance = loop {
+                if let Ok(balance) = provider.get_balance(client.address(), None).await {
+                    break balance;
+                }
+                tracing::info!("Failed to get balance for client, retrying...");
+                async_std::task::sleep(Duration::from_secs(1)).await;
+            };
+
             total_balance += balance;
             balances.push(balance);
 
@@ -180,7 +206,9 @@ impl Faucet {
         })
     }
 
-    pub async fn start(self) -> JoinHandle<(Result<(), Error>, (), Result<(), Error>)> {
+    pub async fn start(
+        self,
+    ) -> JoinHandle<(Result<(), Error>, Result<(), Error>, Result<(), Error>)> {
         let futures = async move {
             futures::join!(
                 self.monitor_transactions(),
@@ -363,10 +391,10 @@ impl Faucet {
         while let Some(tx_hash) = stream.next().await {
             self.handle_receipt(tx_hash).await?;
         }
-        unreachable!();
+        Ok(())
     }
 
-    async fn monitor_faucet_requests(&self) {
+    async fn monitor_faucet_requests(&self) -> Result<()> {
         loop {
             if let Ok(address) = self.faucet_receiver.write().await.recv().await {
                 self.request_transfer(Transfer::Faucet {

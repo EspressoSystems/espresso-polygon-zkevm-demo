@@ -2417,7 +2417,16 @@ version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
 dependencies = [
- "dirs-sys",
+ "dirs-sys 0.3.7",
+]
+
+[[package]]
+name = "dirs"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
+dependencies = [
+ "dirs-sys 0.4.1",
 ]
 
 [[package]]
@@ -2439,6 +2448,18 @@ dependencies = [
  "libc",
  "redox_users",
  "winapi",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3074,9 +3095,12 @@ dependencies = [
  "hermez-adaptor",
  "regex",
  "sequencer-utils",
+ "serde",
  "serenity",
  "thiserror",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco)",
  "tokio",
+ "toml 0.5.11",
  "tracing",
  "url",
 ]
@@ -3516,7 +3540,7 @@ dependencies = [
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
  "tempfile",
  "tide",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.7.5",
  "tracing",
  "zkevm",
@@ -3735,7 +3759,7 @@ dependencies = [
  "serde_json",
  "snafu",
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
  "tracing",
 ]
@@ -3763,7 +3787,7 @@ dependencies = [
  "serde",
  "snafu",
  "spin_sleep",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
  "tracing",
 ]
@@ -3860,7 +3884,7 @@ dependencies = [
  "snafu",
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
  "tide",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
  "tracing",
 ]
@@ -5296,7 +5320,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19aff2cd19eb4b93df29efa602652513b0f731f1d3474f6e377f763fddf61e58"
 dependencies = [
  "itoa 0.4.8",
- "maud_macros",
+ "maud_macros 0.24.0",
+ "tide",
+]
+
+[[package]]
+name = "maud"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0bab19cef8a7fe1c18a43e881793bfc9d4ea984befec3ae5bd0415abf3ecf00"
+dependencies = [
+ "itoa 1.0.6",
+ "maud_macros 0.25.0",
  "tide",
 ]
 
@@ -5305,6 +5340,18 @@ name = "maud_macros"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5c114f6f24b08fdd4a25d2fb87a8b140df56b577723247b382e8b04c583f2eb"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "maud_macros"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0be95d66c3024ffce639216058e5bae17a83ecaf266ffc6e4d060ad447c9eed2"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -5764,6 +5811,12 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ordered-float"
@@ -7055,7 +7108,7 @@ dependencies = [
  "serde",
  "snafu",
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
  "tracing",
  "typenum",
@@ -7181,7 +7234,23 @@ dependencies = [
  "indexmap 1.9.3",
  "serde",
  "serde_json",
- "serde_with_macros",
+ "serde_with_macros 2.3.3",
+ "time 0.3.22",
+]
+
+[[package]]
+name = "serde_with"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f02d8aa6e3c385bf084924f660ce2a3a6bd333ba55b35e8590b321f35d88513"
+dependencies = [
+ "base64 0.21.2",
+ "chrono",
+ "hex",
+ "indexmap 1.9.3",
+ "serde",
+ "serde_json",
+ "serde_with_macros 3.0.0",
  "time 0.3.22",
 ]
 
@@ -7190,6 +7259,18 @@ name = "serde_with_macros"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "881b6f881b17d13214e5d494c939ebab463d01264ce1811e9d4ac3a882e7695f"
+dependencies = [
+ "darling 0.20.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.22",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edc7d5d3932fb12ce722ee5e64dd38c504efba37567f0c402f6ca728c3b8b070"
 dependencies = [
  "darling 0.20.1",
  "proc-macro2",
@@ -7334,7 +7415,16 @@ version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ccc8076840c4da029af4f87e4e8daeb0fca6b87bbb02e10cb60b791450e11e4"
 dependencies = [
- "dirs",
+ "dirs 4.0.0",
+]
+
+[[package]]
+name = "shellexpand"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da03fa3b94cc19e3ebfc88c4229c49d8f08cdbd1228870a45f0ffdf84988e14b"
+dependencies = [
+ "dirs 4.0.0",
 ]
 
 [[package]]
@@ -7735,7 +7825,7 @@ dependencies = [
  "serde",
  "serde_json",
  "surf",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
 ]
 
 [[package]]
@@ -7752,7 +7842,7 @@ dependencies = [
  "serde",
  "serde_json",
  "surf",
- "tide-disco",
+ "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
 ]
 
 [[package]]
@@ -8043,7 +8133,7 @@ dependencies = [
  "clap",
  "config",
  "derive_more",
- "dirs",
+ "dirs 4.0.0",
  "edit-distance",
  "futures",
  "futures-util",
@@ -8052,14 +8142,60 @@ dependencies = [
  "lazy_static",
  "libc",
  "markdown",
- "maud",
+ "maud 0.24.0",
  "parking_lot 0.12.1",
  "routefinder",
  "semver 1.0.17",
  "serde",
  "serde_json",
- "serde_with",
- "shellexpand",
+ "serde_with 2.3.3",
+ "shellexpand 2.1.2",
+ "signal-hook",
+ "signal-hook-async-std",
+ "snafu",
+ "strum",
+ "strum_macros",
+ "surf",
+ "tagged-base64 0.2.4",
+ "tide",
+ "tide-websockets",
+ "toml 0.5.11",
+ "tracing",
+ "tracing-distributed",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber 0.3.17",
+ "url",
+]
+
+[[package]]
+name = "tide-disco"
+version = "0.4.1"
+source = "git+https://github.com/EspressoSystems/tide-disco#fdff0e4128db93e3aebf518d7ab1794ed5e4b948"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "bincode",
+ "clap",
+ "config",
+ "derive_more",
+ "dirs 5.0.1",
+ "edit-distance",
+ "futures",
+ "futures-util",
+ "http",
+ "include_dir",
+ "lazy_static",
+ "libc",
+ "markdown",
+ "maud 0.25.0",
+ "parking_lot 0.12.1",
+ "routefinder",
+ "semver 1.0.17",
+ "serde",
+ "serde_json",
+ "serde_with 3.0.0",
+ "shellexpand 3.1.0",
  "signal-hook",
  "signal-hook-async-std",
  "snafu",

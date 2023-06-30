@@ -76,7 +76,7 @@ services:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
     ports:
       - $ESPRESSO_ZKEVM_L2_PORT:$ESPRESSO_ZKEVM_L2_PORT
-      - $ESPRESSO_ZKEVM_L2_WS_PORT:$ESPRESSO_ZKEVM_L2_WS_PORT
+      - $ESPRESSO_ZKEVM_L2_PORT_WS:$ESPRESSO_ZKEVM_L2_PORT_WS
     environment:
       - ZKEVM_NODE_TRUSTED=false
       - ZKEVM_NODE_STATEDB_USER=state_user
@@ -88,7 +88,7 @@ services:
       - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
       - ZKEVM_NODE_POOL_DB_HOST=zkevm-state-db
       - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_L2_PORT
-      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_L2_WS_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_L2_PORT_WS
       - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_ADAPTOR_RPC_URL
       - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_ROLLUP_ADDRESS
@@ -148,6 +148,22 @@ services:
       - "/bin/sh"
       - "-c"
       - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components eth-tx-manager"
+    depends_on:
+      zkevm-permissionless-node:
+        condition: service_healthy
+
+  zkevm-faucet:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+    ports:
+      - $ESPRESSO_ZKEVM_FAUCET_PORT:$ESPRESSO_ZKEVM_FAUCET_PORT
+    environment:
+      - ESPRESSO_ZKEVM_FAUCET_PORT
+      - ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS
+      - ESPRESSO_ZKEVM_FAUCET_MNEMONIC
+      - ESPRESSO_ZKEVM_FAUCET_GRANT_AMOUNT_ETHERS
+      - ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS
+      - RUST_LOG
+      - RUST_LOG_FORMAT
     depends_on:
       zkevm-permissionless-node:
         condition: service_healthy
