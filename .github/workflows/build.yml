@@ -17,8 +17,8 @@ env:
 
 jobs:
   build:
-    # The tests that use docker compose currently only work on github's
-    # public runners.
+    needs: static-dockers # This is required to have the docker images in this repo.
+    # The tests that use docker compose currently only work on github's public runners.
     runs-on: ubuntu-latest
     steps:
       - name: Check /proc/cpuinfo
