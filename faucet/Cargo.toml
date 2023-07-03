@@ -9,7 +9,6 @@ anyhow = "1.0.71"
 async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = ["logging-utils", "async-std-executor", "channel-async-std"] }
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 clap = "4.3.9"
-derive_more = "0.99.17"
 ethers = { version = "2.0.7", features = ["ws"] }
 futures = "0.3.28"
 regex = "1.8.4"
@@ -18,7 +17,6 @@ serenity = { version = "0.11", default-features = false, features = ["client", "
 surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.1" }
 thiserror = "1.0.40"
 tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.1" }
-tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
 tracing = "0.1.37"
 url = "2.4.0"

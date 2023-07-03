@@ -14,7 +14,6 @@ use serenity::async_trait;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::prelude::*;
-use std::env;
 use std::io;
 
 #[async_trait]
@@ -84,19 +83,18 @@ pub async fn main() -> io::Result<()> {
         .await
         .expect("Failed to create faucet");
 
-    let discord_client = if let Ok(token) = env::var("ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN") {
+    let discord_client = if opts.discord_enable {
         // Set gateway intents, which decides what events the bot will be notified about
         let intents = GatewayIntents::GUILD_MESSAGES
             | GatewayIntents::DIRECT_MESSAGES
             | GatewayIntents::MESSAGE_CONTENT;
-        let client = Client::builder(&token, intents)
+        let client = Client::builder(&opts.discord_token.unwrap(), intents)
             .event_handler(state.clone())
             .await
-            .expect("Err creating client");
+            .expect("Err creating discord client");
         Some(client)
     } else {
-        tracing::warn!("Discord token not set in ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN");
-        tracing::error!("Running without Discord bot. For local testing this is expected.");
+        tracing::warn!("Discord bot disabled. For local testing this is fine.");
         None
     };
 
