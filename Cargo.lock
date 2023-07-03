@@ -1631,9 +1631,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.9"
+version = "4.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bba77a07e4489fb41bd90e8d4201c3eb246b3c2c9ea2ba0bddd6c1d1df87db7d"
+checksum = "384e169cc618c613d5e3ca6404dda77a8685a63e08660dcc64abaf7da7cb0c7a"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1642,13 +1642,12 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.9"
+version = "4.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9b4a88bb4bc35d3d6f65a21b0f0bafe9c894fa00978de242c555ec28bea1c0"
+checksum = "ef137bbe35aab78bdb468ccfba75a5f4d8321ae011d34063770780545176af2d"
 dependencies = [
  "anstream",
  "anstyle",
- "bitflags",
  "clap_lex",
  "strsim",
 ]
@@ -1839,7 +1838,7 @@ checksum = "21a53c0a4d288377e7415b53dcfc3c04da5cdc2cc95c8d5ac178b58f0b861ad6"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2485757d874c6147919598286295b58afe805b5a"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#04d0a306f4ac77b4a66830e79d9e00eb71317eab"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -3461,7 +3460,7 @@ dependencies = [
  "escargot",
  "ethers",
  "futures",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.6 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git)",
  "hotshot-types",
  "http-types",
  "jf-primitives",
@@ -6976,7 +6975,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2485757d874c6147919598286295b58afe805b5a"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#04d0a306f4ac77b4a66830e79d9e00eb71317eab"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-serialize 0.4.2",
@@ -6995,7 +6994,7 @@ dependencies = [
  "futures",
  "hotshot",
  "hotshot-centralized-server",
- "hotshot-query-service",
+ "hotshot-query-service 0.0.6 (git+ssh://git@github.com/EspressoSystems/hotshot-query-service.git)",
  "hotshot-testing",
  "hotshot-types",
  "jf-primitives",
@@ -7015,7 +7014,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#2485757d874c6147919598286295b58afe805b5a"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#04d0a306f4ac77b4a66830e79d9e00eb71317eab"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
