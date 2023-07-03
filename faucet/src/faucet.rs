@@ -25,6 +25,11 @@ pub struct Options {
     /// This is the number of faucet grant requests that can be executed in
     /// parallel. Each client can only do about one request per block_time
     /// (which is 12 seconds for public Ethereum networks.)
+    ///
+    /// When initially setting and increasing the number of wallets the faucet
+    /// will make sure they are all funded before serving any faucet requests.
+    /// However when reducing the number of wallets the faucet will not collect
+    /// the funds in the wallets that are no longer used.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS", default_value = "10")]
     pub num_clients: usize,
 
@@ -84,10 +89,10 @@ struct ClientPool {
 }
 
 impl ClientPool {
-    pub fn pop(&mut self) -> Option<Arc<Middleware>> {
-        let (_, address) = self.priority.pop()?;
+    pub fn pop(&mut self) -> Option<(U256, Arc<Middleware>)> {
+        let (balance, address) = self.priority.pop()?;
         let client = self.clients.remove(&address)?;
-        Some(client)
+        Some((balance, client))
     }
 
     pub fn push(&mut self, balance: U256, client: Arc<Middleware>) {
@@ -122,6 +127,11 @@ pub struct Faucet {
 }
 
 impl Faucet {
+    /// Create a new faucet.
+    ///
+    /// Creates `num_clients` wallets and transfers funds and queues transfers
+    /// from the ones with most balance to the ones with less than average
+    /// balance.
     pub async fn create(options: Options, faucet_receiver: Receiver<Address>) -> Result<Self> {
         let provider = Provider::<Ws>::connect(options.provider_url.clone()).await?;
         let chain_id = provider.get_chainid().await?.as_u64();
@@ -210,41 +220,31 @@ impl Faucet {
             }
         }
         loop {
-            let mut clients = vec![];
-            let mut transfers = vec![];
-            // Execute as many of the transfers as clients available.
-            {
+            let (balance, sender, transfer) = {
                 let mut state = self.state.write().await;
-                while !state.available_clients.is_empty() && !state.transfer_queue.is_empty() {
-                    let sender = state.available_clients.pop().unwrap();
+                if !state.available_clients.is_empty() && !state.transfer_queue.is_empty() {
+                    let (balance, sender) = state.available_clients.pop().unwrap();
                     let transfer = state.transfer_queue.pop_front().unwrap();
-                    clients.push(sender);
-                    transfers.push(transfer);
+                    (balance, sender, transfer)
+                } else {
+                    tracing::debug!("No transfers to execute, waiting...");
+                    // Wait a bit to avoid a busy loop.
+                    async_std::task::sleep(Duration::from_secs(1)).await;
+                    continue;
                 }
-            }
-            let mut failed = vec![];
-            for (sender, transfer) in clients.into_iter().zip(transfers.into_iter()) {
-                if let Err(err) = self.execute_transfer(sender.clone(), transfer).await {
-                    tracing::error!("Failed to execute {transfer:?} {sender:?} {err:?}");
-                    failed.push((sender, transfer));
-                }
-            }
-            for (sender, transfer) in failed.iter() {
-                // TODO: Need to figure out a way to handle it gracefully if
-                // we're not able to talk to the JsonRPC at all.
-                let balance = self.balance(sender.address()).await.unwrap_or_else(|err| {
-                    panic!("Failed to get balance for {:?} {err}", sender.address())
-                });
+            };
+            if let Err(err) = self.execute_transfer(sender.clone(), transfer).await {
+                tracing::error!("Failed to execute {transfer:?} {sender:?} {err:?}");
                 // Put the client and transfer back in the queue.
                 self.state
                     .write()
                     .await
                     .available_clients
                     .push(balance, sender.clone());
-                self.request_transfer(*transfer).await;
-            }
-            // Wait a bit to avoid a busy loop.
-            async_std::task::sleep(Duration::from_secs(1)).await;
+                self.request_transfer(transfer).await;
+                // Wait a bit to avoid a busy loop.
+                async_std::task::sleep(Duration::from_secs(1)).await;
+            };
         }
     }
 
