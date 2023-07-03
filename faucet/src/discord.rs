@@ -36,14 +36,13 @@ impl EventHandler for WebState {
 
         if let Some(matched) = re.captures(&msg.content) {
             if let Some(addr) = matched.get(0) {
-                chat_response = format!("Sending funds to {}", addr.as_str());
                 if let Ok(address) = addr.as_str().parse::<Address>() {
                     if let Err(err) = self.request(address).await {
-                        tracing::error!(
-                            "Failed make faucet request for address {:?}: {}",
-                            address,
-                            err
-                        );
+                        tracing::error!("Failed make faucet request for {address:?}: {}", err);
+                        chat_response =
+                            format!("Internal Error: Failed to send funds to {address:?}");
+                    } else {
+                        chat_response = format!("Sending funds to {address:?}");
                     }
                 } else {
                     // This shouldn't happen because the regex should only match
