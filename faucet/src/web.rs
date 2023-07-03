@@ -113,8 +113,6 @@ mod test {
     use std::time::Duration;
     use surf_disco::Client;
 
-    const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
-
     async fn run_faucet_test(options: Options) -> Result<()> {
         let client =
             Client::<FaucetError>::new(format!("http://localhost:{}", options.port).parse()?);
@@ -161,10 +159,9 @@ mod test {
         // sure the funding logic runs.
         let options = Options {
             num_clients: 12,
-            mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: parse_ether(1).unwrap(),
             provider_url: ws_url,
-            port: 11223,
+            ..Default::default()
         };
 
         let (sender, receiver) = async_std::channel::unbounded();
@@ -205,10 +202,9 @@ mod test {
 
         let options = Options {
             num_clients,
-            mnemonic: TEST_MNEMONIC.to_string(),
             faucet_grant_amount: parse_ether(1000).unwrap(), // Needs to match the faucet grant amount the .env file
             provider_url: ws_url,
-            port: 8111,
+            ..Default::default()
         };
         run_faucet_test(options).await?;
         Ok(())

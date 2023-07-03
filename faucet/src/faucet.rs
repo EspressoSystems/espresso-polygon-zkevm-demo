@@ -11,8 +11,10 @@ use ethers::{
 
 use std::{
     collections::{BinaryHeap, HashMap, VecDeque},
+    num::ParseIntError,
+    ops::Index,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use url::Url;
 
@@ -54,18 +56,40 @@ pub struct Options {
     )]
     pub faucet_grant_amount: U256,
 
+    /// The time after which a transfer is considered timed out and will be re-sent
+    #[arg(
+        long,
+        env = "ESPRESSO_ZKEVM_FAUCET_TRANSACTION_TIMEOUT_SECS",
+        default_value = "300",
+        value_parser = |arg: &str| -> Result<Duration, ParseIntError> { Ok(Duration::from_secs(arg.parse::<u64>()?)) }
+    )]
+    pub transaction_timeout: Duration,
+
     /// The URL of the JsonRPC the faucet connects to.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS")]
     pub provider_url: Url,
 }
 
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            num_clients: 10,
+            mnemonic: "test test test test test test test test test test test junk".to_string(),
+            port: 8111,
+            faucet_grant_amount: parse_ether("100").unwrap(),
+            transaction_timeout: Duration::from_secs(300),
+            provider_url: Url::parse("ws://localhost:8545").unwrap(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
-pub enum Transfer {
+pub enum TransferRequest {
     Faucet { to: Address, amount: U256 },
     Funding { to: Address },
 }
 
-impl Transfer {
+impl TransferRequest {
     pub fn faucet(to: Address, amount: U256) -> Self {
         Self::Faucet { to, amount }
     }
@@ -82,37 +106,63 @@ impl Transfer {
     }
 }
 
+#[derive(Debug, Clone)]
+struct Transfer {
+    sender: Arc<Middleware>,
+    request: TransferRequest,
+    timestamp: Instant,
+}
+
+impl Transfer {
+    pub fn new(sender: Arc<Middleware>, request: TransferRequest) -> Self {
+        Self {
+            sender,
+            request,
+            timestamp: Instant::now(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 struct ClientPool {
     clients: HashMap<Address, Arc<Middleware>>,
     priority: BinaryHeap<(U256, Address)>,
+    total_balance: U256,
 }
 
 impl ClientPool {
     pub fn pop(&mut self) -> Option<(U256, Arc<Middleware>)> {
         let (balance, address) = self.priority.pop()?;
         let client = self.clients.remove(&address)?;
+        self.total_balance -= balance;
         Some((balance, client))
     }
 
     pub fn push(&mut self, balance: U256, client: Arc<Middleware>) {
+        self.total_balance += balance;
         self.clients.insert(client.address(), client.clone());
         self.priority.push((balance, client.address()));
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.clients.is_empty()
+    pub fn has_client_for(&self, transfer: TransferRequest) -> bool {
+        let required = match transfer {
+            // Double the faucet amount to be on the safe side regarding gas.
+            TransferRequest::Faucet { amount, .. } => amount * 2,
+            TransferRequest::Funding { .. } => self.total_balance / self.clients.len(),
+        };
+        self.priority
+            .peek()
+            .map_or(false, |(balance, _)| *balance >= required)
     }
 }
 
 #[derive(Debug, Clone, Default)]
 struct State {
-    available_clients: ClientPool,
-    inflight_transfers: HashMap<H256, Transfer>,
-    inflight_clients: HashMap<Address, Arc<Middleware>>,
+    clients: ClientPool,
+    inflight: HashMap<H256, Transfer>,
     // Funding wallets has priority, these transfer requests must be pushed to
     // the front.
-    transfer_queue: VecDeque<Transfer>,
+    transfer_queue: VecDeque<TransferRequest>,
     monitoring_started: bool,
 }
 
@@ -137,6 +187,7 @@ impl Faucet {
         let chain_id = provider.get_chainid().await?.as_u64();
 
         let mut state = State::default();
+        let mut clients = vec![];
         let mut balances = vec![];
         let mut total_balance = U256::zero();
 
@@ -160,23 +211,26 @@ impl Faucet {
                 async_std::task::sleep(Duration::from_secs(1)).await;
             };
 
-            total_balance += balance;
-            balances.push(balance);
-
             tracing::info!(
                 "Created client {index} {} with balance {balance}",
                 client.address(),
             );
 
+            total_balance += balance;
+            balances.push(balance);
+            clients.push(client);
+        }
+
+        let average_balance = total_balance / options.num_clients;
+
+        for (balance, client) in balances.into_iter().zip(clients) {
             // Fund all clients who have less than average balance.
-            if balance < total_balance / options.num_clients {
+            if balance < average_balance {
                 tracing::info!("Queuing funding transfer for {:?}", client.address());
-                let transfer = Transfer::funding(client.address());
+                let transfer = TransferRequest::funding(client.address());
                 state.transfer_queue.push_back(transfer);
-                state.inflight_clients.insert(client.address(), client);
-            } else {
-                state.available_clients.push(balance, client);
             }
+            state.clients.push(balance, client);
         }
 
         Ok(Self {
@@ -189,11 +243,17 @@ impl Faucet {
 
     pub async fn start(
         self,
-    ) -> JoinHandle<(Result<(), Error>, Result<(), Error>, Result<(), Error>)> {
+    ) -> JoinHandle<(
+        Result<(), Error>,
+        Result<(), Error>,
+        Result<(), Error>,
+        Result<(), Error>,
+    )> {
         let futures = async move {
             futures::join!(
                 self.monitor_transactions(),
                 self.monitor_faucet_requests(),
+                self.monitor_transaction_timeouts(),
                 self.execute_transfers()
             )
         };
@@ -204,7 +264,7 @@ impl Faucet {
         Ok(self.provider.get_balance(address, None).await?)
     }
 
-    async fn request_transfer(&self, transfer: Transfer) {
+    async fn request_transfer(&self, transfer: TransferRequest) {
         tracing::info!("Adding transfer to queue: {:?}", transfer);
         self.state.write().await.transfer_queue.push_back(transfer);
     }
@@ -222,8 +282,15 @@ impl Faucet {
         loop {
             let (balance, sender, transfer) = {
                 let mut state = self.state.write().await;
-                if !state.available_clients.is_empty() && !state.transfer_queue.is_empty() {
-                    let (balance, sender) = state.available_clients.pop().unwrap();
+                if !state.transfer_queue.is_empty() {
+                    let transfer = state.transfer_queue.index(0);
+                    if !state.clients.has_client_for(*transfer) {
+                        tracing::info!("No client to execute transfer: {transfer:?}");
+                        // Wait a bit to avoid a busy loop.
+                        async_std::task::sleep(Duration::from_secs(1)).await;
+                        continue;
+                    }
+                    let (balance, sender) = state.clients.pop().unwrap();
                     let transfer = state.transfer_queue.pop_front().unwrap();
                     (balance, sender, transfer)
                 } else {
@@ -239,7 +306,7 @@ impl Faucet {
                 self.state
                     .write()
                     .await
-                    .available_clients
+                    .clients
                     .push(balance, sender.clone());
                 self.request_transfer(transfer).await;
                 // Wait a bit to avoid a busy loop.
@@ -248,10 +315,14 @@ impl Faucet {
         }
     }
 
-    async fn execute_transfer(&self, sender: Arc<Middleware>, transfer: Transfer) -> Result<()> {
+    async fn execute_transfer(
+        &self,
+        sender: Arc<Middleware>,
+        transfer: TransferRequest,
+    ) -> Result<()> {
         let amount = match transfer {
-            Transfer::Faucet { amount, .. } => amount,
-            Transfer::Funding { .. } => {
+            TransferRequest::Faucet { amount, .. } => amount,
+            TransferRequest::Funding { .. } => {
                 // Send half the balance to the new receiving client.
                 self.balance(sender.address()).await? / 2
             }
@@ -269,11 +340,11 @@ impl Faucet {
         // sign the tx locally first and then insert it but this also means we
         // would have to remove it again if the submission fails.
         {
-            let mut state = self.state.write().await;
-            state
-                .inflight_clients
-                .insert(sender.address(), sender.clone());
-            state.inflight_transfers.insert(tx.tx_hash(), transfer);
+            self.state
+                .write()
+                .await
+                .inflight
+                .insert(tx.tx_hash(), Transfer::new(sender.clone(), transfer));
         }
         Ok(())
     }
@@ -281,9 +352,11 @@ impl Faucet {
     async fn handle_receipt(&self, tx_hash: H256) -> Result<()> {
         tracing::debug!("Got tx hash {:?}", tx_hash);
 
-        let transfer = {
-            if let Some(transfer) = self.state.write().await.inflight_transfers.remove(&tx_hash) {
-                transfer
+        let Transfer {
+            sender, request, ..
+        } = {
+            if let Some(inflight) = self.state.write().await.inflight.remove(&tx_hash) {
+                inflight
             } else {
                 // Not a transaction we are monitoring.
                 return Ok(());
@@ -298,46 +371,23 @@ impl Faucet {
             async_std::task::sleep(Duration::from_secs(1)).await;
         };
 
-        tracing::info!("Received receipt for {:?}", transfer);
+        tracing::info!("Received receipt for {:?}", request);
 
         // Mark the sender as available
+        let balance = self.balance(sender.address()).await?;
         let mut state = self.state.write().await;
-        if let Some(client) = state.inflight_clients.remove(&receipt.from) {
-            let balance = self.balance(client.address()).await?;
-            state.available_clients.push(balance, client);
-        } else {
-            tracing::warn!(
-                "Sender of transfer not found in inflight clients: {:?}",
-                receipt.from
-            );
-        }
+        state.clients.push(balance, sender);
 
-        // If the transaction succeeded, make the funded client available.
-        if receipt.status == Some(1.into()) {
-            // For funding transfer mark recipient as available.
-            if let Transfer::Funding { to, .. } = transfer {
-                if let Some(client) = state.inflight_clients.remove(&to) {
-                    // TODO should not hold write lock over this external call.
-                    let balance = self.balance(client.address()).await?;
-                    tracing::info!("Client {to:?} funded @ {balance}");
-                    state.available_clients.push(balance, client);
-                } else {
-                    tracing::warn!(
-                        "Recipient of funding transfer not found in inflight clients: {:?}",
-                        to
-                    );
-                }
-            };
-
-        // If the transaction failed send it again.
-        // TODO: this code is currently untested.
-        } else {
+        // If the transaction failed, schedule it again
+        if receipt.status == Some(0.into()) {
+            // If the transaction failed send it again.
+            // TODO: this code is currently untested.
             tracing::warn!(
                 "Transfer failed tx_hash={:?}, will resend: {:?}",
                 tx_hash,
-                transfer
+                request
             );
-            state.transfer_queue.push_back(transfer);
+            state.transfer_queue.push_back(request);
         }
 
         // TODO: I think for transactions with bad nonces we would not even get
@@ -368,9 +418,92 @@ impl Faucet {
     async fn monitor_faucet_requests(&self) -> Result<()> {
         loop {
             if let Ok(address) = self.faucet_receiver.write().await.recv().await {
-                self.request_transfer(Transfer::faucet(address, self.config.faucet_grant_amount))
-                    .await;
+                self.request_transfer(TransferRequest::faucet(
+                    address,
+                    self.config.faucet_grant_amount,
+                ))
+                .await;
             }
         }
+    }
+
+    async fn monitor_transaction_timeouts(&self) -> Result<()> {
+        loop {
+            async_std::task::sleep(Duration::from_secs(60)).await;
+            self.process_transaction_timeouts().await?;
+        }
+    }
+
+    async fn process_transaction_timeouts(&self) -> Result<()> {
+        let inflight = self.state.read().await.inflight.clone();
+
+        for (
+            tx_hash,
+            Transfer {
+                sender, request, ..
+            },
+        ) in inflight
+            .iter()
+            .filter(|(_, transfer)| transfer.timestamp.elapsed() > self.config.transaction_timeout)
+        {
+            tracing::warn!("Transfer timed out: {:?}", request);
+            let balance = self.balance(sender.address()).await?;
+            let mut state = self.state.write().await;
+            state.transfer_queue.push_back(*request);
+            state.inflight.remove(tx_hash);
+            state.clients.push(balance, sender.clone());
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
+    use sequencer_utils::AnvilOptions;
+
+    #[async_std::test]
+    async fn test_faucet_inflight_timeouts() -> Result<()> {
+        setup_logging();
+        setup_backtrace();
+
+        let anvil = AnvilOptions::default()
+            .block_time(Duration::from_secs(3600))
+            .spawn()
+            .await;
+
+        let mut ws_url = anvil.url();
+        ws_url.set_scheme("ws").unwrap();
+
+        let options = Options {
+            num_clients: 1,
+            provider_url: ws_url,
+            transaction_timeout: Duration::from_secs(0),
+            ..Default::default()
+        };
+
+        let (_, receiver) = async_std::channel::unbounded();
+        let faucet = Faucet::create(options.clone(), receiver).await?;
+
+        // Manually execute a transfer.
+        let transfer = TransferRequest::faucet(Address::zero(), options.faucet_grant_amount);
+        let (_, client) = { faucet.state.write().await.clients.pop().unwrap() };
+        faucet.execute_transfer(client, transfer).await?;
+
+        // Assert that there is an inflight transaction.
+        assert!(!faucet.state.read().await.inflight.is_empty());
+
+        // Process the timed out transaction.
+        faucet.process_transaction_timeouts().await?;
+        assert!(faucet.state.read().await.inflight.is_empty());
+
+        // Assert that the client is available again.
+        faucet.state.write().await.clients.pop().unwrap();
+
+        // Assert that the transaction was not executed.
+        assert_eq!(faucet.balance(Address::zero()).await?, 0.into());
+
+        Ok(())
     }
 }
