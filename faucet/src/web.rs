@@ -177,8 +177,6 @@ mod test {
         Ok(())
     }
 
-    // TODO: un-comment this when faucet docker image is in main
-    #[ignore]
     #[async_std::test]
     async fn test_faucet_zkevm_node() -> Result<()> {
         setup_logging();

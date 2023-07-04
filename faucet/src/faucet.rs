@@ -237,7 +237,7 @@ impl Faucet {
             };
 
             tracing::info!(
-                "Created client {index} {} with balance {balance}",
+                "Created client {index} {:?} with balance {balance}",
                 client.address(),
             );
 

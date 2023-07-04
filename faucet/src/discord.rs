@@ -31,23 +31,20 @@ impl EventHandler for WebState {
 
         // Try to find an ethereum address in the message body.
         let re = Regex::new("0x[a-fA-F0-9]{40}").unwrap();
-        let mut chat_response = Default::default();
+        let chat_response: String;
 
         if let Some(matched) = re.captures(&msg.content) {
-            if let Some(addr) = matched.get(0) {
-                if let Ok(address) = addr.as_str().parse::<Address>() {
-                    if let Err(err) = self.request(address).await {
-                        tracing::error!("Failed make faucet request for {address:?}: {}", err);
-                        chat_response =
-                            format!("Internal Error: Failed to send funds to {address:?}");
-                    } else {
-                        chat_response = format!("Sending funds to {address:?}");
-                    }
-                } else {
-                    // This shouldn't happen because the regex should only match
-                    // valid addresses.
-                    tracing::error!("Invalid address: {}", addr.as_str());
-                }
+            let address = matched
+                .get(0)
+                .expect("At least one match")
+                .as_str()
+                .parse::<Address>()
+                .expect("Address can be parsed after matching regex");
+            if let Err(err) = self.request(address).await {
+                tracing::error!("Failed make faucet request for {address:?}: {}", err);
+                chat_response = format!("Internal Error: Failed to send funds to {address:?}");
+            } else {
+                chat_response = format!("Sending funds to {address:?}");
             }
         } else {
             chat_response = "No address found!".to_string();
