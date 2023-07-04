@@ -127,12 +127,13 @@ pub async fn main() -> io::Result<()> {
         .await
         .expect("Failed to create faucet");
 
-    let discord_client = if opts.discord_enable {
+    // Do not attempt to start the discord bot if the token is missing or empty.
+    let discord_client = if let Some(token) = opts.discord_token.filter(|token| !token.is_empty()) {
         // Set gateway intents, which decides what events the bot will be notified about
         let intents = GatewayIntents::GUILD_MESSAGES
             | GatewayIntents::DIRECT_MESSAGES
             | GatewayIntents::MESSAGE_CONTENT;
-        let client = Client::builder(&opts.discord_token.unwrap(), intents)
+        let client = Client::builder(token, intents)
             .event_handler(state.clone())
             .await
             .expect("Err creating discord client");

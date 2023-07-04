@@ -69,16 +69,8 @@ pub struct Options {
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS")]
     pub provider_url: Url,
 
-    /// Whether to run the discord bot.
-    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_DISCORD_ENABLE")]
-    pub discord_enable: bool,
-
     /// The authentication token for the discord bot.
-    #[arg(
-        long,
-        env = "ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN",
-        required_if_eq("discord_enable", "true")
-    )]
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN")]
     pub discord_token: Option<String>,
 }
 
@@ -91,7 +83,6 @@ impl Default for Options {
             faucet_grant_amount: parse_ether("100").unwrap(),
             transaction_timeout: Duration::from_secs(300),
             provider_url: Url::parse("ws://localhost:8545").unwrap(),
-            discord_enable: false,
             discord_token: None,
         }
     }
