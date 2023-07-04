@@ -8,7 +8,6 @@ use ethers::{
     types::{Address, TransactionRequest, H256, U256},
     utils::{parse_ether, ConversionError},
 };
-
 use std::{
     collections::{BinaryHeap, HashMap, VecDeque},
     num::ParseIntError,
@@ -16,6 +15,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use thiserror::Error;
 use url::Url;
 
 pub type Middleware = SignerMiddleware<Provider<Ws>, LocalWallet>;
@@ -157,6 +157,20 @@ impl Transfer {
     }
 }
 
+#[derive(Clone, Debug, Error)]
+pub enum TransferError {
+    #[error("Error during transfer submission: {transfer:?} {sender:?} {msg}")]
+    RpcSubmitError {
+        transfer: TransferRequest,
+        sender: Address,
+        msg: String,
+    },
+    #[error("No client available")]
+    NoClient,
+    #[error("No transfers requests available")]
+    NoRequests,
+}
+
 #[derive(Debug, Clone, Default)]
 struct ClientPool {
     clients: HashMap<Address, Arc<Middleware>>,
@@ -278,7 +292,7 @@ impl Faucet {
                 self.monitor_transactions(),
                 self.monitor_faucet_requests(),
                 self.monitor_transaction_timeouts(),
-                self.execute_transfers()
+                self.execute_transfers_loop()
             )
         };
         async_std::task::spawn(futures)
@@ -293,8 +307,7 @@ impl Faucet {
         self.state.write().await.transfer_queue.push_back(transfer);
     }
 
-    async fn execute_transfers(&self) -> Result<()> {
-        // Create transfer requests for available clients.
+    async fn execute_transfers_loop(&self) -> Result<()> {
         loop {
             if self.state.read().await.monitoring_started {
                 break;
@@ -304,72 +317,79 @@ impl Faucet {
             }
         }
         loop {
-            let (balance, sender, transfer) = {
-                let mut state = self.state.write().await;
-                if !state.transfer_queue.is_empty() {
-                    let transfer = state.transfer_queue.index(0);
-                    if !state.clients.has_client_for(*transfer) {
-                        tracing::info!("No client to execute transfer: {transfer:?}");
-                        // Wait a bit to avoid a busy loop.
-                        async_std::task::sleep(Duration::from_secs(1)).await;
-                        continue;
+            if let Err(err) = self.execute_transfer().await {
+                match err {
+                    TransferError::RpcSubmitError { .. } => {
+                        tracing::error!("Failed to execute transfer: {:?}", err)
                     }
-                    let (balance, sender) = state.clients.pop().unwrap();
-                    let transfer = state.transfer_queue.pop_front().unwrap();
-                    (balance, sender, transfer)
-                } else {
-                    tracing::debug!("No transfers to execute, waiting...");
-                    // Wait a bit to avoid a busy loop.
-                    async_std::task::sleep(Duration::from_secs(1)).await;
-                    continue;
-                }
-            };
-            if let Err(err) = self.execute_transfer(sender.clone(), transfer).await {
-                tracing::error!("Failed to execute {transfer:?} {sender:?} {err:?}");
-                // Put the client and transfer back in the queue.
-                self.state
-                    .write()
-                    .await
-                    .clients
-                    .push(balance, sender.clone());
-                self.request_transfer(transfer).await;
-                // Wait a bit to avoid a busy loop.
+                    TransferError::NoClient => {
+                        tracing::warn!("No clients to handle transfer requests.")
+                    }
+                    TransferError::NoRequests => {}
+                };
+                // Avoid creating a busy loop.
                 async_std::task::sleep(Duration::from_secs(1)).await;
             };
         }
     }
 
-    async fn execute_transfer(
-        &self,
-        sender: Arc<Middleware>,
-        transfer: TransferRequest,
-    ) -> Result<()> {
+    async fn execute_transfer(&self) -> Result<(), TransferError> {
+        let mut state = self.state.write().await;
+        if state.transfer_queue.is_empty() {
+            Err(TransferError::NoRequests)?;
+        }
+        let transfer = state.transfer_queue.index(0);
+        if !state.clients.has_client_for(*transfer) {
+            Err(TransferError::NoClient)?;
+        }
+        let (balance, sender) = state.clients.pop().unwrap();
+        let transfer = state.transfer_queue.pop_front().unwrap();
+
+        // Drop the guard while we are doing the request to the RPC.
+        drop(state);
+
         let amount = match transfer {
             TransferRequest::Faucet { amount, .. } => amount,
-            TransferRequest::Funding { .. } => {
-                // Send half the balance to the new receiving client.
-                self.balance(sender.address()).await? / 2
-            }
+            TransferRequest::Funding { .. } => balance / 2,
         };
-        let tx = sender
+        match sender
             .send_transaction(TransactionRequest::pay(transfer.to(), amount), None)
-            .await?;
-        tracing::info!("Sending transfer: {:?} hash={:?}", transfer, tx.tx_hash());
-
-        // Note: if running against an *extremely* fast chain , it is possible
-        // that the transaction is mined before we have a chance to add it to
-        // the inflight transfers. In that case, the receipt handler may not yet
-        // find the transaction and fail to process it correctly. I think the
-        // risk of this happening outside of local testing is neglible. We could
-        // sign the tx locally first and then insert it but this also means we
-        // would have to remove it again if the submission fails.
+            .await
         {
-            self.state
-                .write()
-                .await
-                .inflight
-                .insert(tx.tx_hash(), Transfer::new(sender.clone(), transfer));
+            Ok(tx) => {
+                tracing::info!("Sending transfer: {:?} hash={:?}", transfer, tx.tx_hash());
+                // Note: if running against an *extremely* fast chain , it is possible
+                // that the transaction is mined before we have a chance to add it to
+                // the inflight transfers. In that case, the receipt handler may not yet
+                // find the transaction and fail to process it correctly. I think the
+                // risk of this happening outside of local testing is neglible. We could
+                // sign the tx locally first and then insert it but this also means we
+                // would have to remove it again if the submission fails.
+                self.state
+                    .write()
+                    .await
+                    .inflight
+                    .insert(tx.tx_hash(), Transfer::new(sender.clone(), transfer));
+            }
+            Err(err) => {
+                // Make the client available again.
+                self.state
+                    .write()
+                    .await
+                    .clients
+                    .push(balance, sender.clone());
+
+                // Requeue the transfer.
+                self.request_transfer(transfer).await;
+
+                Err(TransferError::RpcSubmitError {
+                    transfer,
+                    sender: sender.address(),
+                    msg: err.to_string(),
+                })?
+            }
         }
+
         Ok(())
     }
 
@@ -513,8 +533,8 @@ mod test {
 
         // Manually execute a transfer.
         let transfer = TransferRequest::faucet(Address::zero(), options.faucet_grant_amount);
-        let (_, client) = { faucet.state.write().await.clients.pop().unwrap() };
-        faucet.execute_transfer(client, transfer).await?;
+        faucet.request_transfer(transfer).await;
+        faucet.execute_transfer().await?;
 
         // Assert that there is an inflight transaction.
         assert!(!faucet.state.read().await.inflight.is_empty());
