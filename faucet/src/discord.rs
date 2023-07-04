@@ -10,47 +10,79 @@ use async_std::task::spawn;
 use clap::Parser;
 use ethers::types::Address;
 use regex::Regex;
-use serenity::async_trait;
-use serenity::model::channel::Message;
-use serenity::model::gateway::Ready;
-use serenity::prelude::*;
+use serenity::{
+    async_trait,
+    model::{
+        gateway::Ready,
+        prelude::{
+            command::{Command, CommandOptionType},
+            interaction::{
+                application_command::{CommandDataOption, CommandDataOptionValue},
+                Interaction, InteractionResponseType,
+            },
+        },
+    },
+    prelude::{Context, EventHandler, GatewayIntents},
+    Client,
+};
 use std::io;
+
+impl WebState {
+    async fn handle_faucet_request(&self, options: &[CommandDataOption]) -> String {
+        let option = options
+            .get(0)
+            .expect("Expected address option")
+            .resolved
+            .as_ref()
+            .expect("Expected user object");
+        match option {
+            CommandDataOptionValue::String(input) => {
+                // Try to find an ethereum address in the message body.
+                let re = Regex::new("0x[a-fA-F0-9]{40}").unwrap();
+
+                if let Some(matched) = re.captures(input) {
+                    let address = matched
+                        .get(0)
+                        .expect("At least one match")
+                        .as_str()
+                        .parse::<Address>()
+                        .expect("Address can be parsed after matching regex");
+                    if let Err(err) = self.request(address).await {
+                        tracing::error!("Failed make faucet request for {address:?}: {}", err);
+                        format!("Internal Error: Failed to send funds to {address:?}")
+                    } else {
+                        format!("Sending funds to {address:?}")
+                    }
+                } else {
+                    "No address found!".to_string()
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+}
 
 #[async_trait]
 impl EventHandler for WebState {
-    // Set a handler for the `message` event - so that whenever a new message
-    // is received - the closure (or function) passed will be called.
-    //
-    // Event handlers are dispatched through a threadpool, and so multiple
-    // events can be dispatched simultaneously.
-    async fn message(&self, ctx: Context, msg: Message) {
-        // Don't respond to messages by bots, (which includes this bot).
-        if msg.author.bot {
-            return;
-        }
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::ApplicationCommand(command) = interaction {
+            tracing::info!("Received command interaction: {:#?}", command);
 
-        // Try to find an ethereum address in the message body.
-        let re = Regex::new("0x[a-fA-F0-9]{40}").unwrap();
-        let chat_response: String;
+            let content = match command.data.name.as_str() {
+                "faucet" => self.handle_faucet_request(&command.data.options).await,
+                _ => "not implemented".to_string(),
+            };
 
-        if let Some(matched) = re.captures(&msg.content) {
-            let address = matched
-                .get(0)
-                .expect("At least one match")
-                .as_str()
-                .parse::<Address>()
-                .expect("Address can be parsed after matching regex");
-            if let Err(err) = self.request(address).await {
-                tracing::error!("Failed make faucet request for {address:?}: {}", err);
-                chat_response = format!("Internal Error: Failed to send funds to {address:?}");
-            } else {
-                chat_response = format!("Sending funds to {address:?}");
+            if let Err(why) = command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(content))
+                })
+                .await
+            {
+                tracing::error!("Cannot respond to slash command: {}", why);
             }
-        } else {
-            chat_response = "No address found!".to_string();
-        }
-        if let Err(why) = msg.reply(&ctx.http, chat_response).await {
-            tracing::error!("Error sending message: {:?}", why);
         }
     }
 
@@ -58,8 +90,23 @@ impl EventHandler for WebState {
     // shard is booted, and a READY payload is sent by Discord. This payload
     // contains data like the current user's guild Ids, current user data,
     // private channels, and more.
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         tracing::info!("{} is connected!", ready.user.name);
+
+        Command::create_global_application_command(&ctx.http, |command| {
+            command
+                .name("faucet")
+                .description("Request funds from the faucet")
+                .create_option(|option| {
+                    option
+                        .name("address")
+                        .description("Your ethereum address")
+                        .kind(CommandOptionType::String)
+                        .required(true)
+                })
+        })
+        .await
+        .expect("Command creation succeeds");
     }
 }
 
