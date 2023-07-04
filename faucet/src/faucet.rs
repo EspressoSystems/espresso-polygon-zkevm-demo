@@ -99,8 +99,14 @@ impl Default for Options {
 
 #[derive(Debug, Clone, Copy)]
 pub enum TransferRequest {
-    Faucet { to: Address, amount: U256 },
-    Funding { to: Address },
+    Faucet {
+        to: Address,
+        amount: U256,
+    },
+    Funding {
+        to: Address,
+        average_wallet_balance: U256,
+    },
 }
 
 impl TransferRequest {
@@ -108,14 +114,28 @@ impl TransferRequest {
         Self::Faucet { to, amount }
     }
 
-    pub fn funding(to: Address) -> Self {
-        Self::Funding { to }
+    pub fn funding(to: Address, average_wallet_balance: U256) -> Self {
+        Self::Funding {
+            to,
+            average_wallet_balance,
+        }
     }
 
     pub fn to(&self) -> Address {
         match self {
             Self::Faucet { to, .. } => *to,
-            Self::Funding { to } => *to,
+            Self::Funding { to, .. } => *to,
+        }
+    }
+
+    pub fn required_funds(&self) -> U256 {
+        match self {
+            // Double the faucet amount to be on the safe side regarding gas.
+            Self::Faucet { amount, .. } => *amount * 2,
+            Self::Funding {
+                average_wallet_balance,
+                ..
+            } => *average_wallet_balance,
         }
     }
 }
@@ -141,32 +161,24 @@ impl Transfer {
 struct ClientPool {
     clients: HashMap<Address, Arc<Middleware>>,
     priority: BinaryHeap<(U256, Address)>,
-    total_balance: U256,
 }
 
 impl ClientPool {
     pub fn pop(&mut self) -> Option<(U256, Arc<Middleware>)> {
         let (balance, address) = self.priority.pop()?;
         let client = self.clients.remove(&address)?;
-        self.total_balance -= balance;
         Some((balance, client))
     }
 
     pub fn push(&mut self, balance: U256, client: Arc<Middleware>) {
-        self.total_balance += balance;
         self.clients.insert(client.address(), client.clone());
         self.priority.push((balance, client.address()));
     }
 
     pub fn has_client_for(&self, transfer: TransferRequest) -> bool {
-        let required = match transfer {
-            // Double the faucet amount to be on the safe side regarding gas.
-            TransferRequest::Faucet { amount, .. } => amount * 2,
-            TransferRequest::Funding { .. } => self.total_balance / self.clients.len(),
-        };
         self.priority
             .peek()
-            .map_or(false, |(balance, _)| *balance >= required)
+            .map_or(false, |(balance, _)| *balance >= transfer.required_funds())
     }
 }
 
@@ -202,7 +214,6 @@ impl Faucet {
 
         let mut state = State::default();
         let mut clients = vec![];
-        let mut balances = vec![];
         let mut total_balance = U256::zero();
 
         // Create clients
@@ -231,17 +242,16 @@ impl Faucet {
             );
 
             total_balance += balance;
-            balances.push(balance);
-            clients.push(client);
+            clients.push((balance, client));
         }
 
         let average_balance = total_balance / options.num_clients;
 
-        for (balance, client) in balances.into_iter().zip(clients) {
+        for (balance, client) in clients {
             // Fund all clients who have less than average balance.
             if balance < average_balance {
                 tracing::info!("Queuing funding transfer for {:?}", client.address());
-                let transfer = TransferRequest::funding(client.address());
+                let transfer = TransferRequest::funding(client.address(), average_balance);
                 state.transfer_queue.push_back(transfer);
             }
             state.clients.push(balance, client);
@@ -382,6 +392,7 @@ impl Faucet {
             if let Ok(Some(tx)) = self.provider.get_transaction_receipt(tx_hash).await {
                 break tx;
             }
+            tracing::warn!("No receipt for tx_hash={tx_hash:?}, will retry");
             async_std::task::sleep(Duration::from_secs(1)).await;
         };
 
