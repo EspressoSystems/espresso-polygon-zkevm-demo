@@ -113,7 +113,7 @@ mod test {
     use std::time::Duration;
     use surf_disco::Client;
 
-    async fn run_faucet_test(options: Options) -> Result<()> {
+    async fn run_faucet_test(options: Options, num_transfers: usize) -> Result<()> {
         let client =
             Client::<FaucetError>::new(format!("http://localhost:{}", options.port).parse()?);
         // Avoids waiting 10 seconds for the retry in `connect`.
@@ -123,7 +123,7 @@ mod test {
         let recipient = Address::random();
         let mut total_transfer_amount = U256::zero();
 
-        for _ in 0..3 {
+        for _ in 0..num_transfers {
             client
                 .post(&format!("faucet/request/{recipient:?}"))
                 .send()
@@ -173,7 +173,7 @@ mod test {
         // Start the web server
         spawn(async move { serve(options.port, WebState::new(sender)).await });
 
-        run_faucet_test(options).await?;
+        run_faucet_test(options, 30).await?;
         Ok(())
     }
 
@@ -213,7 +213,7 @@ mod test {
             provider_url: ws_url,
             ..Default::default()
         };
-        run_faucet_test(options).await?;
+        run_faucet_test(options, 3).await?;
         Ok(())
     }
 }
