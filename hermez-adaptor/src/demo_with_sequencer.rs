@@ -108,6 +108,7 @@ impl SequencerZkEvmDemo {
                 "zkevm-state-db",
                 "zkevm-permissionless-node",
                 "zkevm-eth-tx-manager",
+                "zkevm-faucet",
                 "hermez-adaptor",
                 "cdn-server",
                 "sequencer0",

@@ -92,6 +92,7 @@ impl DemoZkEvmNode {
             .arg("zkevm-state-db")
             .arg("zkevm-permissionless-node")
             .arg("zkevm-eth-tx-manager")
+            .arg("zkevm-faucet")
             .arg("-V")
             .arg("--force-recreate")
             .arg("--abort-on-container-exit")

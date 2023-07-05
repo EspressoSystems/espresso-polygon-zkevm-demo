@@ -32,8 +32,9 @@
 
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
+  inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
 
-  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, flake-compat, pre-commit-hooks, fenix, solc-bin, ... }:
+  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, flake-compat, pre-commit-hooks, fenix, solc-bin, foundry, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         info = builtins.split "\([a-zA-Z0-9_]+\)" system;
@@ -43,6 +44,7 @@
         overlays = [
           (import rust-overlay)
           solc-bin.overlays.default
+          foundry.overlay
         ];
         pkgs = import nixpkgs {
           inherit system overlays;
@@ -111,6 +113,9 @@
                 cargo-sort
                 just
                 fenix.packages.${system}.rust-analyzer
+
+                # Ethereum
+                foundry-bin
 
                 # Tools
                 nixWithFlakes
