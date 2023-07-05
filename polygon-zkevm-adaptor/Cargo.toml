@@ -1,5 +1,5 @@
 [package]
-name = "hermez-adaptor"
+name = "polygon-zkevm-adaptor"
 version = "0.1.0"
 edition = "2021"
 
@@ -30,7 +30,10 @@ escargot = "0.5.7"
 ethers = "2.0"
 futures = "0.3"
 hotshot-query-service = { git = "ssh://git@github.com/EspressoSystems/hotshot-query-service.git" }
-hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = ["async-std-executor", "channel-async-std"] }
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = [
+    "async-std-executor",
+    "channel-async-std",
+] }
 http-types = "2.12.0"
 jsonrpc-v2 = "0.11.0"
 sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
@@ -56,5 +59,7 @@ async-std = { version = "1.12.0", features = ["attributes"] }
 commit = { git = "https://github.com/EspressoSystems/commit", tag = "0.2.2" }
 portpicker = "0.1"
 rand_chacha = "0.3"
-sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git", features = ["testing"] }
+sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git", features = [
+    "testing",
+] }
 tempfile = "3.4.0"

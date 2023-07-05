@@ -2,7 +2,7 @@ use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction, utils::r
 use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
 use sequencer::{Block, Vm, VmId, VmTransaction};
 
-pub mod hermez;
+pub mod polygon_zkevm;
 
 #[derive(Clone, Debug)]
 pub struct EvmTransaction {

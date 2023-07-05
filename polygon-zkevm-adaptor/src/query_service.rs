@@ -1,14 +1,14 @@
-/// Query service adaptor for Hermez.
+/// Query service adaptor for Polygon zkEVM.
 ///
-/// This service is an adaptor between the generic HotShot query service and the Hermez L2 node. It
-/// converts blocks in responses from generic HotShot blocks to Hermez-encoded EVM blocks.
+/// This service is an adaptor between the generic HotShot query service and the Polygon zkEVM L2 node. It
+/// converts blocks in responses from generic HotShot blocks to Polygon zkEVM-encoded EVM blocks.
 use crate::Options;
 use async_std::sync::RwLock;
 use futures::{FutureExt, StreamExt, TryFutureExt};
 use hotshot_query_service::availability::BlockQueryData;
 use sequencer::{Block, SeqTypes};
 use tide_disco::{error::ServerError, App};
-use zkevm::{hermez::encode_transactions, ZkEvm};
+use zkevm::{polygon_zkevm::encode_transactions, ZkEvm};
 
 type HotShotClient = surf_disco::Client<ServerError>;
 

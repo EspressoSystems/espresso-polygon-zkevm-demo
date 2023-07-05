@@ -59,7 +59,7 @@ jobs:
         with:
           name: x86_64-unknown-linux-musl-services
           path: |
-            target/x86_64-unknown-linux-musl/release/hermez-adaptor
+            target/x86_64-unknown-linux-musl/release/polygon-zkevm-adaptor
             target/x86_64-unknown-linux-musl/release/faucet
 
   static-dockers:
@@ -86,21 +86,21 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate hermez-adaptor docker metadata
+      - name: Generate polygon-zkevm-adaptor docker metadata
         uses: docker/metadata-action@v4
-        id: hermez-adaptor
+        id: polygon-zkevm-adaptor
         with:
-          images: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/hermez-adaptor
+          images: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor
 
-      - name: Build and push hermez-adaptor docker
+      - name: Build and push polygon-zkevm-adaptor docker
         uses: docker/build-push-action@v4
         with:
           context: ./
-          file: ./docker/hermez-adaptor.Dockerfile
+          file: ./docker/polygon-zkevm-adaptor.Dockerfile
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.hermez-adaptor.outputs.tags }}
-          labels: ${{ steps.hermez-adaptor.outputs.labels }}
+          tags: ${{ steps.polygon-zkevm-adaptor.outputs.tags }}
+          labels: ${{ steps.polygon-zkevm-adaptor.outputs.labels }}
 
       - name: Generate faucet docker metadata
         uses: docker/metadata-action@v4

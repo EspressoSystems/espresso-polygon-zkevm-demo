@@ -25,7 +25,7 @@ pub struct Options {
     )]
     pub rpc_port: u16,
 
-    /// Port on which to serve the Hermez query API adaptor.
+    /// Port on which to serve the Polygon zkEVM query API adaptor.
     #[clap(
         short,
         long,
@@ -43,9 +43,9 @@ impl Options {
     }
 }
 
-mod hermez;
+mod polygon_zkevm;
 #[cfg(any(test, feature = "testing"))]
-pub use hermez::*;
+pub use polygon_zkevm::*;
 
 mod demo;
 #[cfg(any(test, feature = "testing"))]

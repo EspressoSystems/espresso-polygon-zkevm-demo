@@ -109,7 +109,7 @@ impl SequencerZkEvmDemo {
                 "zkevm-permissionless-node",
                 "zkevm-eth-tx-manager",
                 "zkevm-faucet",
-                "hermez-adaptor",
+                "polygon-zkevm-adaptor",
                 "cdn-server",
                 "sequencer0",
                 "sequencer1",

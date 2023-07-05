@@ -1,7 +1,7 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
 use futures::join;
-use hermez_adaptor::{json_rpc, query_service, Options};
+use polygon_zkevm_adaptor::{json_rpc, query_service, Options};
 
 #[async_std::main]
 async fn main() {

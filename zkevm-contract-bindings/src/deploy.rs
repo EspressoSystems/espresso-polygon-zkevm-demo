@@ -145,7 +145,7 @@ pub fn get_test_client(index: u32, provider: &Provider<Http>, chain_id: u64) -> 
     TestClient { provider, index }
 }
 
-/// A system of hermez smart contracts for testing purposes.
+/// A system of polygon-zkevm smart contracts for testing purposes.
 #[derive(Debug, Clone)]
 pub struct TestHermezContracts {
     pub hotshot: HotShot<EthMiddleware>,

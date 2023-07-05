@@ -6,8 +6,8 @@ use futures::{
     join,
     stream::StreamExt,
 };
-use hermez_adaptor::{Layer1Backend, ZkEvmNode};
 use hotshot_query_service::availability::BlockQueryData;
+use polygon_zkevm_adaptor::{Layer1Backend, ZkEvmNode};
 use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http};
@@ -71,8 +71,8 @@ async fn test_end_to_end() {
         node.start().await;
     }
 
-    // Start a Hermez adaptor.
-    let adaptor_opt = hermez_adaptor::Options {
+    // Start a Polygon zkEVM adaptor.
+    let adaptor_opt = polygon_zkevm_adaptor::Options {
         sequencer_url: env.sequencer(),
         rpc_port: env.l2_adaptor_rpc_port(),
         l2_chain_id: zkevm.chain_id,
@@ -88,8 +88,8 @@ async fn test_end_to_end() {
     };
     spawn_local(async move {
         join!(
-            hermez_adaptor::json_rpc::serve(&adaptor_opt),
-            hermez_adaptor::query_service::serve(&adaptor_opt),
+            polygon_zkevm_adaptor::json_rpc::serve(&adaptor_opt),
+            polygon_zkevm_adaptor::query_service::serve(&adaptor_opt),
             run_hotshot_commitment_task(&hotshot_contract_opt)
         );
     });

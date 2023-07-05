@@ -69,8 +69,8 @@ services:
       - cdn-server
       - sequencer0
 
-  hermez-adaptor:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/hermez-adaptor:main
+  polygon-zkevm-adaptor:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
     ports:
       - "$ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT:$ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT"
       - "$ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT:$ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT"

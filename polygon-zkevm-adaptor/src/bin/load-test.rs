@@ -6,8 +6,8 @@ use ethers::{
     signers::{coins_bip39::English, MnemonicBuilder, Signer},
 };
 use futures::join;
-use hermez_adaptor::{InnerMiddleware, Layer1Backend, Operations, Run, SequencerZkEvmDemo};
 use http_types::Url;
+use polygon_zkevm_adaptor::{InnerMiddleware, Layer1Backend, Operations, Run, SequencerZkEvmDemo};
 use sequencer_utils::wait_for_rpc;
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 

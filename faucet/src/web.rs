@@ -108,7 +108,7 @@ mod test {
         types::U256,
         utils::parse_ether,
     };
-    use hermez_adaptor::{Layer1Backend, SequencerZkEvmDemo};
+    use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo};
     use sequencer_utils::AnvilOptions;
     use std::time::Duration;
     use surf_disco::Client;
