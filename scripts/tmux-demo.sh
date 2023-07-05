@@ -12,22 +12,30 @@ tmux new-session -d -s $session
 window=0
 tmux rename-window -t $session:$window 'Espresso Polygon ZkEVM demo'
 
-tmux select-pane -T "Sequencing and HotShot Query Service"
+tmux select-pane -T "Sequencer node logs"
 tmux send-keys -t $session:$window 'docker logs -f demo-sequencer0-1' C-m
+tmux select-layout even-vertical # ensure enough space
 
 tmux split-window -v -t $session:$window
-tmux select-pane -T "HotShot Commitment"
+tmux select-pane -T "Query Service API"
+tmux send-keys -t $session:$window './scripts/query-service-blocks.sh' C-m
+tmux select-layout even-vertical # ensure enough space
+
+tmux split-window -v -t $session:$window
+tmux select-pane -T "HotShot Commitment Task"
 tmux send-keys -t $session:$window 'docker logs -f demo-sequencer1-1 2>&1 | grep hotshot_commitment' C-m
+tmux select-layout even-vertical # ensure enough space
 
 tmux split-window -v -t $session:$window
-tmux select-pane -T "zkevm-node"
-tmux send-keys -t $session:$window 'docker logs -f demo-zkevm-permissionless-node-1 2>&1 | grep "processBatchRequest.BatchL2Data"' C-m
+tmux select-pane -T "Polygon zkEVM node"
+tmux send-keys -t $session:$window 'docker logs -f demo-zkevm-permissionless-node-1 2>&1 | grep "processBatch\[processBatchRequest.BatchL2Data\]"' C-m
+tmux select-layout even-vertical # ensure enough space
 
 tmux split-window -v -t $session:$window
-tmux select-pane -T "zkevm-prover"
-tmux send-keys -t $session:$window 'docker logs -f demo-zkevm-prover-1 2>&1 | grep PROVER_PROCESS_BATCH' C-m
+tmux select-pane -T "Polygon zkEVM prover"
+tmux send-keys -t $session:$window 'docker logs -f demo-zkevm-prover-1 2>&1 | grep "gen_[a-z]*_proof"' C-m
+tmux select-layout even-vertical # ensure enough space
 
-tmux select-layout even-vertical
 tmux set -t $session:$window pane-border-status top
 
 tmux attach-session -t $session
