@@ -1,5 +1,6 @@
 use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction, utils::rlp::Rlp};
-use sequencer::{Vm, VmId, VmTransaction};
+use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
+use sequencer::{Block, Vm, VmId, VmTransaction};
 
 pub mod hermez;
 
@@ -52,5 +53,18 @@ impl Vm for ZkEvm {
 
     fn id(&self) -> VmId {
         self.chain_id.into()
+    }
+}
+
+impl ZkEvm {
+    /// Extract the VM transactions from a block.
+    pub fn vm_transactions(&self, block: &Block) -> Vec<<Self as Vm>::Transaction> {
+        let proof = block.get_namespace_proof(self.id());
+        let transactions = proof.get_namespace_leaves();
+        // Note: this discards transactions that cannot be decoded.
+        transactions
+            .iter()
+            .flat_map(|txn| txn.as_vm(self))
+            .collect()
     }
 }
