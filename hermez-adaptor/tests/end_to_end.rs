@@ -8,7 +8,6 @@ use futures::{
 };
 use hermez_adaptor::{Layer1Backend, ZkEvmNode};
 use hotshot_query_service::availability::BlockQueryData;
-use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
 use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http};
@@ -166,9 +165,7 @@ async fn test_end_to_end() {
         let block_num = 'block: loop {
             let block: BlockQueryData<SeqTypes> = blocks.next().await.unwrap().unwrap();
             tracing::info!("got block {:?}", block);
-            let proof = block.block().get_namespace_proof(&zkevm);
-            let transactions = proof.get_namespace_leaves();
-            for txn in transactions.iter().flat_map(|txn| txn.as_vm(&zkevm)) {
+            for txn in zkevm.vm_transactions(block.block()) {
                 let sequenced_hash = txn.hash();
                 if sequenced_hash == hash {
                     tracing::info!("transaction {} sequenced", i);
