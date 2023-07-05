@@ -59,7 +59,7 @@ services:
       retries: 20
 
   zkevm-prover:
-    image: polygon-zkevmnetwork/zkevm-prover:88f3835
+    image: hermeznetwork/zkevm-prover:88f3835
     expose:
       - 50052 # Mock prover
       - 50061 # MT

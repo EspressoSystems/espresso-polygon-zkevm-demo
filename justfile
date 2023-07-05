@@ -42,7 +42,7 @@ build-docker-zkevm-node:
     cd zkevm-node && nix develop -c bash -c "make build-docker && docker tag zkevm-node:latest ghcr.io/espressosystems/zkevm-node:hotshot-integration"
 
 build-docker-l1-geth:
-    cd zkevm-contracts && nix develop -c bash -c "npm run docker:contracts && docker tag polygon-zkevmnetwork/geth-zkevm-contracts:latest ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration"
+    cd zkevm-contracts && nix develop -c bash -c "npm run docker:contracts && docker tag hermeznetwork/geth-zkevm-contracts:latest ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration"
 
 build-docker: build-docker-l1-geth build-docker-zkevm-node
 
