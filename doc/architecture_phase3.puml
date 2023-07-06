@@ -49,7 +49,7 @@ package "L2 (zkevm-node)" as L2 {
   database L2DB #PaleGreen [
     L2 Blockchain DB
   ]
-  package "Polygon zkEVM Prover" as HermezProver {
+  package "Polygon zkEVM Prover" as PolygonZkEVMProver {
     component Prover #PaleGreen
     component Executor #PaleGreen
     database Tree #PaleGreen [

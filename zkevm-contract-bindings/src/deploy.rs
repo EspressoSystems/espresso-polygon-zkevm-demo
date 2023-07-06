@@ -147,7 +147,7 @@ pub fn get_test_client(index: u32, provider: &Provider<Http>, chain_id: u64) -> 
 
 /// A system of polygon-zkevm smart contracts for testing purposes.
 #[derive(Debug, Clone)]
-pub struct TestHermezContracts {
+pub struct TestPolygonContracts {
     pub hotshot: HotShot<EthMiddleware>,
     pub rollup: PolygonZkEVM<EthMiddleware>,
     pub bridge: PolygonZkEVMBridge<EthMiddleware>,
@@ -159,7 +159,7 @@ pub struct TestHermezContracts {
     pub provider: Provider<Http>,
 }
 
-impl TestHermezContracts {
+impl TestPolygonContracts {
     /// Connect to a system of deployed contracts for testing purposes.
     pub async fn connect(
         provider: impl AsRef<str>,

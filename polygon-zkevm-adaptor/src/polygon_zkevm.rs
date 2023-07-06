@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 use surf_disco::Url;
-use zkevm_contract_bindings::TestHermezContracts;
+use zkevm_contract_bindings::TestPolygonContracts;
 
 #[derive(Clone, Debug)]
 pub struct ZkEvmEnv {
@@ -237,7 +237,7 @@ impl FromStr for Layer1Backend {
 #[derive(Debug, Clone)]
 pub struct ZkEvmNode {
     env: ZkEvmEnv,
-    l1: TestHermezContracts,
+    l1: TestPolygonContracts,
     project_name: String,
     layer1_backend: Layer1Backend,
 }
@@ -247,7 +247,7 @@ impl ZkEvmNode {
         &self.env
     }
 
-    pub fn l1(&self) -> &TestHermezContracts {
+    pub fn l1(&self) -> &TestPolygonContracts {
         &self.l1
     }
 
@@ -311,7 +311,7 @@ impl ZkEvmNode {
             .unwrap();
 
         // Use a dummy URL for the trusted sequencer since we're not running one anyways.
-        let l1 = TestHermezContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
+        let l1 = TestPolygonContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
 
         // Start zkevm-node
         Self::compose_cmd_prefix(&env, &project_name, &layer1_backend)
