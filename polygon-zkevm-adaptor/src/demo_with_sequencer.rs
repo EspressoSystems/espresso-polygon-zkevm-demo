@@ -2,13 +2,13 @@
 use crate::{Layer1Backend, ZkEvmEnv};
 use sequencer_utils::wait_for_rpc;
 use std::{path::Path, process::Command, time::Duration};
-use zkevm_contract_bindings::TestHermezContracts;
+use zkevm_contract_bindings::TestPolygonContracts;
 
 /// A zkevm-node inside docker compose with custom contracts
 #[derive(Debug, Clone)]
 pub struct SequencerZkEvmDemo {
     env: ZkEvmEnv,
-    l1: TestHermezContracts,
+    l1: TestPolygonContracts,
     project_name: String,
     layer1_backend: Layer1Backend,
 }
@@ -18,7 +18,7 @@ impl SequencerZkEvmDemo {
         &self.env
     }
 
-    pub fn l1(&self) -> &TestHermezContracts {
+    pub fn l1(&self) -> &TestPolygonContracts {
         &self.l1
     }
 
@@ -76,7 +76,7 @@ impl SequencerZkEvmDemo {
         tracing::info!("L1 ready");
 
         // Use a dummy URL for the trusted sequencer since we're not running one anyways.
-        let l1 = TestHermezContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
+        let l1 = TestPolygonContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
 
         // Start zkevm-node
         Self::compose_cmd_prefix(&project_name, &layer1_backend)
@@ -109,7 +109,7 @@ impl SequencerZkEvmDemo {
                 "zkevm-permissionless-node",
                 "zkevm-eth-tx-manager",
                 "zkevm-faucet",
-                "hermez-adaptor",
+                "polygon-zkevm-adaptor",
                 "cdn-server",
                 "sequencer0",
                 "sequencer1",

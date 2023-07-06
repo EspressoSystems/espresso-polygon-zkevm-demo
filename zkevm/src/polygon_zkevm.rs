@@ -2,11 +2,11 @@ use crate::EvmTransaction;
 use ethers::prelude::*;
 use std::borrow::Borrow;
 
-/// Encode transactions as expected by Hermez.
+/// Encode transactions as expected by Polygon zkEVM.
 ///
-/// Hermez uses a non-standard EVM transaction encoding which mixes the legacy (for the base
+/// Polygon zkEVM uses a non-standard EVM transaction encoding which mixes the legacy (for the base
 /// transaction) and EIP-1559 (for the signature) encodings. This implementation is a direct port
-/// from Go of the `state.helper.EncodeTransactions` function in the Hermez zkEVM node.
+/// from Go of the `state.helper.EncodeTransactions` function in the Polygon zkEVM node.
 pub fn encode_transactions<T: Borrow<EvmTransaction>>(txs: impl IntoIterator<Item = T>) -> Bytes {
     txs.into_iter()
         .flat_map(|tx| {
@@ -14,9 +14,9 @@ pub fn encode_transactions<T: Borrow<EvmTransaction>>(txs: impl IntoIterator<Ite
 
             let Signature { v, r, s } = tx.signature();
             let parity = if v <= 1 {
-                // Ethers.rs uses a different signature normalization scheme than Hermez. If `v` is
+                // Ethers.rs uses a different signature normalization scheme than Polygon zkEVM. If `v` is
                 // in [0, 1], it is already normalized to represent the y-parity of the signature,
-                // but Hermez encodes 0 as 27 and 1 as 28.
+                // but Polygon zkEVM encodes 0 as 27 and 1 as 28.
                 v as u8
             } else {
                 // If v > 1, it is not yet normalized, so we compute the parity, which we will then
@@ -27,7 +27,7 @@ pub fn encode_transactions<T: Borrow<EvmTransaction>>(txs: impl IntoIterator<Ite
 
             let tx_coded_rlp = tx.rlp_base();
 
-            // The Hermez Go implementation does some hacky format-to-hex-with-padding and then
+            // The Polygon zkEVM Go implementation does some format-to-hex-with-padding and then
             // parsing hex in order to get the byte representation of `r`, `s`, and `v_norm` padded
             // out to 32, 32, and 1 bytes, respectively. We can use Rust's strong typing to avoid
             // this step, since all three parts of the signature are already stored in types with

@@ -79,7 +79,7 @@ enabled.
 
 ### Developing contracts
 
-### Working on Hermez contracts in zkevm-contracts
+### Working on Polygon zkEVM contracts in zkevm-contracts
 
 - Ensure submodules are checkout out: `git submodule update --init --recursive`
 - Install dependencies `just npm i`
@@ -103,7 +103,7 @@ We will work towards the architecture illustrated above in three phases.
 
 ### Phase I: Basic Sequencing (done)
 
-Replace the Hermez trusted sequencer with a HotShot-based permissionless sequencer.
+Replace the Polygon zkEVM trusted sequencer with a HotShot-based permissionless sequencer.
 
 ### Phase II: Off-Chain Data Availability (done)
 

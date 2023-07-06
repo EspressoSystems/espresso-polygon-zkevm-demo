@@ -3,7 +3,7 @@
 members = [
   "faucet",
   "gen-bindings",
-  "hermez-adaptor",
+  "polygon-zkevm-adaptor",
   "zkevm",
   "zkevm-contract-bindings",
 ]

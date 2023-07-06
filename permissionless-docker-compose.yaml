@@ -49,7 +49,7 @@ services:
       - POSTGRES_USER=state_user
       - POSTGRES_PASSWORD=state_password
       - POSTGRES_DB=state_db
-    command: ["postgres", "-N", "500"]
+    command: [ "postgres", "-N", "500" ]
     healthcheck:
       # Postgres can be falsely "ready" once before running init scripts.
       # See https://github.com/docker-library/postgres/issues/146 for discusson.

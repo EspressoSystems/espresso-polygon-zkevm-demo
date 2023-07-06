@@ -1,0 +1,24 @@
+[meta]
+NAME = "polygon-zkevm-query-adaptor"
+DESCRIPTION = "Historical HotShot ledger state, adapted for Polygon zkEVM"
+FORMAT_VERSION = "0.1.0"
+
+[route.getblock]
+PATH = ["block/:height"]
+":height" = "Integer"
+DOC = """
+Get a Polygon zkEVM block by its position in the ledger (0 is the genesis block).
+
+Returns the zkEVM component of the `i`th HotShot block, if available, serialized in the
+Polygon zkEVM format and encoded as a hex string.
+"""
+
+[route.streamblocks]
+PATH = ["stream/blocks/:height"]
+METHOD = "SOCKET"
+":height" = "Integer"
+DOC = """
+Subscribe to a stream of Polygon zkEVM blocks in the order they are sequenced, starting at `:height`.
+
+Opens a WebSockets connection and sends a stream of the same data type returned by `block/:height`.
+"""

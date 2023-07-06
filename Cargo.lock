@@ -3075,7 +3075,7 @@ dependencies = [
  "clap",
  "ethers",
  "futures",
- "hermez-adaptor",
+ "polygon-zkevm-adaptor",
  "regex",
  "sequencer-utils",
  "serde",
@@ -3492,42 +3492,6 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
-
-[[package]]
-name = "hermez-adaptor"
-version = "0.1.0"
-dependencies = [
- "async-compatibility-layer",
- "async-std",
- "bincode",
- "clap",
- "commit",
- "dotenvy",
- "escargot",
- "ethers",
- "futures",
- "hotshot-query-service",
- "hotshot-types",
- "http-types",
- "jsonrpc-v2",
- "portpicker",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "sequencer",
- "sequencer-utils",
- "serde",
- "serde_json",
- "snafu",
- "surf",
- "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
- "tempfile",
- "tide",
- "tide-disco",
- "toml 0.7.5",
- "tracing",
- "zkevm",
- "zkevm-contract-bindings",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -6169,6 +6133,42 @@ dependencies = [
  "cpufeatures",
  "opaque-debug",
  "universal-hash 0.5.1",
+]
+
+[[package]]
+name = "polygon-zkevm-adaptor"
+version = "0.1.0"
+dependencies = [
+ "async-compatibility-layer",
+ "async-std",
+ "bincode",
+ "clap",
+ "commit",
+ "dotenvy",
+ "escargot",
+ "ethers",
+ "futures",
+ "hotshot-query-service",
+ "hotshot-types",
+ "http-types",
+ "jsonrpc-v2",
+ "portpicker",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "sequencer",
+ "sequencer-utils",
+ "serde",
+ "serde_json",
+ "snafu",
+ "surf",
+ "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
+ "tempfile",
+ "tide",
+ "tide-disco",
+ "toml 0.7.5",
+ "tracing",
+ "zkevm",
+ "zkevm-contract-bindings",
 ]
 
 [[package]]

@@ -2,13 +2,13 @@
 use crate::{Layer1Backend, ZkEvmEnv, ZkEvmNode};
 use sequencer_utils::wait_for_rpc;
 use std::{collections::HashMap, time::Duration};
-use zkevm_contract_bindings::TestHermezContracts;
+use zkevm_contract_bindings::TestPolygonContracts;
 
 /// A zkevm-node inside docker compose with custom contracts
 #[derive(Debug, Clone)]
 pub struct DemoZkEvmNode {
     env: ZkEvmEnv,
-    l1: TestHermezContracts,
+    l1: TestPolygonContracts,
     project_name: String,
     layer1_backend: Layer1Backend,
 }
@@ -18,7 +18,7 @@ impl DemoZkEvmNode {
         &self.env
     }
 
-    pub fn l1(&self) -> &TestHermezContracts {
+    pub fn l1(&self) -> &TestPolygonContracts {
         &self.l1
     }
 
@@ -69,7 +69,7 @@ impl DemoZkEvmNode {
         let verifier_address = dotenv["ESPRESSO_ZKEVM_VERIFIER_ADDRESS"].parse().unwrap();
         let matic_address = dotenv["ESPRESSO_ZKEVM_MATIC_ADDRESS"].parse().unwrap();
 
-        let l1 = TestHermezContracts::connect(
+        let l1 = TestPolygonContracts::connect(
             &env.l1_provider(),
             hotshot_address,
             rollup_address,

@@ -3,5 +3,5 @@ set -e
 
 nix develop .#crossShell --ignore-environment --keep HOME --command cargo build --release
 
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/hermez-adaptor:main -f docker/hermez-adaptor.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main -f docker/polygon-zkevm-adaptor.Dockerfile .
 docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main -f docker/faucet.Dockerfile .

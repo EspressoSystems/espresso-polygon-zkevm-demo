@@ -6,7 +6,7 @@ use std::{
     process::{Command, Stdio},
     time::Duration,
 };
-use zkevm_contract_bindings::TestHermezContracts;
+use zkevm_contract_bindings::TestPolygonContracts;
 
 /// This script works but loading the state back into anvil currently does not
 /// set the block number correctly and the zkevm-node cannot handle this.
@@ -66,7 +66,7 @@ async fn main() {
     std::thread::sleep(Duration::from_secs(1));
 
     let system =
-        TestHermezContracts::deploy("http://localhost:8545", "http://localhost:8126").await;
+        TestPolygonContracts::deploy("http://localhost:8545", "http://localhost:8126").await;
 
     Command::new("docker")
         .stdout(Stdio::null())
