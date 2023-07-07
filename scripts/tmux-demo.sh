@@ -4,7 +4,7 @@
 #
 #   env RUST_LOG_FORMAT=full just demo
 #
-session="demo"
+session="espresso-polygon-zkevm-demo"
 
 tmux kill-session -t $session
 tmux new-session -d -s $session

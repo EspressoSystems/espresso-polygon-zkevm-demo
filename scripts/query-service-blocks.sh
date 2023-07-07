@@ -1,9 +1,13 @@
-#!/usr/bin/env bash
+#!/usr/bin/env nix-shell
+#!nix-shell -i bash -p curl jq
 
 HEIGHT=""
 
+# Load env vars
+set -a; source .env; set +a;
+
 while true; do
-    h=$(curl -s http://localhost:50001/status/latest_block_height)
+    h=$(curl -s http://localhost:${ESPRESSO_SEQUENCER_API_PORT}/status/latest_block_height)
     if [[ "$h" != "$HEIGHT" ]]; then
         HEIGHT="$h"
         QUERY_HEIGHT=$((HEIGHT - 1))
@@ -12,3 +16,4 @@ while true; do
     fi
     sleep 1
 done
+ pp
