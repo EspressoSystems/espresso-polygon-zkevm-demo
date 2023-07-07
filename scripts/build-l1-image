@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+NAME=demo-geth
+
+docker stop $NAME || true
+docker rm $NAME || true
+
+docker run -d --name $NAME -p 8545:8545 \
+    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth
+
+RPC_PORT=${1:-8545}
+while ! nc -z localhost $RPC_PORT 2>&1; do
+  echo "Waiting for port $RPC_PORT ..."
+  sleep 1
+done
+
+# Try a few times if necessary
+for try in $(seq 1 5); do
+    # Transfer from coinbase to account 0
+    geth --exec \
+        'eth.sendTransaction({from: eth.coinbase, to: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", value: "1000000000000000000000000000"})' \
+        attach http://localhost:$RPC_PORT && break || sleep 1;
+done
+
+geth --exec \
+    'eth.sendTransaction({from: eth.coinbase, to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", value: "1000000000000000000000000000"})' \
+    attach http://localhost:$RPC_PORT
+
+
+# Deploy contracts
+for try in $(seq 1 5); do
+    cargo run --bin deploy -- --provider-url http://localhost:$RPC_PORT && break || sleep 1;
+done
+
+cat deployment.json
+
+docker stop $NAME
+HASH=$(docker commit $NAME)
+
+docker tag $HASH ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
