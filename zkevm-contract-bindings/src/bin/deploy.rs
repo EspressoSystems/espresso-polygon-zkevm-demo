@@ -7,7 +7,7 @@ use ethers::{
     providers::{Http, Middleware, Provider},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::Address,
-    utils::get_contract_address,
+    utils::{get_contract_address, parse_ether},
 };
 use hex::{FromHex, FromHexError};
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::{sync::Arc, time::Duration};
 use url::Url;
 use zkevm_contract_bindings::{
-    polygon_zk_evm_bridge::PolygonZkEVMBridge,
+    erc20_permit_mock::ERC20PermitMock, polygon_zk_evm_bridge::PolygonZkEVMBridge,
     polygon_zk_evm_global_exit_root::PolygonZkEVMGlobalExitRoot,
     shared_types::InitializePackedParameters,
     verifier_rollup_helper_mock::VerifierRollupHelperMock, Deploy, PolygonZkEVM,
@@ -113,6 +113,8 @@ struct ZkEvmDeploymentInput {
 struct ZkEvmDeploymentOutput {
     /// The address of the rollup contract.
     rollup_address: Address,
+    /// The address of the matic contract.
+    matic_address: Address,
     /// The address of the bridge contract.
     bridge_address: Address,
     /// The address of the global exit root contract.
@@ -157,11 +159,19 @@ async fn deploy_zkevm(
     deployer: Arc<EthMiddleware>,
     input: &ZkEvmDeploymentInput,
 ) -> Result<ZkEvmDeploymentOutput> {
-    let verifier = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
+    let (_, verifier) = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 
-    // TODO: Do we actually need the matic token? We disabled the fee payments for
-    // submitting proofs to L1 and that's the only functionality we would need
-    // the token for.
+    let matic_token_initial_balance = parse_ether("20000000")?;
+    let (_, matic) = ERC20PermitMock::deploy_contract(
+        &deployer,
+        (
+            "Matic Token".to_string(),
+            "MATIC".to_string(),
+            deployer.address(),
+            matic_token_initial_balance,
+        ),
+    )
+    .await;
 
     // We need to pass the addresses to the GER constructor.
     let nonce = provider
@@ -169,13 +179,13 @@ async fn deploy_zkevm(
         .await?;
     let precalc_bridge_address = get_contract_address(deployer.address(), nonce + 1);
     let precalc_rollup_address = get_contract_address(deployer.address(), nonce + 2);
-    let global_exit_root = PolygonZkEVMGlobalExitRoot::deploy_contract(
+    let (_, global_exit_root) = PolygonZkEVMGlobalExitRoot::deploy_contract(
         &deployer,
         (precalc_rollup_address, precalc_bridge_address),
     )
     .await;
 
-    let bridge = PolygonZkEVMBridge::deploy_contract(&deployer, ()).await;
+    let (_, bridge) = PolygonZkEVMBridge::deploy_contract(&deployer, ()).await;
     assert_eq!(bridge.address(), precalc_bridge_address);
 
     let ZkEvmDeploymentInput {
@@ -188,11 +198,11 @@ async fn deploy_zkevm(
         ..
     } = input;
 
-    let rollup = PolygonZkEVM::deploy_contract(
+    let (receipt, rollup) = PolygonZkEVM::deploy_contract(
         &deployer,
         (
             global_exit_root.address(),
-            Address::zero(), // matic address
+            matic.address(),
             verifier.address(),
             bridge.address(),
             *hotshot_address,
@@ -204,7 +214,7 @@ async fn deploy_zkevm(
     assert_eq!(rollup.address(), precalc_rollup_address);
 
     // Remember the genesis block number where the rollup contract was deployed.
-    let genesis_block_number = provider.get_block_number().await?.as_u64();
+    let genesis_block_number = receipt.block_number.unwrap().as_u64();
 
     let network_id_mainnet = 0;
     bridge
@@ -239,6 +249,7 @@ async fn deploy_zkevm(
     Ok(ZkEvmDeploymentOutput {
         rollup_address: rollup.address(),
         bridge_address: bridge.address(),
+        matic_address: matic.address(),
         global_exit_root_address: global_exit_root.address(),
         verifier_address: verifier.address(),
         genesis_block_number,
