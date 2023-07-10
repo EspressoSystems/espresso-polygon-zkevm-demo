@@ -15,7 +15,7 @@ async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 clap = "4.3.9"
 ethers = { version = "2.0.7", features = ["ws"] }
 futures = "0.3.28"
-regex = "1.8.4"
+regex = "1.9.1"
 serde = "1.0.164"
 serenity = { version = "0.11", default-features = false, features = [
     "client",
