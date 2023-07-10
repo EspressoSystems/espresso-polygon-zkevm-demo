@@ -1,41 +1,76 @@
-#!/usr/bin/env bash
-set -euxo pipefail
+#!/usr/bin/env nix-shell
+#! nix-shell -i bash -p go-ethereum curl jq
+#
+# This script builds a docker image with a geth node and deploys the contracts to it.
+#
+# Usage
+#
+#   ./build-l1-image [rpc-port]
+#
+# The default rpc port is 8545.
+#
+# The script may print some errors during deployment but will retry on expected
+# errors a few times. If it exists with a zero exit code it was successful.
+set -euo pipefail
 
-NAME=demo-geth
-
-docker stop $NAME || true
-docker rm $NAME || true
-
-docker run -d --name $NAME -p 8545:8545 \
-    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth
+trap "exit" INT TERM
+trap cleanup EXIT
+cleanup(){
+    docker stop $NAME > /dev/null 2>&1 || true
+    docker rm $NAME > /dev/null 2>&1 || true
+}
 
 RPC_PORT=${1:-8545}
-while ! nc -z localhost $RPC_PORT 2>&1; do
+RPC_URL=http://localhost:$RPC_PORT
+TAG="ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main"
+
+NAME=espresso-polygon-zkevm-demo-l1
+
+echo "Removing existing docker container if it exists."
+docker stop $NAME > /dev/null 2>&1 || true
+docker rm $NAME > /dev/null 2>&1 || true
+
+echo "Starting geth node."
+
+docker run -d --name $NAME -p $RPC_PORT:8545 \
+    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth
+
+while ! nc -z localhost $RPC_PORT > /dev/null 2>&1; do
   echo "Waiting for port $RPC_PORT ..."
   sleep 1
 done
 
-# Try a few times if necessary
+echo "Funding accounts."
+
+# Retry a few times because sending transactions may still fail for a while
+# after the RPC is up.
 for try in $(seq 1 5); do
-    # Transfer from coinbase to account 0
+    echo "Transfer from coinbase to account 0"
     geth --exec \
         'eth.sendTransaction({from: eth.coinbase, to: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", value: "1000000000000000000000000000"})' \
         attach http://localhost:$RPC_PORT && break || sleep 1;
 done
+echo "Transfer done!"
 
+echo "Transfer from coinbase to account 1"
 geth --exec \
     'eth.sendTransaction({from: eth.coinbase, to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", value: "1000000000000000000000000000"})' \
     attach http://localhost:$RPC_PORT
+echo "Transfer done!"
 
-
-# Deploy contracts
+# Deploy the contracts. Retry a few times because sending transactions may fail
+# for a while after having funded the account.
 for try in $(seq 1 5); do
-    cargo run --bin deploy -- --provider-url http://localhost:$RPC_PORT && break || sleep 1;
+    echo "Attempting contract deployment completed."
+    cargo run --bin deploy -- --provider-url $RPC_URL && break || sleep 1;
 done
+
+echo "Contract deployment completed."
 
 cat deployment.json
 
 docker stop $NAME
 HASH=$(docker commit $NAME)
 
-docker tag $HASH ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
+echo "Tagging image $HASH as $TAG"
+docker tag $HASH $TAG
