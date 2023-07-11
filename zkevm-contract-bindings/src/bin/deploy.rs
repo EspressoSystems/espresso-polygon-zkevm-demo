@@ -56,7 +56,7 @@ pub struct Options {
         env = "ESPRESSO_ZKEVM_1_TRUSTED_AGGREGATOR_ADDRESS",
         default_value = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
     )]
-    pub trusted_aggregator_one: Address,
+    pub trusted_aggregator_1: Address,
 
     /// Wallet address of the trusted aggregator for the second zkevm.
     ///
@@ -67,19 +67,25 @@ pub struct Options {
         env = "ESPRESSO_ZKEVM_2_TRUSTED_AGGREGATOR_ADDRESS",
         default_value = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
     )]
-    pub trusted_aggregator_two: Address,
+    pub trusted_aggregator_2: Address,
 
-    /// Genesis root for L2.
-    ///
-    /// There could be two different genesis roots for each zkevm but for now we
-    /// keep them the same.
+    /// Genesis root for the first L2.
     #[arg(
         long,
-        env = "ESPRESSO_ZKEVM_GENESIS_ROOT",
+        env = "ESPRESSO_ZKEVM_1_GENESIS_ROOT",
         value_parser = |arg: &str| -> Result<[u8; 32], FromHexError> { Ok(<[u8; 32]>::from_hex(arg)?) },
         default_value = "5c8df6a4b7748c1308a60c5380a2ff77deb5cfee3bf4fba76eef189d651d4558",
       )]
-    pub genesis_root: [u8; 32],
+    pub genesis_root_1: [u8; 32],
+
+    /// Genesis root for the second L2.
+    #[arg(
+        long,
+        env = "ESPRESSO_ZKEVM_2_GENESIS_ROOT",
+        value_parser = |arg: &str| -> Result<[u8; 32], FromHexError> { Ok(<[u8; 32]>::from_hex(arg)?) },
+        default_value = "5c8df6a4b7748c1308a60c5380a2ff77deb5cfee3bf4fba76eef189d651d4558",
+      )]
+    pub genesis_root_2: [u8; 32],
 
     /// Output file path where deployment info will be stored.
     #[arg(
@@ -125,8 +131,8 @@ struct ZkEvmDeploymentOutput {
     genesis_block_number: u64,
 }
 
-with_prefix!(prefix_zkevm_one "ESPRESSO_ZKEVM_1_");
-with_prefix!(prefix_zkevm_two "ESPRESSO_ZKEVM_2_");
+with_prefix!(prefix_zkevm_1 "ESPRESSO_ZKEVM_1_");
+with_prefix!(prefix_zkevm_2 "ESPRESSO_ZKEVM_2_");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -137,16 +143,16 @@ struct DeploymentOutput {
     hotshot_address: Address,
 
     /// The first polygon zkevm.
-    #[serde(flatten, with = "prefix_zkevm_one")]
-    zkevm_one_input: ZkEvmDeploymentInput,
-    #[serde(flatten, with = "prefix_zkevm_one")]
-    zkevm_one_output: ZkEvmDeploymentOutput,
+    #[serde(flatten, with = "prefix_zkevm_1")]
+    zkevm_1_input: ZkEvmDeploymentInput,
+    #[serde(flatten, with = "prefix_zkevm_1")]
+    zkevm_1_output: ZkEvmDeploymentOutput,
 
     /// The second polygon zkevm.
-    #[serde(flatten, with = "prefix_zkevm_two")]
-    zkevm_two_input: ZkEvmDeploymentInput,
-    #[serde(flatten, with = "prefix_zkevm_two")]
-    zkevm_two_output: ZkEvmDeploymentOutput,
+    #[serde(flatten, with = "prefix_zkevm_2")]
+    zkevm_2_input: ZkEvmDeploymentInput,
+    #[serde(flatten, with = "prefix_zkevm_2")]
+    zkevm_2_output: ZkEvmDeploymentOutput,
 }
 
 /// Deploys the contracts for a demo Polygon ZkEVM.
@@ -275,34 +281,34 @@ async fn deploy(opts: Options) -> Result<()> {
     tracing::info!("Deployed HotShot at {:?}", hotshot.address());
 
     // Deploy the contracts for the first zkevm-node.
-    let zkevm_one_input = ZkEvmDeploymentInput {
+    let zkevm_1_input = ZkEvmDeploymentInput {
         hotshot_address,
-        trusted_aggregator: opts.trusted_aggregator_one,
-        genesis_root: opts.genesis_root,
+        trusted_aggregator: opts.trusted_aggregator_1,
+        genesis_root: opts.genesis_root_1,
         chain_id: 1001u64,
         fork_id: 1u64,
         network_name: "zkevm-one".to_string(),
     };
-    let zkevm_one_output = deploy_zkevm(&provider, deployer.clone(), &zkevm_one_input).await?;
+    let zkevm_1_output = deploy_zkevm(&provider, deployer.clone(), &zkevm_1_input).await?;
 
     // Deploy the contracts for the second zkevm-node.
-    let zkevm_two_input = ZkEvmDeploymentInput {
+    let zkevm_2_input = ZkEvmDeploymentInput {
         hotshot_address,
-        trusted_aggregator: opts.trusted_aggregator_two,
-        genesis_root: opts.genesis_root,
+        trusted_aggregator: opts.trusted_aggregator_2,
+        genesis_root: opts.genesis_root_2,
         chain_id: 1002u64,
         fork_id: 1u64,
         network_name: "zkevm-two".to_string(),
     };
-    let zkevm_two_output = deploy_zkevm(&provider, deployer.clone(), &zkevm_two_input).await?;
+    let zkevm_2_output = deploy_zkevm(&provider, deployer.clone(), &zkevm_2_input).await?;
 
     // Save the output to a file.
     let output = DeploymentOutput {
         hotshot_address,
-        zkevm_one_input,
-        zkevm_one_output,
-        zkevm_two_input,
-        zkevm_two_output,
+        zkevm_1_input,
+        zkevm_1_output,
+        zkevm_2_input,
+        zkevm_2_output,
     };
 
     let data = serde_json::to_string_pretty(&output)?;
