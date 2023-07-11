@@ -73,6 +73,7 @@ async fn test_end_to_end() {
 
     // Start a Polygon zkEVM adaptor.
     let adaptor_opt = polygon_zkevm_adaptor::Options {
+        l1_provider: env.l1_provider(),
         sequencer_url: env.sequencer(),
         rpc_port: env.l2_adaptor_rpc_port(),
         l2_chain_id: zkevm.chain_id,
