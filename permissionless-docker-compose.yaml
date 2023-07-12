@@ -31,7 +31,7 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      - "sleep 5 && /app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
     depends_on:
       zkevm-1-prover:
         condition: service_healthy
@@ -116,7 +116,6 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      # Sleep to wait for geth, see comment below.
       - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
     depends_on:
       zkevm-mock-l1-network:
@@ -214,7 +213,7 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      - "sleep 5 && /app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
     depends_on:
       zkevm-2-prover:
         condition: service_healthy
@@ -296,7 +295,6 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      # Sleep to wait for geth, see comment below.
       - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
     depends_on:
       zkevm-mock-l1-network:
