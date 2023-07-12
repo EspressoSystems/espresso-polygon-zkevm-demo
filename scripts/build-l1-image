@@ -26,7 +26,7 @@ TAG="geth-with-contracts:dev"
 NAME=espresso-polygon-zkevm-demo-l1
 DATA_DIR="$PWD/.espresso-geth-dev-data-dir"
 
-if [ -f "$DATA_DIR" ]; then
+if [ -d "$DATA_DIR" ]; then
     echo "Data directory $DATA_DIR already exists. Please remove it first."
     exit 1
 fi
@@ -82,3 +82,6 @@ HASH=$(docker commit $NAME)
 
 echo "Tagging image $HASH as $TAG"
 docker tag $HASH $TAG
+
+echo "Asking for root permissions to make $USER the owner of files $DATA_DIR"
+sudo chown -R $USER $DATA_DIR
