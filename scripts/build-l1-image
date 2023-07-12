@@ -11,6 +11,12 @@
 #
 # The script may print some errors during deployment but will retry on expected
 # errors a few times. If it exists with a zero exit code it was successful.
+#
+# To push the image to the registry, first create a personal token on https://github.com/settings/tokens
+# with `write:packages` scope. Then run:
+#
+#     docker push ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
+#
 set -euo pipefail
 
 trap "exit" INT TERM

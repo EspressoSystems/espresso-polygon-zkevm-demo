@@ -47,10 +47,6 @@ mod polygon_zkevm;
 #[cfg(any(test, feature = "testing"))]
 pub use polygon_zkevm::*;
 
-mod demo;
-#[cfg(any(test, feature = "testing"))]
-pub use demo::*;
-
 mod random_client;
 #[cfg(any(test, feature = "testing"))]
 pub use random_client::*;

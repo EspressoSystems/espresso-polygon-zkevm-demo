@@ -1,0 +1,51 @@
+name: Build contracts docker image
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v22
+
+      - name: Build contracts docker
+        run: nix develop -c scripts/build-l1-image
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Github Container Repo
+        uses: docker/login-action@v2
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate docker metadata
+        uses: docker/metadata-action@v4
+        id: geth-with-contracts
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/geth-with-contracts
+
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.geth-with-contracts.outputs.tags }}
+          labels: ${{ steps.geth-with-contracts.outputs.labels }}
+          file: docker/Dockerfile.geth
+          context: .

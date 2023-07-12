@@ -77,3 +77,8 @@ jobs:
           cargo test --release --workspace --all-features --no-run
           cargo test --release --workspace --all-features --verbose -- --test-threads 1 --nocapture
         timeout-minutes: 30
+
+      - uses: extractions/setup-just@v1
+
+      - name: docker compose integration test
+        run: scripts/demo-test-end-to-end

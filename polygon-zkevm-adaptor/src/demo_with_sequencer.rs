@@ -81,15 +81,15 @@ impl SequencerZkEvmDemo {
         // Start zkevm-node
         Self::compose_cmd_prefix(&project_name, &layer1_backend)
             .env(
-                "ESPRESSO_ZKEVM_ROLLUP_ADDRESS",
+                "ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS",
                 format!("{:?}", l1.rollup.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_MATIC_ADDRESS",
+                "ESPRESSO_ZKEVM_1_MATIC_ADDRESS",
                 format!("{:?}", l1.matic.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_GER_ADDRESS",
+                "ESPRESSO_ZKEVM_1_GER_ADDRESS",
                 format!("{:?}", l1.global_exit_root.address()),
             )
             .env(
@@ -97,19 +97,19 @@ impl SequencerZkEvmDemo {
                 format!("{:?}", l1.hotshot.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_GENBLOCKNUMBER",
+                "ESPRESSO_ZKEVM_1_GENBLOCKNUMBER",
                 l1.gen_block_number.to_string(),
             )
             .args(["-f", "docker-compose.yaml"])
             .arg("up")
             .args([
-                "zkevm-prover",
-                "zkevm-aggregator",
-                "zkevm-state-db",
-                "zkevm-permissionless-node",
-                "zkevm-eth-tx-manager",
-                "zkevm-faucet",
-                "polygon-zkevm-adaptor",
+                "zkevm-1-prover",
+                "zkevm-1-aggregator",
+                "zkevm-1-state-db",
+                "zkevm-1-permissionless-node",
+                "zkevm-1-eth-tx-manager",
+                "zkevm-1-faucet",
+                "polygon-zkevm-1-adaptor",
                 "cdn-server",
                 "sequencer0",
                 "sequencer1",
