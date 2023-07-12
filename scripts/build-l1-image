@@ -10,12 +10,7 @@
 # The script may print some errors during deployment but will retry on expected
 # errors a few times. If it exits with a zero exit code it was successful.
 #
-# In the image needs to be pushed to the github container registry manually
-# first create a personal token on https://github.com/settings/tokens with
-# `write:packages` scope. Then run:
-#
-#     docker push ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
-#
+# This script only works correctly if run from the root of the git repo.
 set -euo pipefail
 
 trap "exit" INT TERM
@@ -28,8 +23,15 @@ cleanup(){
 RPC_PORT=${1:-8545}
 RPC_URL=http://localhost:$RPC_PORT
 TAG="geth-with-contracts:dev"
-
 NAME=espresso-polygon-zkevm-demo-l1
+DATA_DIR="$PWD/.espresso-geth-dev-data-dir"
+
+if [ -f "$DATA_DIR" ]; then
+    echo "Data directory $DATA_DIR already exists. Please remove it first."
+    exit 1
+fi
+
+mkdir -p $DATA_DIR
 
 echo "Removing existing docker container if it exists."
 docker stop $NAME > /dev/null 2>&1 || true
@@ -38,7 +40,7 @@ docker rm $NAME > /dev/null 2>&1 || true
 echo "Starting geth node."
 
 # The `--syncmode full` argument is required to avoid "missing trie node" errors.
-docker run -d --name $NAME -p $RPC_PORT:8545 \
+docker run -d -v $DATA_DIR:/geth --name $NAME -p $RPC_PORT:8545 \
     ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth --syncmode full --gcmode archive
 
 while ! nc -z localhost $RPC_PORT > /dev/null 2>&1; do

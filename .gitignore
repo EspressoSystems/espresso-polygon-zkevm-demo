@@ -20,3 +20,6 @@ target/
 
 # solidity files cache
 cache/
+
+# geth data dir for docker build
+.espresso-geth-dev-data-dir
