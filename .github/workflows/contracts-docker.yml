@@ -59,12 +59,6 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/geth-with-contracts
 
-      - name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.geth-with-contracts.outputs.tags }}
-          labels: ${{ steps.geth-with-contracts.outputs.labels }}
-          file: docker/Dockerfile.geth
-          context: .
+      - name: Push docker image
+        if: github.event_name != 'pull_request'
+        run: docker push ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
