@@ -25,8 +25,6 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
-
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
 
@@ -34,16 +32,12 @@
 
   inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
 
-  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, flake-compat, pre-commit-hooks, fenix, solc-bin, foundry, ... }:
+  outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, pre-commit-hooks, fenix, foundry, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        info = builtins.split "\([a-zA-Z0-9_]+\)" system;
-        arch = (builtins.elemAt (builtins.elemAt info 1) 0);
-        os = (builtins.elemAt (builtins.elemAt info 3) 0);
         RUST_LOG = "info,libp2p=off,isahc=error,surf=error";
         overlays = [
           (import rust-overlay)
-          solc-bin.overlays.default
           foundry.overlay
         ];
         pkgs = import nixpkgs {
@@ -94,7 +88,6 @@
             nixWithFlakes = pkgs.writeShellScriptBin "nix" ''
               exec ${pkgs.nixFlakes}/bin/nix --experimental-features "nix-command flakes" "$@"
             '';
-            solc = pkgs.solc-bin.latest;
           in
           mkShell
             {
@@ -116,10 +109,12 @@
 
                 # Ethereum
                 foundry-bin
+                go-ethereum
 
                 # Tools
                 nixWithFlakes
                 entr
+                jq
 
                 # Figures
                 graphviz

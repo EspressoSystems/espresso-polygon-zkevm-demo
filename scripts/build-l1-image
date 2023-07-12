@@ -1,6 +1,4 @@
-#!/usr/bin/env nix-shell
-#! nix-shell -i bash -p go-ethereum curl jq
-#
+#!/usr/bin/env bash
 # This script builds a docker image with a geth node and deploys the contracts to it.
 #
 # Usage
