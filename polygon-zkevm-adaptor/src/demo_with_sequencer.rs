@@ -107,6 +107,8 @@ impl SequencerZkEvmDemo {
                 "zkevm-aggregator",
                 "zkevm-state-db",
                 "zkevm-permissionless-node",
+                "zkevm-preconfirmations-state-db",
+                "zkevm-preconfirmations-node",
                 "zkevm-eth-tx-manager",
                 "zkevm-faucet",
                 "polygon-zkevm-adaptor",
