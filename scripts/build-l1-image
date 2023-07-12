@@ -8,10 +8,11 @@
 # The default rpc port is 8545.
 #
 # The script may print some errors during deployment but will retry on expected
-# errors a few times. If it exists with a zero exit code it was successful.
+# errors a few times. If it exits with a zero exit code it was successful.
 #
-# To push the image to the registry, first create a personal token on https://github.com/settings/tokens
-# with `write:packages` scope. Then run:
+# In the image needs to be pushed to the github container registry manually
+# first create a personal token on https://github.com/settings/tokens with
+# `write:packages` scope. Then run:
 #
 #     docker push ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
 #
