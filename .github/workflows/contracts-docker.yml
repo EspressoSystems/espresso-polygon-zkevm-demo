@@ -11,8 +11,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        name: Checkout Repository
+        with:
+          submodules: true
+          token: ${{ secrets.ORG_GITHUB_PAT }}
 
       - name: Install Nix
         uses: cachix/install-nix-action@v22
