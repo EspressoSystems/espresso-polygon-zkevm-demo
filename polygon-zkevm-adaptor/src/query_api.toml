@@ -22,3 +22,9 @@ Subscribe to a stream of Polygon zkEVM blocks in the order they are sequenced, s
 
 Opens a WebSockets connection and sends a stream of the same data type returned by `block/:height`.
 """
+
+[route.blockheight]
+PATH = ["block-height"]
+DOC = """
+Get the number of finalized blocks in the HotShot ledger.
+"""

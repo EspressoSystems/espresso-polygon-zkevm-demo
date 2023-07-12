@@ -90,7 +90,7 @@ pub async fn serve(opt: &Options) {
         }
     };
 
-    let hotshot = HotShotClient::new(opt.sequencer_url.join("availability").unwrap());
+    let hotshot = HotShotClient::new(opt.sequencer_url.clone());
     let state = State {
         blocks: BlockMapping::new(l1, hotshot.clone()).await.unwrap(),
         hotshot,
@@ -102,12 +102,14 @@ pub async fn serve(opt: &Options) {
     let mut app = App::<_, ServerError>::with_state(RwLock::new(state));
     app.module::<ServerError>("availability", api)
         .unwrap()
-        .at("getblock", |req, state| {
+        .get("getblock", |req, state| {
             async move {
                 let height: u64 = req.integer_param("height")?;
-                let state = state.read().await;
-                let block: BlockQueryData<SeqTypes> =
-                    state.hotshot.get(&format!("block/{height}")).send().await?;
+                let block: BlockQueryData<SeqTypes> = state
+                    .hotshot
+                    .get(&format!("availability/block/{height}"))
+                    .send()
+                    .await?;
                 // Find the L1 block number corresponding to this L2 block, based on its timestamp.
                 let l1_block = state
                     .blocks
@@ -131,7 +133,7 @@ pub async fn serve(opt: &Options) {
                 let height: u64 = req.integer_param("height")?;
                 let blocks = state
                     .hotshot
-                    .socket(&format!("stream/blocks/{height}"))
+                    .socket(&format!("availability/stream/blocks/{height}"))
                     .subscribe::<BlockQueryData<SeqTypes>>()
                     .await?
                     // Map each L2 block to an L1 block number based on its timestamp.
@@ -145,6 +147,18 @@ pub async fn serve(opt: &Options) {
                 }))
             }
             .try_flatten_stream()
+            .boxed()
+        })
+        .unwrap()
+        .get("blockheight", |_, state| {
+            async move {
+                let height: usize = state
+                    .hotshot
+                    .get("status/latest_block_height")
+                    .send()
+                    .await?;
+                Ok(height)
+            }
             .boxed()
         })
         .unwrap();
@@ -194,7 +208,7 @@ impl BlockMapping {
             // fail during initialization, until the HotShot query service is up and running).
             let mut l2_blocks = loop {
                 match hotshot
-                    .socket("stream/blocks/0")
+                    .socket("availability/stream/blocks/0")
                     .subscribe::<BlockQueryData<SeqTypes>>()
                     .await
                 {
