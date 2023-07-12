@@ -27,7 +27,7 @@ cleanup(){
 
 RPC_PORT=${1:-8545}
 RPC_URL=http://localhost:$RPC_PORT
-TAG="ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main"
+TAG="ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:dev"
 
 NAME=espresso-polygon-zkevm-demo-l1
 
