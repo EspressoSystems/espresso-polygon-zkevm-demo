@@ -64,6 +64,9 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Pull with docker
+        run: docker pull ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
+
       - name: Pull all docker compose images
         run: just pull
 
