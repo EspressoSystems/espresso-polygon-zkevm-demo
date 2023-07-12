@@ -1,0 +1,70 @@
+name: Build contracts docker image
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout Repository
+        with:
+          submodules: true
+          token: ${{ secrets.ORG_GITHUB_PAT }}
+
+      - name: Configure Git
+        run: |
+          git config --global url."https://ancient123:${{ secrets.ORG_GITHUB_PAT }}@github.com".insteadOf git://github.com
+          git config --global url."https://ancient123:${{ secrets.ORG_GITHUB_PAT }}@github.com".insteadOf ssh://git@github.com
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v22
+
+      - uses: cachix/cachix-action@v12
+        # If PR is from a non-collaborator (e. g. dependabot) the secrets are missing and the login to cachix fails.
+        continue-on-error: true
+        with:
+          name: espresso-systems-private
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          extraPullNames: nix-community
+
+      - uses: Swatinem/rust-cache@v2
+        name: Enable Rust Caching
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build contracts docker
+        run: nix develop --accept-flake-config -c scripts/build-l1-image
+
+      - name: Login to Github Container Repo
+        uses: docker/login-action@v2
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate docker metadata
+        uses: docker/metadata-action@v4
+        id: geth-with-contracts
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/geth-with-contracts
+
+      - name: Build and push geth-with-contracts docker
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./docker/geth.Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.geth-with-contracts.outputs.tags }}
+          labels: ${{ steps.geth-with-contracts.outputs.labels }}

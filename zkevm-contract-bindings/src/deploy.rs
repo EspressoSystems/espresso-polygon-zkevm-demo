@@ -16,7 +16,7 @@ use ethers::{
     prelude::{ContractFactory, SignerMiddleware},
     providers::{Http, Middleware, Provider},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
-    types::{Address, TransactionRequest, U256},
+    types::{Address, TransactionReceipt, TransactionRequest, U256},
     utils::{get_contract_address, parse_ether},
 };
 use ethers_solc::HardhatArtifact;
@@ -27,7 +27,11 @@ type EthMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 #[async_trait::async_trait]
 pub trait Deploy<M: Middleware> {
-    async fn deploy_contract<T: Tokenize + Send>(client: &Arc<M>, args: T) -> Self;
+    // note: only the last element of a tuple may have a dynamically sized type
+    async fn deploy_contract<T: Tokenize + Send>(
+        client: &Arc<M>,
+        args: T,
+    ) -> (TransactionReceipt, Self);
 }
 
 /// Creates a deploy function for the contract.
@@ -39,7 +43,10 @@ macro_rules! mk_deploy {
     ($prefix: expr, $contract:ident) => {
         #[async_trait::async_trait]
         impl<M: Middleware> Deploy<M> for $contract<M> {
-            async fn deploy_contract<T: Tokenize + Send>(client: &Arc<M>, args: T) -> Self {
+            async fn deploy_contract<T: Tokenize + Send>(
+                client: &Arc<M>,
+                args: T,
+            ) -> (TransactionReceipt, Self) {
                 // Ideally we would make our bindings generator script inline
                 // the contract bytecode somewhere in this crate, then the
                 // heuristic for finding the hardhat artifact below would no
@@ -56,13 +63,13 @@ macro_rules! mk_deploy {
                 let file = fs::File::open(&path)
                     .unwrap_or_else(|_| panic!("Unable to open path {:?}", path));
                 let artifact = serde_json::from_reader::<_, HardhatArtifact>(file).unwrap();
-                let contract: $contract<M> = deploy_artifact(artifact, client, args).await.into();
+                let (contract, receipt) = deploy_artifact(artifact, client, args).await;
                 tracing::info!(
                     "Deployed {} at {:?}",
                     stringify!($contract),
                     contract.address()
                 );
-                contract
+                (receipt, contract.into())
             }
         }
     };
@@ -90,13 +97,18 @@ pub async fn deploy_artifact<M: Middleware, T: Tokenize>(
     artifact: HardhatArtifact,
     client: &Arc<M>,
     args: T,
-) -> Contract<M> {
+) -> (Contract<M>, TransactionReceipt) {
     let factory = ContractFactory::new(
         artifact.abi.into(),
         artifact.bytecode.unwrap().into_bytes().unwrap(),
         client.clone(),
     );
-    factory.deploy(args).unwrap().send().await.unwrap()
+    factory
+        .deploy(args)
+        .unwrap()
+        .send_with_receipt()
+        .await
+        .unwrap()
 }
 
 #[derive(Debug, Clone)]
@@ -238,10 +250,10 @@ impl TestPolygonContracts {
 
         tracing::info!("Deployed HotShot at {:?}", hotshot.address());
 
-        let verifier = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
+        let (_, verifier) = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 
         let matic_token_initial_balance = parse_ether("20000000").unwrap();
-        let matic = ERC20PermitMock::deploy_contract(
+        let (_, matic) = ERC20PermitMock::deploy_contract(
             &deployer,
             (
                 "Matic Token".to_string(),
@@ -260,18 +272,18 @@ impl TestPolygonContracts {
         let precalc_bridge_address = get_contract_address(deployer.address(), nonce + 1);
         let precalc_rollup_address = get_contract_address(deployer.address(), nonce + 2);
 
-        let global_exit_root = PolygonZkEVMGlobalExitRoot::deploy_contract(
+        let (_, global_exit_root) = PolygonZkEVMGlobalExitRoot::deploy_contract(
             &deployer,
             (precalc_rollup_address, precalc_bridge_address),
         )
         .await;
 
-        let bridge = PolygonZkEVMBridge::deploy_contract(&deployer, ()).await;
+        let (_, bridge) = PolygonZkEVMBridge::deploy_contract(&deployer, ()).await;
         assert_eq!(bridge.address(), precalc_bridge_address);
 
         let chain_id = U256::from(1001);
         let fork_id = U256::from(1);
-        let rollup = PolygonZkEVM::deploy_contract(
+        let (receipt, rollup) = PolygonZkEVM::deploy_contract(
             &deployer,
             (
                 global_exit_root.address(),
@@ -287,7 +299,7 @@ impl TestPolygonContracts {
         assert_eq!(rollup.address(), precalc_rollup_address);
 
         // Remember the genesis block number where the rollup contract was deployed.
-        let gen_block_number = provider.get_block_number().await.unwrap().as_u64();
+        let gen_block_number = receipt.block_number.unwrap().as_u64();
 
         let network_id_mainnet = 0;
         bridge

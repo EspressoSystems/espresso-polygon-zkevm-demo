@@ -8,14 +8,14 @@ compose-zkevm-node := "docker compose --project-name demo -f permissionless-dock
 zkevm-node:
     cargo run --all-features --bin zkevm-node
 
-demo:
-    cargo run --all-features --bin demo
+demo *args:
+   {{compose}} up --wait {{args}}
 
 down:
    {{compose}} down
 
 pull:
-    {{compose}} pull && {{compose-anvil}} pull
+    {{compose-anvil}} pull && {{compose}} pull
 
 hardhat *args:
     cd zkevm-contracts && nix develop -c bash -c "npx hardhat {{args}}"
