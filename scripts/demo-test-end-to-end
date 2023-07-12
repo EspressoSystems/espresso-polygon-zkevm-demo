@@ -1,13 +1,9 @@
-#!/usr/bin/env nix-shell
-#! nix-shell -i bash -p curl jq just
-#
+#!/usr/bin/env bash
 # This is an end to end test for the espresso sequencer polygon zkevm demo.
 #
 # It's intended to not requiring compilation or deployment of contracts.
 #
-# It requires curl, jq, just and docker to be installed. If nix is installed
-# executing the file will fetch the dependencies automatically, except for
-# docker.
+# It requires curl, jq, just and docker to be installed.
 set -euo pipefail
 
 trap "exit" INT TERM
