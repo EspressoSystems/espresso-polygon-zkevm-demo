@@ -10,7 +10,7 @@ zkevm-node:
     cargo run --all-features --bin zkevm-node
 
 demo *args:
-   {{compose}} up --wait {{args}}
+   {{compose}} up {{args}}
 
 down:
    {{compose}} down
