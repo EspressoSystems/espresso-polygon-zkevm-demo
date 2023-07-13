@@ -49,4 +49,4 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run docker compose integration test
-        run: sudo scripts/demo-test-end-to-end
+        run: scripts/demo-test-end-to-end
