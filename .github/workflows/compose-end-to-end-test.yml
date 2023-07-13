@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: |
           apk update
-          apk add docker-cli-compose jq just
+          apk add docker-cli-compose jq just git openssh
 
       - uses: actions/checkout@v3
         name: Checkout Repository
