@@ -115,6 +115,7 @@
                 nixWithFlakes
                 entr
                 jq
+                docker-compose
 
                 # Figures
                 graphviz
