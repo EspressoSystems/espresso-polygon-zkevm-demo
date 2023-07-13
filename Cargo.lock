@@ -1097,9 +1097,9 @@ checksum = "ecc7ab41815b3c653ccd2978ec3255c81349336702dfdf62ee6f7069b12a3aae"
 
 [[package]]
 name = "async-trait"
-version = "0.1.70"
+version = "0.1.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79fa67157abdfd688a259b6648808757db9347af834624f27ec646da976aee5d"
+checksum = "a564d521dd56509c4c47480d00b80ee55f7e385ae48db5744c67ad50c92d2ebf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1860,7 +1860,7 @@ checksum = "21a53c0a4d288377e7415b53dcfc3c04da5cdc2cc95c8d5ac178b58f0b861ad6"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#b59ff234bec7099ed963dbf542534a9fe7af4bef"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#81711a545b9b805eaf3a4941dcb0678c3f8079e3"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -7034,7 +7034,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#b59ff234bec7099ed963dbf542534a9fe7af4bef"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#81711a545b9b805eaf3a4941dcb0678c3f8079e3"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-serialize 0.4.2",
@@ -7073,7 +7073,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#b59ff234bec7099ed963dbf542534a9fe7af4bef"
+source = "git+ssh://git@github.com/EspressoSystems/espresso-sequencer.git#81711a545b9b805eaf3a4941dcb0678c3f8079e3"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
