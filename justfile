@@ -1,5 +1,5 @@
 # The zkevm-node docker-compose file currently only works if run from the zkevm-node/test directory.
-compose-cmd := env_var_or_default("COMPOSE_CMD", "docker compose --project-name demo")
+compose-cmd := "docker compose --project-name demo"
 compose-base := compose-cmd + " -f docker-compose.yaml -f permissionless-docker-compose.yaml"
 compose-espresso := compose-cmd + " -f docker-compose.yaml"
 compose-anvil := compose-base + " -f docker-compose-anvil.yaml"
@@ -10,7 +10,7 @@ zkevm-node:
     cargo run --all-features --bin zkevm-node
 
 demo *args:
-   {{compose}} up {{args}}
+   {{compose}} up --wait {{args}}
 
 down:
    {{compose}} down

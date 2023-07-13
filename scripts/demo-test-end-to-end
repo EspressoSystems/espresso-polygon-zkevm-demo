@@ -23,20 +23,6 @@ export ADDR=0x1234567890123456789012345678901234567890
 export RPC_1=http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT
 export RPC_2=http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT
 
-# Wait for RPCs to be ready This is not needed if we can run docker compose up
-# with the --wait flag, but some older versions don't support this flag.
-function wait_for_rpc() {
-    for RPC in $RPC_1 $RPC_2; do
-        echo "Waiting for $RPC to be ready..."
-        while true; do
-            curl -s -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\": \"2.0\", \"method\": \"eth_blockNumber\", \"params\": [], \"id\": 1}" $RPC > /dev/null && break
-            sleep 1
-        done
-    done
-}
-export -f wait_for_rpc
-timeout 60 bash -c wait_for_rpc
-
 echo "Requesting funds from faucet"
 curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_1_FAUCET_PORT/faucet/request/$ADDR > /dev/null
 curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_2_FAUCET_PORT/faucet/request/$ADDR > /dev/null
