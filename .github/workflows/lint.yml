@@ -30,7 +30,7 @@ jobs:
 
       # The error is probably due to another CI run having changed the permissions.
       - name: Prevent git permission errors
-      - run: |
+        run: |
           git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo
           git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo/zkevm-contracts
           git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo/zkevm-node
