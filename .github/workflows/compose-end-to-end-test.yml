@@ -17,8 +17,7 @@ env:
 
 jobs:
   end-to-end-test:
-    runs-on: self-hosted
-
+    runs-on: [self-hosted, X64]
     container:
       image: mgoltzsche/podman
       options: --privileged
