@@ -17,15 +17,11 @@ env:
 
 jobs:
   end-to-end-test:
-    # The tests that use docker compose currently only work on github's
-    # public runners.
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Check /proc/cpuinfo
-        run: cat /proc/cpuinfo
 
-      - name: Abort early if Intel ADX instructions (required by zkevm-prover) is not available
-        run: cat /proc/cpuinfo | grep -q ' adx ' || ( echo "Retry CI in the hopes of getting another CPU" && exit 1 )
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
 
       - uses: extractions/setup-just@v1
 
