@@ -17,15 +17,11 @@ env:
 
 jobs:
   end-to-end-test:
-    # The tests that use docker compose currently only work on github's
-    # public runners.
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Check /proc/cpuinfo
-        run: cat /proc/cpuinfo
 
-      - name: Abort early if Intel ADX instructions (required by zkevm-prover) is not available
-        run: cat /proc/cpuinfo | grep -q ' adx ' || ( echo "Retry CI in the hopes of getting another CPU" && exit 1 )
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
 
       - uses: extractions/setup-just@v1
 
@@ -34,6 +30,9 @@ jobs:
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
+
+      - name: Avoid permission error during checkout
+        run: sudo chown -R $USER /home/runner1/actions-runner/_work/espresso-polygon-zkevm-demo
 
       - uses: actions/checkout@v3
         name: Checkout Repository
