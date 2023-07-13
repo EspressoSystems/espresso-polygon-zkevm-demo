@@ -120,18 +120,3 @@ state of one of those submodules you can:
 - run `git submodule update` before making changes,
 - or configure git to automatically update submodules for the repository with
   `git config submodule.recurse true` inside the repository.
-
-## Implementation Plan
-
-This project was implemented in two phases.
-
-### Phase I: Basic Sequencing
-
-Replace the Polygon zkEVM trusted sequencer with a HotShot-based permissionless sequencer.
-
-See [doc/architecture_phase1.svg](doc/architecture_phase1.svg).
-
-### Phase II: Off-Chain Data Availability
-
-Only store batch commitments, not full batches, in the rollup contract. Use
-HotShot for data availability. This is what's currently implemented.
