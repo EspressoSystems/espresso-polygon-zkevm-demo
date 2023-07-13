@@ -60,6 +60,8 @@ curl -X POST http://localhost:18111/faucet/request/0x000000000000000000000000000
 replacing the zero address with the desired receiver address. Use
 http://localhost:28111 to talk to the faucet of the second node instead.
 
+To copy your Metamask address click on the address at the top of the Metamask panel.
+
 # Development
 
 - Obtain code: `git clone --recursive git@github.com:EspressoSystems/espresso-polygon-zkevm-demo`.
