@@ -31,6 +31,9 @@ jobs:
           all_but_latest: true
           access_token: ${{ github.token }}
 
+      - name: Avoid permission error during checkout
+        run: sudo chown -R $USER /home/runner1/actions-runner/_work/espresso-polygon-zkevm-demo
+
       - uses: actions/checkout@v3
         name: Checkout Repository
         with:
