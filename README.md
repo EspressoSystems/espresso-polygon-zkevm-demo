@@ -4,7 +4,7 @@ This repo contains a demo where two rollups based on the Polygon zkEVM stack use
 and Data Availability (DA) instead of the Polygon zkEVM Sequencer and Ethereum
 L1 as DA.
 
-The is repo consists mainly of rust code, docker services and end-to-end tests
+The repo consists mainly of rust code, docker services and end-to-end tests
 to tie together the following code bases:
 
 - The [Espresso Sequencer](
