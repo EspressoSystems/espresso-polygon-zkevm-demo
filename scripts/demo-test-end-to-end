@@ -17,7 +17,7 @@ cleanup(){
 set -a; source .env; set +a;
 
 echo "Starting demo..."
-just demo --force-recreate -d
+just demo -d
 
 export ADDR=0x1234567890123456789012345678901234567890
 export RPC_1=http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT
