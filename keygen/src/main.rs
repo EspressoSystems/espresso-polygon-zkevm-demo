@@ -1,7 +1,8 @@
 use clap::Parser;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use ethers::signers::{Signer, Wallet};
+use ethers::{prelude::k256::ecdsa::SigningKey, types::H160, utils::secret_key_to_address};
 
 #[derive(Parser, Clone, Debug)]
 struct Options {
@@ -23,6 +24,13 @@ struct Options {
     filename: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct KeystoreData {
+    #[serde(flatten)]
+    inner: serde_json::Value,
+    address: H160,
+}
+
 fn main() {
     let opt = Options::parse();
     let dir = opt.keystore_dir;
@@ -30,14 +38,16 @@ fn main() {
     let password = opt.password;
 
     let mut rng = rand::thread_rng();
-    let (wallet, _) = Wallet::new_keystore(dir.clone(), &mut rng, password, Some(&name)).unwrap();
-    let address = wallet.address();
+    let (secret, _) = eth_keystore::new(dir.clone(), &mut rng, password, Some(&name)).unwrap();
+    let signer = SigningKey::from_bytes(secret.as_slice().into()).unwrap();
+    let address = secret_key_to_address(&signer);
 
-    let mut buf: PathBuf = dir;
-    buf.push(name);
+    let mut full_path: PathBuf = dir;
+    full_path.push(name);
+
     println!(
         "New Keystore with address {:?} created at {}",
         address,
-        buf.display()
+        full_path.display()
     )
 }
