@@ -1,6 +1,6 @@
 # Espresso Sequencer - Polygon zkEVM - Integration Demo
 
-This repo contains a demo where two Polygon zkEVMs use the Espresso Sequencer
+This repo contains a demo where two rollups based on the Polygon zkEVM stack use the Espresso Sequencer
 and Data Availability (DA) instead of the Polygon zkEVM Sequencer and Ethereum
 L1 as DA.
 
