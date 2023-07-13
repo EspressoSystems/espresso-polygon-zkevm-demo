@@ -58,13 +58,12 @@ use async_std::{
 };
 use ethers::prelude::*;
 use futures::{
-    stream::{self, Peekable, Stream},
+    stream::{self, Stream},
     FutureExt, StreamExt, TryFutureExt,
 };
 use hotshot_query_service::availability::BlockQueryData;
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
 use std::time::Duration;
 use tide_disco::{error::ServerError, App, Error, StatusCode};
 use zkevm::{polygon_zkevm::encode_transactions, ZkEvm};
@@ -173,31 +172,24 @@ pub async fn serve(opt: &Options) {
 
 // Mapping from L2 block numbers to L1 block numbers.
 struct BlockMapping {
+    // L1 RPC service.
+    l1: Provider<Ws>,
     // L1 block numbers indexed by L2 block number.
     l1_blocks: Vec<u64>,
-    // Stream of L1 blocks.
-    l1_block_stream: Peekable<Pin<Box<dyn Stream<Item = Block<H256>> + Send + Sync>>>,
     // Output stream of L2->L1 mappings.
     output_stream: BroadcastSender<(u64, u64)>,
 }
 
 impl BlockMapping {
-    async fn new<M>(l1: M, hotshot: HotShotClient) -> Result<Arc<RwLock<Self>>, M::Error>
-    where
-        M: Middleware + 'static,
-        M::Provider: PubsubClient + 'static,
-        <M::Provider as PubsubClient>::NotificationStream: Sync,
-    {
-        // Get a stream of L1 blocks.
-        let l1 = Box::leak(Box::new(l1));
-        let l1_block_stream: Pin<Box<dyn Stream<Item = Block<H256>> + Send + Sync>> =
-            Box::pin(l1.subscribe_blocks().await?);
-
+    async fn new(
+        l1: Provider<Ws>,
+        hotshot: HotShotClient,
+    ) -> Result<Arc<RwLock<Self>>, ProviderError> {
         // Create the mapping. This object will be shared between the background task responsible
         // for updating it and the web server, which uses it to respond to requests.
         let mapping = Arc::new(RwLock::new(Self {
+            l1,
             l1_blocks: vec![],
-            l1_block_stream: l1_block_stream.peekable(),
             output_stream: channel().0,
         }));
         let ret = mapping.clone();
@@ -230,14 +222,17 @@ impl BlockMapping {
                         continue;
                     }
                 };
-                if let Err(err) = mapping
+
+                // We may encounter recoverable errors when appending the block; e.g. the L1 RPC may
+                // have a temporary outage. Retry until we succeed.
+                while let Err(err) = mapping
                     .write()
                     .await
                     .append(block.timestamp().unix_timestamp() as u64)
                     .await
                 {
-                    tracing::error!("Unexpected error appending L2 block: {err}");
-                    return;
+                    tracing::error!("Unexpected error appending L2 block, retrying: {err}");
+                    sleep(Duration::from_secs(1)).await;
                 }
             }
             tracing::warn!("Unexpected end of L2 block stream");
@@ -250,24 +245,35 @@ impl BlockMapping {
         tracing::debug!("Matching L2 block with L1 block, timestamp={timestamp}");
 
         // Skip L1 blocks until we find one which is newer than the new L2 block. The most recent L1
-        // block before this terminal block is the one corresponding to the L2 block.
+        // block before that terminal block is the one corresponding to the L2 block.
         let mut l1_block_num = self.l1_blocks.last().cloned().unwrap_or(0);
         loop {
-            let next_l1_block = match Pin::new(&mut self.l1_block_stream).peek().now_or_never() {
-                Some(Some(block)) => block,
-                Some(None) => Err("unexpected end of L1 block stream")?,
-                None => {
-                    // If the next block in the L1 stream is not ready immediately (ie awaiting it
-                    // would have blocked) we can safely assume that the most recent L1 block we've
-                    // seen is the one corresponding to this L2 block, since the next L1 block
-                    // (which has not been produced yet) will necessarily be newer than the L2 block
-                    // (which has been produced).
+            let next_l1_block = match self.l1.get_block(l1_block_num + 1).await {
+                Ok(Some(block)) => block,
+                Ok(None) => {
+                    // If the the next L1 block has not been produced yet, we can safely assume that
+                    // the most recent L1 block we've seen is the one corresponding to this L2
+                    // block, since the next L1 block will necessarily be newer than the L2 block
+                    // (which has already been produced).
                     //
                     // This is an important optimization; by never blocking on production of the
                     // next L1 block, we ensure preconfirmations can proceed faster than the L1
                     // block rate.
+                    //
+                    // Note, though, that this is not actually completely safe. If the clock on the
+                    // HotShot node that produced the L2 block timestamp is out of sync with the
+                    // clock on the L1 node, the next L1 block may still have a timestamp earlier
+                    // than the L2 block -- even though, in fact, it was produced later.
+                    // Synchronizing clocks in a distributed system can be solved by moving time
+                    // stamp generation into the consensus protocol, which is the long term solution
+                    // that we are working around anyways. For short term demo purposes, this hack
+                    // should be sufficient.
+                    tracing::debug!(
+                        "next L1 block has not been produced, using last known block {l1_block_num}"
+                    );
                     break;
                 }
+                Err(err) => Err(format!("error getting L1 block {l1_block_num}: {err}"))?,
             };
             tracing::debug!(
                 "L1 block {:?} has timestamp {}",
@@ -277,11 +283,7 @@ impl BlockMapping {
             if next_l1_block.timestamp <= timestamp.into() {
                 // This L1 block is older than the L2 block; it could be the corresponding block.
                 // Remember and continue looking at more L1 blocks.
-                l1_block_num = next_l1_block
-                    .number
-                    .ok_or("finalized L1 block has no number")?
-                    .as_u64();
-                self.l1_block_stream.next().await;
+                l1_block_num += 1;
             } else {
                 // We've found a block newer than the L2 block; the last L1 block we saw must be
                 // the corresponding one.
