@@ -16,6 +16,8 @@ cleanup(){
 # Load env vars
 set -a; source .env; set +a;
 
+just down
+
 echo "Starting demo..."
 just demo -d
 
