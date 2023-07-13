@@ -34,8 +34,11 @@ When the demo is running you can use wallets derived from the
 `"test test test test test test test test test test test junk"`
 mnemonic to interact with the RPCs of the two zkevm-nodes.
 
-One way to interact with the demo is to add custom networks in Metamask with the
-following parameters
+After installing [Metamask](https://metamask.io), click "Import an existing
+wallet" and use the
+`"test test test test test test test test test test test junk"` mnemonic.
+
+Add custom networks in Metamask with the following parameters
 
 - Network name: espresso-polygon-zkevm-1
 - New RPC URL: http://localhost:18126
