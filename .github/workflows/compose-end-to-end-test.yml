@@ -18,24 +18,21 @@ env:
 jobs:
   end-to-end-test:
     runs-on: self-hosted
+
+    container:
+      image: mgoltzsche/podman
+      options: --privileged
     steps:
-
-      - name: Install dependencies
-        run: sudo apt-get install -y jq
-
-      - uses: extractions/setup-just@v1
-
       - uses: styfle/cancel-workflow-action@0.11.0
         name: Cancel Outdated Builds
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
 
-      - name: Prevent git permission errors
+      - name: Install dependencies
         run: |
-          git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo
-          git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo/zkevm-contracts
-          git config --global --add safe.directory /__w/espresso-polygon-zkevm-demo/espresso-polygon-zkevm-demo/zkevm-node
+          apk update
+          apk add docker-cli-compose jq just
 
       - uses: actions/checkout@v3
         name: Checkout Repository
@@ -52,4 +49,4 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run docker compose integration test
-        run: env COMPOSE_CMD=docker-compose scripts/demo-test-end-to-end
+        run: scripts/demo-test-end-to-end
