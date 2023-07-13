@@ -30,25 +30,26 @@ depicted and implemented.
 - To stop the demo: `just down`
 
 ## Metamask
-When the demo is running you can use wallets derived from the
-`"test test test test test test test test test test test junk"`
-mnemonic to interact with the RPCs of the two zkevm-nodes.
+- If not yet set up, install [Metamask](https://metamask.io/) and set up a new
+  wallet.
+- In metamask on the three dots in the top right corner, then "Expand view".
+- On the newly opened page click on the three dots in the top right corner, then
+  "Networks" -> "Add a network" -> "Add a network manually".
 
-After installing [Metamask](https://metamask.io), click "Import an existing
-wallet" and use the
-`"test test test test test test test test test test test junk"` mnemonic.
-
-Add custom networks in Metamask with the following parameters
+Use the following parameters:
 
 - Network name: espresso-polygon-zkevm-1
 - New RPC URL: http://localhost:18126
 - Chain ID: 1001
 
-And
+For interacting with the second rollup add a network with these parameters instead:
 
 - Network name: espresso-polygon-zkevm-2
 - New RPC URL: http://localhost:28126
 - Chain ID: 1002
+
+For "Currency symbol" anything can be set and "Block explorer URL" should be
+left blank.
 
 ## Faucet
 To request funds from the local faucet run
