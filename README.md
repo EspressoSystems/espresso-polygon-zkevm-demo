@@ -32,7 +32,7 @@ depicted and implemented.
 ## Metamask
 - If not yet set up, install [Metamask](https://metamask.io/) and set up a new
   wallet.
-- In metamask on the three dots in the top right corner, then "Expand view".
+- In metamask click on the three dots in the top right corner, then "Expand view".
 - On the newly opened page click on the three dots in the top right corner, then
   "Networks" -> "Add a network" -> "Add a network manually".
 
