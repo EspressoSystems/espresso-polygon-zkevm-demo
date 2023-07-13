@@ -1,8 +1,7 @@
 use clap::Parser;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use ethers::{prelude::k256::ecdsa::SigningKey, types::H160, utils::secret_key_to_address};
+use ethers::{prelude::k256::ecdsa::SigningKey, utils::secret_key_to_address};
 
 #[derive(Parser, Clone, Debug)]
 struct Options {
@@ -22,13 +21,6 @@ struct Options {
         default_value = "aggregator.keystore"
     )]
     filename: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct KeystoreData {
-    #[serde(flatten)]
-    inner: serde_json::Value,
-    address: H160,
 }
 
 fn main() {

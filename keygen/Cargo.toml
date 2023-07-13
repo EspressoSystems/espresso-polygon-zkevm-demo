@@ -9,5 +9,3 @@ clap = { version = "4.3.9", features = ["derive", "env"] }
 eth-keystore = { version = "0.5.0", features = ["geth-compat"] }
 ethers = "2.0.7"
 rand = "0.8.5"
-serde = { version = "1.0.171", features = ["derive"] }
-serde_json = "1.0.102"
