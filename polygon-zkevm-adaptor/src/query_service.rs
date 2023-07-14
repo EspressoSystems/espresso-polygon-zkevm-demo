@@ -77,10 +77,8 @@ struct State {
 }
 
 pub async fn serve(opt: &Options) {
-    let mut l1_provider = opt.l1_provider.clone();
-    l1_provider.set_scheme("ws").unwrap();
     let l1 = loop {
-        match Provider::connect(l1_provider.clone()).await {
+        match Provider::try_from(opt.l1_provider.to_string()) {
             Ok(l1) => break l1,
             Err(err) => {
                 tracing::warn!("error connecting to L1, retrying: {err}");
@@ -173,7 +171,7 @@ pub async fn serve(opt: &Options) {
 // Mapping from L2 block numbers to L1 block numbers.
 struct BlockMapping {
     // L1 RPC service.
-    l1: Provider<Ws>,
+    l1: Provider<Http>,
     // L1 block numbers indexed by L2 block number.
     l1_blocks: Vec<u64>,
     // Output stream of L2->L1 mappings.
@@ -182,7 +180,7 @@ struct BlockMapping {
 
 impl BlockMapping {
     async fn new(
-        l1: Provider<Ws>,
+        l1: Provider<Http>,
         hotshot: HotShotClient,
     ) -> Result<Arc<RwLock<Self>>, ProviderError> {
         // Create the mapping. This object will be shared between the background task responsible

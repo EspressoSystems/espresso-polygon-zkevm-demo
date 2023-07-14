@@ -372,6 +372,13 @@ impl ZkEvmNode {
         wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 100)
             .await
             .expect("Failed to start zkevm-node");
+        wait_for_rpc(
+            &env.l2_preconfirmations_provider(),
+            Duration::from_secs(1),
+            100,
+        )
+        .await
+        .expect("Failed to start preconfirmations node");
 
         Self {
             env,
