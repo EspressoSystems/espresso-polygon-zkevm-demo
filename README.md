@@ -128,3 +128,7 @@ state of one of those submodules you can:
 - run `git submodule update` before making changes,
 - or configure git to automatically update submodules for the repository with
   `git config submodule.recurse true` inside the repository.
+
+# Disclaimer
+
+**DISCLAIMER:** This software is provided "as is" and its security has not been externally audited. Use at your own risk.
