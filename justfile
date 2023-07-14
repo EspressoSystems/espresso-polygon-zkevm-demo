@@ -5,17 +5,21 @@ compose-anvil := compose-base + " -f docker-compose-anvil.yaml"
 compose := compose-base + " -f docker-compose-geth.yaml"
 compose-zkevm-node := "docker compose --project-name demo -f permissionless-docker-compose.yaml -f docker-compose-geth.yaml"
 
+default:
+    just --list
+
 zkevm-node:
     cargo run --all-features --bin zkevm-node
 
 demo *args:
-    cargo run --all-features --bin demo -- {{args}}
+   scripts/check-architecture
+   {{compose}} up --wait {{args}}
 
 down:
    {{compose}} down
 
 pull:
-    {{compose}} pull && {{compose-anvil}} pull
+    {{compose-anvil}} pull && {{compose}} pull
 
 hardhat *args:
     cd zkevm-contracts && nix develop -c bash -c "npx hardhat {{args}}"
@@ -42,7 +46,8 @@ build-docker-zkevm-node:
     cd zkevm-node && nix develop -c bash -c "make build-docker && docker tag zkevm-node:latest ghcr.io/espressosystems/zkevm-node:hotshot-integration"
 
 build-docker-l1-geth:
-    cd zkevm-contracts && nix develop -c bash -c "npm run docker:contracts && docker tag hermeznetwork/geth-zkevm-contracts:latest ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration"
+    scripts/build-l1-image
+    docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main  -f docker/geth.Dockerfile .
 
 build-docker: build-docker-l1-geth build-docker-zkevm-node
 

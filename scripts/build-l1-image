@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# This script builds a docker image with a geth node and deploys the contracts to it.
+#
+# Usage
+#
+#   ./build-l1-image [rpc-port]
+#
+# The default rpc port is 8545.
+#
+# The script may print some errors during deployment but will retry on expected
+# errors a few times. If it exits with a zero exit code it was successful.
+#
+# This script only works correctly if run from the root of the git repo.
+set -euo pipefail
+
+trap "exit" INT TERM
+trap cleanup EXIT
+cleanup(){
+    docker stop $NAME > /dev/null 2>&1 || true
+    docker rm $NAME > /dev/null 2>&1 || true
+}
+
+RPC_PORT=${1:-8545}
+RPC_URL=http://localhost:$RPC_PORT
+TAG="geth-with-contracts:dev"
+NAME=espresso-polygon-zkevm-demo-l1
+DATA_DIR="$PWD/.espresso-geth-dev-data-dir"
+
+if [ -d "$DATA_DIR" ]; then
+    echo "Data directory $DATA_DIR already exists. Please remove it first."
+    exit 1
+fi
+
+mkdir -p $DATA_DIR
+
+echo "Removing existing docker container if it exists."
+docker stop $NAME > /dev/null 2>&1 || true
+docker rm $NAME > /dev/null 2>&1 || true
+
+echo "Starting geth node."
+
+# The `--syncmode full` argument is required to avoid "missing trie node" errors.
+docker run -d -v $DATA_DIR:/geth --name $NAME -p $RPC_PORT:8545 \
+    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth --syncmode full --gcmode archive
+
+while ! nc -z localhost $RPC_PORT > /dev/null 2>&1; do
+  echo "Waiting for port $RPC_PORT ..."
+  sleep 1
+done
+
+echo "Funding accounts."
+
+# Retry a few times because sending transactions may still fail for a while
+# after the RPC is up.
+for try in $(seq 1 5); do
+    echo "Transfer from coinbase to account 0"
+    geth --exec \
+        'eth.sendTransaction({from: eth.coinbase, to: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", value: "1000000000000000000000000000"})' \
+        attach http://localhost:$RPC_PORT && break || sleep 1;
+done
+echo "Transfer done!"
+
+echo "Transfer from coinbase to account 1"
+geth --exec \
+    'eth.sendTransaction({from: eth.coinbase, to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", value: "1000000000000000000000000000"})' \
+    attach http://localhost:$RPC_PORT
+echo "Transfer done!"
+
+# Deploy the contracts. Retry a few times because sending transactions may fail
+# for a while after having funded the account.
+for try in $(seq 1 5); do
+    echo "Attempting contract deployment."
+    cargo run --bin deploy -- --provider-url $RPC_URL && break || sleep 1;
+done
+
+echo "Contract deployment completed."
+
+cat deployment.json
+
+docker stop $NAME
+HASH=$(docker commit $NAME)
+
+echo "Tagging image $HASH as $TAG"
+docker tag $HASH $TAG
+
+echo "Asking for root permissions to make $USER the owner of files $DATA_DIR"
+sudo chown -R $USER $DATA_DIR

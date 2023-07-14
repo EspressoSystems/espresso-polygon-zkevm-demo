@@ -8,10 +8,6 @@ name = "zkevm-node"
 required-features = ["testing"]
 
 [[bin]]
-name = "demo"
-required-features = ["testing"]
-
-[[bin]]
 name = "load-test"
 required-features = ["testing"]
 

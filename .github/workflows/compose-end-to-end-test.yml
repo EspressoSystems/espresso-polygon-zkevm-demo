@@ -1,0 +1,53 @@
+name: Compose end-to-end test
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      # YYYYMMDD
+      - "20[0-9][0-9][0-1][0-9][0-3][0-9]*"
+  pull_request:
+    branches:
+  workflow_dispatch:
+
+env:
+  RUST_LOG: info,libp2p=off
+
+jobs:
+  end-to-end-test:
+    # The tests that use docker compose currently only work on github's
+    # public runners.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /proc/cpuinfo
+        run: cat /proc/cpuinfo
+
+      - name: Abort early if Intel ADX instructions (required by zkevm-prover) is not available
+        run: cat /proc/cpuinfo | grep -q ' adx ' || ( echo "Retry CI in the hopes of getting another CPU" && exit 1 )
+
+      - uses: extractions/setup-just@v1
+
+      - uses: styfle/cancel-workflow-action@0.11.0
+        name: Cancel Outdated Builds
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v3
+        name: Checkout Repository
+        with:
+          submodules: true
+          token: ${{ secrets.ORG_GITHUB_PAT }}
+
+      - name: Login to Github Container Repo
+        uses: docker/login-action@v2
+        # if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run docker compose integration test
+        run: scripts/demo-test-end-to-end

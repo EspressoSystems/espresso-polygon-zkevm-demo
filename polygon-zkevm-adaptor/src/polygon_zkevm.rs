@@ -38,12 +38,12 @@ impl Default for ZkEvmEnv {
             sequencer_api_port: 50001,
             sequencer_storage_path: "/store/sequencer".into(),
             l1_port: 8545,
-            l2_port: 8126,
-            l2_preconfirmations_port: 8127,
+            l2_port: 18126,
+            l2_preconfirmations_port: 18127,
             l1_chain_id: None,
             l2_chain_id: None,
             sequencer_mnemonic: TEST_MNEMONIC.into(),
-            adaptor_rpc_port: 8130,
+            adaptor_rpc_port: 8127,
             adaptor_query_port: 50100,
         }
     }
@@ -92,15 +92,17 @@ impl ZkEvmEnv {
             sequencer_api_port: dotenv["ESPRESSO_SEQUENCER_API_PORT"].parse().unwrap(),
             sequencer_storage_path: dotenv["ESPRESSO_SEQUENCER_STORAGE_PATH"].parse().unwrap(),
             l1_port: dotenv["ESPRESSO_ZKEVM_L1_PORT"].parse().unwrap(),
-            l2_port: dotenv["ESPRESSO_ZKEVM_L2_PORT"].parse().unwrap(),
-            l2_preconfirmations_port: dotenv["ESPRESSO_ZKEVM_PRECONFIRMATIONS_L2_PORT"]
+            l2_port: dotenv["ESPRESSO_ZKEVM_1_L2_PORT"].parse().unwrap(),
+            l2_preconfirmations_port: dotenv["ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT"]
                 .parse()
                 .unwrap(),
             l1_chain_id: None,
             l2_chain_id: None,
-            sequencer_mnemonic: dotenv["ESPRESSO_ZKEVM_SEQUENCER_MNEMONIC"].clone(),
-            adaptor_rpc_port: dotenv["ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT"].parse().unwrap(),
-            adaptor_query_port: dotenv["ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT"].parse().unwrap(),
+            sequencer_mnemonic: dotenv["ESPRESSO_SEQUENCER_ETH_MNEMONIC"].clone(),
+            adaptor_rpc_port: dotenv["ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT"].parse().unwrap(),
+            adaptor_query_port: dotenv["ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"]
+                .parse()
+                .unwrap(),
         }
     }
 
@@ -118,37 +120,37 @@ impl ZkEvmEnv {
             )
             .env("ESPRESSO_ZKEVM_L1_PORT", self.l1_port.to_string())
             .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider().as_ref())
-            .env("ESPRESSO_ZKEVM_L2_PORT", self.l2_port.to_string())
+            .env("ESPRESSO_ZKEVM_1_L2_PORT", self.l2_port.to_string())
             .env(
-                "ESPRESSO_ZKEVM_PRECONFIRMATIONS_L2_PORT",
+                "ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT",
                 self.l2_preconfirmations_port.to_string(),
             )
-            .env("ESPRESSO_ZKEVM_L2_PROVIDER", self.l2_provider().as_ref())
+            .env("ESPRESSO_ZKEVM_1_L2_PROVIDER", self.l2_provider().as_ref())
             .env(
-                "ESPRESSO_ZKEVM_SEQUENCER_MNEMONIC",
+                "ESPRESSO_ZKEVM_1_SEQUENCER_MNEMONIC",
                 &self.sequencer_mnemonic,
             )
             .env(
-                "ESPRESSO_ZKEVM_ADAPTOR_RPC_PORT",
+                "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT",
                 self.adaptor_rpc_port.to_string(),
             )
             .env(
-                "ESPRESSO_ZKEVM_ADAPTOR_RPC_URL",
+                "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL",
                 format!("http://host.docker.internal:{}", self.adaptor_rpc_port),
             )
             .env(
-                "ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT",
+                "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT",
                 self.adaptor_query_port.to_string(),
             )
             .env(
-                "ESPRESSO_ZKEVM_ADAPTOR_QUERY_URL",
+                "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL",
                 format!("http://host.docker.internal:{}", self.adaptor_query_port),
             );
         if let Some(id) = self.l1_chain_id {
             cmd.env("ESPRESSO_ZKEVM_L1_CHAIN_ID", id.to_string());
         }
         if let Some(id) = self.l2_chain_id {
-            cmd.env("ESPRESSO_ZKEVM_L2_CHAIN_ID", id.to_string());
+            cmd.env("ESPRESSO_ZKEVM_1_L2_CHAIN_ID", id.to_string());
         }
         cmd
     }
@@ -333,15 +335,15 @@ impl ZkEvmNode {
         // Start zkevm-node
         Self::compose_cmd_prefix(&env, &project_name, &layer1_backend)
             .env(
-                "ESPRESSO_ZKEVM_ROLLUP_ADDRESS",
+                "ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS",
                 format!("{:?}", l1.rollup.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_MATIC_ADDRESS",
+                "ESPRESSO_ZKEVM_1_MATIC_ADDRESS",
                 format!("{:?}", l1.matic.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_GER_ADDRESS",
+                "ESPRESSO_ZKEVM_1_GER_ADDRESS",
                 format!("{:?}", l1.global_exit_root.address()),
             )
             .env(
@@ -349,17 +351,17 @@ impl ZkEvmNode {
                 format!("{:?}", l1.hotshot.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_GENBLOCKNUMBER",
+                "ESPRESSO_ZKEVM_1_GENBLOCKNUMBER",
                 l1.gen_block_number.to_string(),
             )
             .arg("up")
-            .arg("zkevm-prover")
-            .arg("zkevm-aggregator")
-            .arg("zkevm-state-db")
-            .arg("zkevm-preconfirmations-state-db")
-            .arg("zkevm-permissionless-node")
-            .arg("zkevm-preconfirmations-node")
-            .arg("zkevm-eth-tx-manager")
+            .arg("zkevm-1-prover")
+            .arg("zkevm-1-aggregator")
+            .arg("zkevm-1-state-db")
+            .arg("zkevm-1-preconfirmations-state-db")
+            .arg("zkevm-1-permissionless-node")
+            .arg("zkevm-1-preconfirmations-node")
+            .arg("zkevm-1-eth-tx-manager")
             .arg("-V")
             .arg("--force-recreate")
             .arg("--abort-on-container-exit")
@@ -392,27 +394,5 @@ impl ZkEvmNode {
 impl Drop for ZkEvmNode {
     fn drop(&mut self) {
         self.stop();
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-
-    // This test currently causes an OOM on the GitHub runners, so it is disabled to avoid CI
-    // failures.
-    #[async_std::test]
-    #[ignore]
-    async fn test_two_nodes() {
-        setup_logging();
-        setup_backtrace();
-
-        let node1 =
-            async_std::task::spawn(ZkEvmNode::start("node-1".to_string(), Layer1Backend::Anvil));
-        let node2 =
-            async_std::task::spawn(ZkEvmNode::start("node-2".to_string(), Layer1Backend::Anvil));
-        node2.await;
-        node1.await;
     }
 }

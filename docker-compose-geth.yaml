@@ -1,8 +1,37 @@
 version: "3"
 services:
   zkevm-mock-l1-network:
-    image: ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration
+    # This image is pinned because the deployment step is not deterministic. The
+    # block number at which the contracts are deployed changes between runs.
+    # image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts@sha256:8dfb508b77af42e511553e609fa6e0ef68818852737085f40cc5c769dc0ccf96
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
+    command: [
+      "--http",
+      "--http.api",
+      "admin,eth,debug,miner,net,txpool,personal,web3",
+      "--http.addr",
+      "0.0.0.0",
+      "--http.port",
+      "$ESPRESSO_ZKEVM_L1_PORT",
+      "--http.corsdomain",
+      "*",
+      "--http.vhosts" ,
+      "*",
+      "--ws",
+      "--ws.origins",
+      "*",
+      "--ws.addr",
+      "0.0.0.0",
+      "--ws.port",
+      "$ESPRESSO_ZKEVM_L1_PORT",
+      "--dev",
+      "--datadir",
+      "/geth",
+      "--syncmode",
+      "full",
+      "--gcmode",
+      "archive"
+    ]
     ports:
       - $ESPRESSO_ZKEVM_L1_PORT:$ESPRESSO_ZKEVM_L1_PORT
-    command: ["--http", "--http.api", "admin,eth,debug,miner,net,txpool,personal,web3",  "--http.addr", "0.0.0.0","--http.port", "$ESPRESSO_ZKEVM_L1_PORT", "--http.corsdomain", "*", "--http.vhosts" ,"*", "--ws", "--ws.origins", "*", "--ws.addr", "0.0.0.0", "--ws.port", "$ESPRESSO_ZKEVM_L1_PORT", "--dev", "--dev.period", "$ESPRESSO_ZKEVM_L1_BLOCK_PERIOD", "--datadir", "/geth_data", "--syncmode", "full"]
     stop_signal: SIGKILL
