@@ -234,7 +234,8 @@ async fn test_preconfirmations() {
 
     // Check that we got the preconfirmation first.
     tracing::info!(
-        "preconfirmation received at {pre_conf:?}, final confirmation received at {slow_conf:?}"
+        "preconfirmation received at {pre_conf:?}, final confirmation received at {slow_conf:?} ({:?} difference)",
+        slow_conf - pre_conf
     );
     assert!(pre_conf < slow_conf);
 }

@@ -106,6 +106,28 @@ services:
       timeout: 2s
       retries: 20
 
+  zkevm-1-preconfirmations-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+    # The prover does not support configuration via env vars. The only difference between the
+    # preconfirmations prover and the regular prover is the state database that they use.
+      - ./zkevm-node/test/config/test.prover.1.preconf.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-1-preconfirmations-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 1s
+      timeout: 2s
+      retries: 20
+
   zkevm-1-permissionless-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
     ports:
@@ -183,8 +205,8 @@ services:
       - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_1_GENBLOCKNUMBER
       - ZKEVM_NODE_SYNCHRONIZER_PRECONFIRMATIONSSYNCINTERVAL=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_SYNC_INTERVAL
       - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
-      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
-      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_EXECUTOR_URI
     volumes:
       - ./zkevm-node/test/sequencer.keystore:/pk/keystore
       - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
@@ -361,6 +383,28 @@ services:
       timeout: 2s
       retries: 20
 
+  zkevm-2-preconfirmations-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+    # The prover does not support configuration via env vars. The only difference between the
+    # preconfirmations prover and the regular prover is the state database that they use.
+      - ./zkevm-node/test/config/test.prover.2.preconf.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-2-preconfirmations-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 1s
+      timeout: 2s
+      retries: 20
+
   zkevm-2-permissionless-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
     ports:
@@ -438,8 +482,8 @@ services:
       - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_2_GENBLOCKNUMBER
       - ZKEVM_NODE_SYNCHRONIZER_PRECONFIRMATIONSSYNCINTERVAL=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_SYNC_INTERVAL
       - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
-      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
-      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_EXECUTOR_URI
     volumes:
       - ./zkevm-node/test/sequencer.keystore:/pk/keystore
       - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
