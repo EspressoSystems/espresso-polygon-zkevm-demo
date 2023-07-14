@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+if [[ $(uname -p) == arm* ]]; then
+    cat << EOF
+Error: running on ARM architecture:
+
+It's currently not possible to run this demo on ARM architecture CPUs,
+including Macs with M1 or M2 CPUs. See
+
+    https://github.com/0xPolygonHermez/zkevm-prover/issues/235
+
+for more information. You can however run the example rollup demo of the
+Espresso Sequencer:
+
+   https://github.com/EspressoSystems/espresso-sequencer/tree/main/example-l2
+
+EOF
+    exit 1
+fi
