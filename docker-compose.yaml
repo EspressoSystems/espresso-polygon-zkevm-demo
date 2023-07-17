@@ -87,6 +87,9 @@ services:
     depends_on:
       sequencer0:
         condition: service_started
+    profiles:
+      - zkevm1
+      - zkevm1-preconfirmations
 
   polygon-zkevm-2-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
@@ -105,3 +108,6 @@ services:
     depends_on:
       sequencer0:
         condition: service_started
+    profiles:
+      - zkevm2
+      - zkevm2-preconfirmations

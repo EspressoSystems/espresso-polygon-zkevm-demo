@@ -11,7 +11,9 @@ default:
 zkevm-node:
     cargo run --all-features --bin zkevm-node
 
-demo *args:
+demo *args: (demo-profiles "zkevm1" "zkevm1-preconfirmations" "zkevm2" "zkevm2-preconfirmations" args)
+
+demo-profiles *args:
     scripts/check-architecture
 
     # When we build the L1 image locally, we create an env file with information about the
@@ -27,7 +29,7 @@ demo *args:
     # last file passed with `--env-file`. Docker Desktop for Mac comes with docker-compose 2.2, and
     # there doesn't seem to be an obvious way to update it. So for convenience, we support older
     # versions by manually sourcing .env.geth, overriding any variables which were also set in .env.
-    scripts/source-dotenv .env.geth {{compose}} up --wait {{args}}
+    scripts/source-dotenv .env.geth scripts/demo-with-profiles {{args}}
 
 down *args:
    {{compose}} down {{args}}

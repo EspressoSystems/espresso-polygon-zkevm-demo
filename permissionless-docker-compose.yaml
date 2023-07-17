@@ -38,6 +38,8 @@ services:
       # Avoid running DB migrations at the same time:
       zkevm-1-permissionless-node:
         condition: service_healthy
+    profiles:
+      - "zkevm1"
 
   zkevm-1-state-db:
     image: postgres
@@ -58,6 +60,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm1"
 
   zkevm-1-preconfirmations-state-db:
     image: postgres
@@ -82,6 +86,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm1-preconfirmations"
 
   zkevm-1-prover:
     image: hermeznetwork/zkevm-prover:88f3835
@@ -105,6 +111,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm1"
 
   zkevm-1-preconfirmations-prover:
     image: hermeznetwork/zkevm-prover:88f3835
@@ -127,6 +135,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm1-preconfirmations"
 
   zkevm-1-permissionless-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -177,6 +187,8 @@ services:
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm1"
 
   zkevm-1-preconfirmations-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -218,7 +230,7 @@ services:
     depends_on:
       zkevm-mock-l1-network:
         condition: service_started
-      zkevm-1-state-db:
+      zkevm-1-preconfirmations-state-db:
         condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is
@@ -228,6 +240,8 @@ services:
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm1-preconfirmations"
 
   zkevm-1-eth-tx-manager:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -256,6 +270,8 @@ services:
     depends_on:
       zkevm-1-permissionless-node:
         condition: service_healthy
+    profiles:
+      - "zkevm1"
 
   zkevm-1-faucet:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
@@ -279,6 +295,8 @@ services:
       interval: 2s
       retries: 10
       timeout: 1s
+    profiles:
+      - "zkevm1"
 
   # Polygon zkevm-node 2
   zkevm-2-aggregator:
@@ -318,6 +336,8 @@ services:
       # Avoid running DB migrations at the same time:
       zkevm-2-permissionless-node:
         condition: service_healthy
+    profiles:
+      - "zkevm2"
 
   zkevm-2-state-db:
     image: postgres
@@ -338,6 +358,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm2"
 
   zkevm-2-preconfirmations-state-db:
     image: postgres
@@ -362,6 +384,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm2-preconfirmations"
 
   zkevm-2-prover:
     image: hermeznetwork/zkevm-prover:88f3835
@@ -382,6 +406,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm2"
 
   zkevm-2-preconfirmations-prover:
     image: hermeznetwork/zkevm-prover:88f3835
@@ -404,6 +430,8 @@ services:
       interval: 1s
       timeout: 2s
       retries: 20
+    profiles:
+      - "zkevm2-preconfirmations"
 
   zkevm-2-permissionless-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -454,6 +482,8 @@ services:
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm2"
 
   zkevm-2-preconfirmations-node:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -495,7 +525,7 @@ services:
     depends_on:
       zkevm-mock-l1-network:
         condition: service_started
-      zkevm-2-state-db:
+      zkevm-2-preconfirmations-state-db:
         condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is
@@ -505,6 +535,8 @@ services:
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm2-preconfirmations"
 
   zkevm-2-eth-tx-manager:
     image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
@@ -533,6 +565,8 @@ services:
     depends_on:
       zkevm-2-permissionless-node:
         condition: service_healthy
+    profiles:
+      - "zkevm2"
 
   zkevm-2-faucet:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
@@ -556,3 +590,5 @@ services:
       interval: 2s
       retries: 10
       timeout: 1s
+    profiles:
+      - "zkevm2"
