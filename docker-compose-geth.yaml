@@ -6,6 +6,8 @@ services:
     # image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts@sha256:8dfb508b77af42e511553e609fa6e0ef68818852737085f40cc5c769dc0ccf96
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
     command: [
+      "--verbosity",
+      "2",
       "--http",
       "--http.api",
       "admin,eth,debug,miner,net,txpool,personal,web3",
@@ -33,3 +35,5 @@ services:
     ports:
       - $ESPRESSO_ZKEVM_L1_PORT:$ESPRESSO_ZKEVM_L1_PORT
     stop_signal: SIGKILL
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:$ESPRESSO_ZKEVM_L1_PORT"]
