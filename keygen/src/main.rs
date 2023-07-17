@@ -17,7 +17,7 @@ struct Options {
 
     #[clap(
         long,
-        env = "ESPRESSO_ZKEVM_KEYSTORE_PASSWORD",
+        env = "ESPRESSO_ZKEVM_KEYSTORE_NAME",
         default_value = "aggregator.keystore"
     )]
     filename: String,
