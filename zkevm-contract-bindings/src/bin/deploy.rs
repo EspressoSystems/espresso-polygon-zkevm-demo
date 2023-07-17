@@ -89,9 +89,10 @@ pub struct Options {
 
     /// Output file path where deployment info will be stored.
     #[arg(
+        short,
         long,
         env = "ESPRESSO_ZKEVM_DEPLOY_OUTPUT",
-        default_value = "deployment.json"
+        default_value = "deployment.env"
     )]
     pub output_path: PathBuf,
 }
@@ -124,7 +125,7 @@ struct ZkEvmDeploymentOutput {
     /// The address of the bridge contract.
     bridge_address: Address,
     /// The address of the global exit root contract.
-    global_exit_root_address: Address,
+    ger_address: Address,
     /// The address of the verifier contract.
     verifier_address: Address,
     /// The block number when the rollup contract was deployed.
@@ -153,6 +154,17 @@ struct DeploymentOutput {
     zkevm_2_input: ZkEvmDeploymentInput,
     #[serde(flatten, with = "prefix_zkevm_2")]
     zkevm_2_output: ZkEvmDeploymentOutput,
+}
+
+impl DeploymentOutput {
+    fn to_dotenv(&self) -> String {
+        let mut dotenv = "# Deployment configuration\n".to_owned();
+        let json = serde_json::to_value(self).unwrap();
+        for (key, val) in json.as_object().unwrap() {
+            dotenv = format!("{dotenv}{key}={val}\n")
+        }
+        dotenv
+    }
 }
 
 /// Deploys the contracts for a demo Polygon ZkEVM.
@@ -256,7 +268,7 @@ async fn deploy_zkevm(
         rollup_address: rollup.address(),
         bridge_address: bridge.address(),
         matic_address: matic.address(),
-        global_exit_root_address: global_exit_root.address(),
+        ger_address: global_exit_root.address(),
         verifier_address: verifier.address(),
         genesis_block_number,
     })
@@ -311,8 +323,7 @@ async fn deploy(opts: Options) -> Result<()> {
         zkevm_2_output,
     };
 
-    let data = serde_json::to_string_pretty(&output)?;
-    std::fs::write(&opts.output_path, data)?;
+    std::fs::write(&opts.output_path, output.to_dotenv())?;
     tracing::info!("Wrote deployment output to {}", opts.output_path.display());
 
     Ok(())

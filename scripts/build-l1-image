@@ -7,6 +7,11 @@
 #
 # The default rpc port is 8545.
 #
+# Part of the process of creating the Docker image is to deploy the L1 contracts required by the
+# demo. The deployment is not completely deterministic; addresses may change. Therefore, this script
+# will generate an env file in .env.geth, which can be used to override certain environment
+# variables from .env in order to make the demo work with the new L1 image.
+#
 # The script may print some errors during deployment but will retry on expected
 # errors a few times. If it exits with a zero exit code it was successful.
 #
@@ -25,6 +30,7 @@ RPC_URL=http://localhost:$RPC_PORT
 TAG="geth-with-contracts:dev"
 NAME=espresso-polygon-zkevm-demo-l1
 DATA_DIR="$PWD/.espresso-geth-dev-data-dir"
+BLOCK_PERIOD="${ESPRESSO_ZKEVM_L1_BLOCK_PERIOD:-1}"
 
 if [ -d "$DATA_DIR" ]; then
     echo "Data directory $DATA_DIR already exists. Please remove it first."
@@ -41,7 +47,7 @@ echo "Starting geth node."
 
 # The `--syncmode full` argument is required to avoid "missing trie node" errors.
 docker run -d -v $DATA_DIR:/geth --name $NAME -p $RPC_PORT:8545 \
-    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period 1 --datadir /geth --syncmode full --gcmode archive
+    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period "$BLOCK_PERIOD" --datadir /geth --syncmode full --gcmode archive
 
 while ! nc -z localhost $RPC_PORT > /dev/null 2>&1; do
   echo "Waiting for port $RPC_PORT ..."
@@ -56,7 +62,7 @@ for try in $(seq 1 5); do
     echo "Transfer from coinbase to account 0"
     geth --exec \
         'eth.sendTransaction({from: eth.coinbase, to: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", value: "1000000000000000000000000000"})' \
-        attach http://localhost:$RPC_PORT && break || sleep 1;
+        attach http://localhost:$RPC_PORT && break || sleep "$BLOCK_PERIOD";
 done
 echo "Transfer done!"
 
@@ -70,12 +76,12 @@ echo "Transfer done!"
 # for a while after having funded the account.
 for try in $(seq 1 5); do
     echo "Attempting contract deployment."
-    cargo run --bin deploy -- --provider-url $RPC_URL && break || sleep 1;
+    cargo run --bin deploy -- --provider-url $RPC_URL -o .env.geth && break || sleep 1;
 done
 
 echo "Contract deployment completed."
-
-cat deployment.json
+echo "ESPRESSO_ZKEVM_L1_BLOCK_PERIOD=$BLOCK_PERIOD" >> .env.geth
+cat .env.geth
 
 docker stop $NAME
 HASH=$(docker commit $NAME)
