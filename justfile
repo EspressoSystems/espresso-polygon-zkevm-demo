@@ -12,6 +12,7 @@ zkevm-node:
     cargo run --all-features --bin zkevm-node
 
 demo *args:
+   scripts/check-architecture
    {{compose}} up --wait {{args}}
 
 down:

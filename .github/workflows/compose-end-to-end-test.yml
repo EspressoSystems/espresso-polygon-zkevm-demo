@@ -39,7 +39,6 @@ jobs:
         name: Checkout Repository
         with:
           submodules: true
-          token: ${{ secrets.ORG_GITHUB_PAT }}
 
       - name: Login to Github Container Repo
         uses: docker/login-action@v2

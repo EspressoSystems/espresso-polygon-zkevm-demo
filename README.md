@@ -29,6 +29,13 @@ depicted and implemented.
 - To start the demo: `just demo`.
 - To stop the demo: `just down`
 
+Note: It's currently not possible to run this demo on ARM architecture CPUs,
+including Macs with M1 or M2 CPUs. See [this
+issue](https://github.com/0xPolygonHermez/zkevm-prover/issues/235) for more
+information. You can however run the [example rollup
+demo](https://github.com/EspressoSystems/espresso-sequencer/tree/main/example-l2)
+of the Espresso Sequencer.
+
 ## Metamask
 - If not yet set up, install [Metamask](https://metamask.io/) and set up a new
   wallet.
@@ -121,3 +128,7 @@ state of one of those submodules you can:
 - run `git submodule update` before making changes,
 - or configure git to automatically update submodules for the repository with
   `git config submodule.recurse true` inside the repository.
+
+# Disclaimer
+
+**DISCLAIMER:** This software is provided "as is" and its security has not been externally audited. Use at your own risk.
