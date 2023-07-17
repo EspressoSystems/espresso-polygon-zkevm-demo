@@ -9,17 +9,21 @@ name = "deploy"
 
 [dependencies]
 anyhow = "1.0.71"
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = ["logging-utils", "async-std-executor", "channel-async-std"] }
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+    "logging-utils",
+    "async-std-executor",
+    "channel-async-std",
+] }
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 async-trait = "0.1.63"
 clap = "4.3.11"
-contract-bindings = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
+contract-bindings = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 ethers = { version = "2.0.4", features = ["abigen"] }
 ethers-solc = "2.0.3"
 glob = "0.3.1"
 hex = { version = "0.4.3", features = ["serde"] }
-sequencer = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
-sequencer-utils = { git = "ssh://git@github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 serde = { version = "1.0.167", features = ["derive"] }
 serde_json = "1.0.91"
 serde_with = "3.0.0"
