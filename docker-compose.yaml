@@ -11,7 +11,7 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
 
-  sequencer0:
+  sequencer-api:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the sequencer API server.
     command: /bin/sequencer -- api
@@ -25,6 +25,9 @@ services:
       - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:$ESPRESSO_SEQUENCER_API_PORT"]
+
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
@@ -40,7 +43,7 @@ services:
       - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
-      - sequencer0
+      - sequencer-api
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -49,7 +52,7 @@ services:
       - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
-      - sequencer0
+      - sequencer-api
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -58,7 +61,7 @@ services:
       - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
-      - sequencer0
+      - sequencer-api
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -67,7 +70,7 @@ services:
       - RUST_LOG_FORMAT
     depends_on:
       - cdn-server
-      - sequencer0
+      - sequencer-api
 
   polygon-zkevm-1-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
@@ -84,7 +87,7 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      sequencer0:
+      sequencer-api:
         condition: service_started
 
   polygon-zkevm-2-adaptor:
@@ -102,5 +105,5 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      sequencer0:
+      sequencer-api:
         condition: service_started
