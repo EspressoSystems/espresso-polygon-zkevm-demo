@@ -14,6 +14,7 @@ use ethers::{
     signers::LocalWallet,
     types::{TransactionRequest, H256, U256},
 };
+use futures::future::join;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 use sequencer_utils::Middleware;
@@ -162,6 +163,10 @@ impl Run {
                 )),
             })),
         }
+    }
+
+    pub async fn wait(&self) {
+        join(self.submit_operations(), self.wait_for_effects()).await;
     }
 
     pub async fn submit_operations(&self) {

@@ -117,9 +117,9 @@ impl SequencerZkEvmDemo {
                 "zkevm-1-preconfirmations-prover",
                 "zkevm-1-preconfirmations-state-db",
                 "zkevm-1-preconfirmations-node",
-                "zkevm-10eth-tx-manager",
+                "zkevm-1-eth-tx-manager",
                 "zkevm-1-faucet",
-                "polygon-zkevm-adaptor",
+                "polygon-zkevm-1-adaptor",
                 "cdn-server",
                 "sequencer0",
                 "sequencer1",
@@ -136,6 +136,13 @@ impl SequencerZkEvmDemo {
         wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 100)
             .await
             .expect("Failed to start zkevm-node");
+        wait_for_rpc(
+            &env.l2_preconfirmations_provider(),
+            Duration::from_secs(1),
+            100,
+        )
+        .await
+        .expect("Failed to start preconfirmations node");
 
         Self {
             env,
