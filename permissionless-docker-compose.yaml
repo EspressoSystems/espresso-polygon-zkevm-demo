@@ -1,55 +1,40 @@
 version: "3"
 services:
-
   zkevm-1-aggregator:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
-    expose:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
+    ports:
       - 50081
       - 9091 # needed if metrics enabled
     environment:
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - COMPONENTS=aggregator
+      - ZKEVM_NODE_LOG_LEVEL=warn
       - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
-      # - ZKEVM_NODE_AGGREGATOR_VERIFYPROOFINTERVAL=10s # Defaults to 90s
-      # - ZKEVM_NODE_AGGREGATOR_RETRYTIME=2s # Defaults to 5s
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
       - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
       - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER
       - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       # Use the deployer account to match zkevm-contracts geth L1 deployment.
       - ZKEVM_NODE_AGGREGATOR_SENDERADDRESS=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
-    volumes:
-      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
-      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
-      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
-      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
     depends_on:
       zkevm-1-prover:
         condition: service_healthy
       # Avoid running DB migrations at the same time:
       zkevm-1-permissionless-node:
         condition: service_healthy
+    healthcheck:
+      test: "curl --fail http://localhost:9091/metrics"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
 
   zkevm-1-state-db:
-    image: postgres
-    expose:
-      - 5432
-    volumes:
-      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
-      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
-    environment:
-      - POSTGRES_USER=state_user
-      - POSTGRES_PASSWORD=state_password
-      - POSTGRES_DB=state_db
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/state-db:main
+    ports:
+      - 5432 # DB
     command: [ "postgres", "-N", "500" ]
     healthcheck:
       # Postgres can be falsely "ready" once before running init scripts.
@@ -60,18 +45,12 @@ services:
       retries: 20
 
   zkevm-1-prover:
-    image: hermeznetwork/zkevm-prover:88f3835
-    expose:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-prover:main
+    ports:
       - 50052 # Mock prover
       - 50061 # MT
       - 50071 # Executor
-    volumes:
-    # The prover does not support configuration via env vars. The only
-    # difference between the prover of zkevm-1 and zkevm-2 are the values of
-    # "aggregatorClientHost" and "databaseURL".
-      - ./zkevm-node/test/config/test.prover.1.config.json:/usr/src/app/config.json
-    command: >
-      zkProver -c /usr/src/app/config.json
+      - 9091 # Metrics
     depends_on:
       zkevm-1-state-db:
         condition: service_healthy
@@ -83,49 +62,35 @@ services:
       retries: 20
 
   zkevm-1-permissionless-node:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
     ports:
-      - $ESPRESSO_ZKEVM_1_L2_PORT:$ESPRESSO_ZKEVM_1_L2_PORT
-      - $ESPRESSO_ZKEVM_1_L2_PORT_WS:$ESPRESSO_ZKEVM_1_L2_PORT_WS
+      - 8123 # RPC
+      - 8133 # RPC WS
+      - 9091 # Metrics
     environment:
+      - COMPONENTS="rpc,synchronizer"
+      - ZKEVM_NODE_LOG_LEVEL=warn
       - ZKEVM_NODE_TRUSTED=false
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
       - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
-      - ZKEVM_NODE_POOL_DB_USER=state_user
-      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
-      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
       - ZKEVM_NODE_POOL_DB_HOST=zkevm-1-state-db
-      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_1_L2_PORT
-      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_1_L2_PORT_WS
-      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
-      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
-      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
-      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_1_GENBLOCKNUMBER
-      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
-      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
-      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
-    volumes:
-      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
-      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
-      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL # polygon-zkevm-1-adaptor RPC
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER  # zkevm-mock-l1-network RPC
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS # Contract address??
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS # Contract address??
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS # Contract address??
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL # polygon-zkevm-1-adaptor Query
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS # Contract address??
+      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_1_GENBLOCKNUMBER # ??
+      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK # Ignore the last thing?
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI # Prover MT
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI # Prover Executor
     depends_on:
       zkevm-mock-l1-network:
         condition: service_started
       zkevm-1-state-db:
         condition: service_healthy
     healthcheck:
-      # curl not installed in container, but wget is
-      test: "wget http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT -q --spider --tries 1 || exit 1"
+      test: "curl --fail http://localhost:9091/metrics"
       interval: 1s
       timeout: 0.5s
       retries: 120
@@ -133,32 +98,29 @@ services:
       - "host.docker.internal:host-gateway"
 
   zkevm-1-eth-tx-manager:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
+    ports:
+      - 9091 # needed if metrics enabled
     environment:
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - COMPONENTS="eth-tx-manager"
+      - ZKEVM_NODE_LOG_LEVEL=warn
       - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
       - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
       - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER
       - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
-    volumes:
-      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
-      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
-      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
-      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components eth-tx-manager"
     depends_on:
       zkevm-1-permissionless-node:
         condition: service_healthy
+    healthcheck:
+      test: "curl --fail http://localhost:9091/metrics"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
 
   zkevm-1-faucet:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
@@ -185,32 +147,22 @@ services:
 
   # Polygon zkevm-node 2
   zkevm-2-aggregator:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
-    expose:
-      - 50081
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
+    ports:
+      - 50081 # aggregator port
       - 9091 # needed if metrics enabled
     environment:
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
       - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
-      # - ZKEVM_NODE_AGGREGATOR_VERIFYPROOFINTERVAL=10s # Defaults to 90s
-      # - ZKEVM_NODE_AGGREGATOR_RETRYTIME=2s # Defaults to 5s
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
       - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
       - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER
       - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       # Use the deployer account to match zkevm-contracts geth L1 deployment.
       - ZKEVM_NODE_AGGREGATOR_SENDERADDRESS=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
-    volumes:
-      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
-      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
-      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
-      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
     command:
       - "/bin/sh"
       - "-c"
@@ -221,18 +173,16 @@ services:
       # Avoid running DB migrations at the same time:
       zkevm-2-permissionless-node:
         condition: service_healthy
+    healthcheck:
+      test: "curl --fail http://localhost:9091/metrics"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
 
   zkevm-2-state-db:
-    image: postgres
-    expose:
-      - 5432
-    volumes:
-      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
-      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
-    environment:
-      - POSTGRES_USER=state_user
-      - POSTGRES_PASSWORD=state_password
-      - POSTGRES_DB=state_db
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/state-db:main
+    ports:
+      - 5432 # DB
     command: [ "postgres", "-N", "500" ]
     healthcheck:
       # Postgres can be falsely "ready" once before running init scripts.
@@ -243,15 +193,13 @@ services:
       retries: 20
 
   zkevm-2-prover:
-    image: hermeznetwork/zkevm-prover:88f3835
-    expose:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-prover:main
+    ports:
       - 50052 # Mock prover
       - 50061 # MT
       - 50071 # Executor
     volumes:
-      - ./zkevm-node/test/config/test.prover.2.config.json:/usr/src/app/config.json
-    command: >
-      zkProver -c /usr/src/app/config.json
+      - ./zkevm-node/test/config/test.prover.2.config.json:/app/config.json
     depends_on:
       zkevm-2-state-db:
         condition: service_healthy
@@ -263,24 +211,17 @@ services:
       retries: 20
 
   zkevm-2-permissionless-node:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
     ports:
-      - $ESPRESSO_ZKEVM_2_L2_PORT:$ESPRESSO_ZKEVM_2_L2_PORT
-      - $ESPRESSO_ZKEVM_2_L2_PORT_WS:$ESPRESSO_ZKEVM_2_L2_PORT_WS
+      - 8123 # RPC
+      - 8133 # RPC WS
+      - 9091 # Metrics
     environment:
       - ZKEVM_NODE_TRUSTED=false
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
       - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
-      - ZKEVM_NODE_POOL_DB_USER=state_user
-      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
-      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
       - ZKEVM_NODE_POOL_DB_HOST=zkevm-2-state-db
-      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_2_L2_PORT
-      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_2_L2_PORT_WS
       - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_2_ADAPTOR_RPC_URL
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
       - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
       - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
@@ -290,22 +231,13 @@ services:
       - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
-    volumes:
-      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
-      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
-      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
     depends_on:
       zkevm-mock-l1-network:
         condition: service_started
       zkevm-2-state-db:
         condition: service_healthy
     healthcheck:
-      # curl not installed in container, but wget is
-      test: "wget http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT -q --spider --tries 1 || exit 1"
+      test: "curl --fail http://localhost:9091/metrics"
       interval: 1s
       timeout: 0.5s
       retries: 120
@@ -313,16 +245,15 @@ services:
       - "host.docker.internal:host-gateway"
 
   zkevm-2-eth-tx-manager:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main
+    ports:
+      - 9091 # Metrics
     environment:
-      - ZKEVM_NODE_STATEDB_USER=state_user
-      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
-      - ZKEVM_NODE_STATEDB_NAME=state_db
       - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
       - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
       - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
       - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
-      - ZKEVM_NODE_ETHERMAN_URL=http://zkevm-mock-l1-network:$ESPRESSO_ZKEVM_L1_PORT
+      - ZKEVM_NODE_ETHERMAN_URL=$ESPRESSO_ZKEVM_L1_PROVIDER
       - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
@@ -339,6 +270,11 @@ services:
     depends_on:
       zkevm-2-permissionless-node:
         condition: service_healthy
+    healthcheck:
+      test: "curl --fail http://localhost:9091/metrics"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
 
   zkevm-2-faucet:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main

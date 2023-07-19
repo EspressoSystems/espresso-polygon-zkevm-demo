@@ -50,6 +50,11 @@ services:
         condition: service_healthy
       zkevm-mock-l1-network:
         condition: service_healthy
+    healthcheck:
+      test: "curl --fail http://localhost:$ESPRESSO_SEQUENCER_API_PORT"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
@@ -132,7 +137,7 @@ services:
       sequencer0:
         condition: service_started
     healthcheck:
-      test: "curl http://localhost:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
+      test: "curl --fail http://localhost:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
       interval: 1s
       timeout: 0.5s
       retries: 120
@@ -155,7 +160,7 @@ services:
       sequencer0:
         condition: service_started
     healthcheck:
-      test: "curl http://localhost:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
+      test: "curl --fail http://localhost:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
       interval: 1s
       timeout: 0.5s
       retries: 120
