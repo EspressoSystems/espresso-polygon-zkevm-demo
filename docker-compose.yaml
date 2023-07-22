@@ -14,7 +14,7 @@ services:
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the sequencer API server.
-    command: /bin/sequencer -- api
+    command: /bin/sequencer -- http -- query -- submit
     ports:
       - "$ESPRESSO_SEQUENCER_API_PORT:$ESPRESSO_SEQUENCER_API_PORT"
     environment:
@@ -32,9 +32,10 @@ services:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
     # hotshot contract.
-    command: /bin/sequencer -- commitment-task
+    command: /bin/sequencer -- http -- commitment-task
     environment:
       - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_ETH_MNEMONIC
       - ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ESPRESSO_SEQUENCER_L1_PROVIDER
@@ -42,35 +43,46 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      cdn-server:
+        condition: service_started
+      sequencer0:
+        condition: service_started
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      cdn-server:
+        condition: service_started
+      sequencer0:
+        condition: service_started
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      cdn-server:
+        condition: service_started
+      sequencer0:
+        condition: service_started
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      cdn-server:
+        condition: service_started
+      sequencer0:
+        condition: service_started
 
   polygon-zkevm-1-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
