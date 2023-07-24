@@ -34,6 +34,9 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      #
+      # ZKEVM Prover Docker
+      #
       - name: Generate docker metadata
         uses: docker/metadata-action@v4
         id: prover-metadata
@@ -45,9 +48,30 @@ jobs:
         with:
           context: ./
           file: ./docker/prover.Dockerfile
-          # zkevm-prover isn't available in arm64 currently :(
+          # zkevm isn't available in arm64 currently :(
           # platforms: linux/amd64,linux/arm64
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prover-metadata.outputs.tags }}
           labels: ${{ steps.prover-metadata.outputs.labels }}
+
+      #
+      # ZKEVM Permissionless Node Docker
+      #
+      - name: Generate docker metadata
+        uses: docker/metadata-action@v4
+        id: node-metadata
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/espresso-polygon-zkevm-demo/zkevm-node
+
+      - name: Build and push zkevm-node docker
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./docker/node.Dockerfile
+          # zkevm isn't available in arm64 currently :(
+          # platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.node-metadata.outputs.tags }}
+          labels: ${{ steps.node-metadata.outputs.labels }}
