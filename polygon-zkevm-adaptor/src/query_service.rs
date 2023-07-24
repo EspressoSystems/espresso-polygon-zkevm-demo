@@ -83,7 +83,10 @@ mod test {
     use futures::future::ready;
     use portpicker::pick_unused_port;
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
-    use sequencer::Vm;
+    use sequencer::{
+        api::{self, HttpOptions, QueryOptions},
+        Vm,
+    };
     use std::str::FromStr;
     use tempfile::TempDir;
     use zkevm::EvmTransaction;
@@ -100,14 +103,16 @@ mod test {
         let nodes = sequencer::testing::init_hotshot_handles().await;
         let api_node = nodes[0].clone();
         let sequencer_store = TempDir::new().unwrap();
-        let options = sequencer::api::Options {
+        api::Options::from(HttpOptions {
             port: sequencer_port,
+        })
+        .query(QueryOptions {
             storage_path: sequencer_store.path().into(),
             reset_store: true,
-        };
-        sequencer::api::serve(options, Box::new(move |_| ready((api_node, 0)).boxed()))
-            .await
-            .unwrap();
+        })
+        .serve(Box::new(move |_| ready((api_node, 0)).boxed()))
+        .await
+        .unwrap();
         for node in &nodes {
             node.start().await;
         }
