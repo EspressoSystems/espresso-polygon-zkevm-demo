@@ -25,7 +25,10 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
+      cdn-server:
+        condition: service_started
+      zkevm-mock-l1-network:
+        condition: service_healthy
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
@@ -87,6 +90,11 @@ services:
     depends_on:
       sequencer0:
         condition: service_started
+    healthcheck:
+      test: "curl http://localhost:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
     profiles:
       - zkevm1
       - zkevm1-preconfirmations
@@ -108,6 +116,11 @@ services:
     depends_on:
       sequencer0:
         condition: service_started
+    healthcheck:
+      test: "curl http://localhost:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
     profiles:
       - zkevm2
       - zkevm2-preconfirmations
