@@ -16,4 +16,4 @@ if [[ -v GENESIS_S3_URI ]]; then
   aws s3 cp $GENESIS_S3_URI /pk/keystore
 fi
 
-/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\"
+/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components "rpc,synchronizer"
