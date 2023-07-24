@@ -1,41 +1,66 @@
 version: "3"
 services:
-  cdn-server:
-    image: ghcr.io/espressosystems/espresso-sequencer/cdn-server:main
+  orchestrator:
+    image: ghcr.io/espressosystems/espresso-sequencer/orchestrator:main
     ports:
-      - "$ESPRESSO_CDN_SERVER_PORT:$ESPRESSO_CDN_SERVER_PORT"
+      - "$ESPRESSO_ORCHESTRATOR_PORT:$ESPRESSO_ORCHESTRATOR_PORT"
     environment:
-      - ESPRESSO_CDN_SERVER_PORT
-      - ESPRESSO_CDN_SERVER_NUM_NODES=5
-      - ESPRESSO_CDN_SERVER_START_DELAY=5s
-      - ESPRESSO_CDN_SERVER_MAX_PROPOSE_TIME
+      - ESPRESSO_ORCHESTRATOR_PORT
+      - ESPRESSO_ORCHESTRATOR_NUM_NODES=5
+      - ESPRESSO_ORCHESTRATOR_START_DELAY=5s
+      - ESPRESSO_ORCHESTRATOR_MAX_PROPOSE_TIME
       - RUST_LOG
       - RUST_LOG_FORMAT
+  da-server:
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
+    ports:
+      - "$ESPRESSO_DA_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
+    environment:
+      - ESPRESSO_WEB_SERVER_PORT
+      - RUST_LOG
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+  consensus-server:
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
+    ports:
+      - "$ESPRESSO_CONSENSUS_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
+    environment:
+      - ESPRESSO_WEB_SERVER_PORT
+      - RUST_LOG
+    depends_on:
+      orchestrator:
+        condition: service_healthy
 
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the sequencer API server.
-    command: /bin/sequencer -- api
+    command: /bin/sequencer -- http -- query -- submit
     ports:
       - "$ESPRESSO_SEQUENCER_API_PORT:$ESPRESSO_SEQUENCER_API_PORT"
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
+      - ESPRESSO_SEQUENCER_DA_SERVER_URL
+      - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      cdn-server:
-        condition: service_started
+      orchestrator:
+        condition: service_healthy
       zkevm-mock-l1-network:
         condition: service_healthy
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
     # hotshot contract.
-    command: /bin/sequencer -- commitment-task
+    command: /bin/sequencer -- http -- commitment-task
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
+      - ESPRESSO_SEQUENCER_DA_SERVER_URL
+      - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_ETH_MNEMONIC
       - ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ESPRESSO_SEQUENCER_L1_PROVIDER
@@ -43,35 +68,52 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      orchestrator:
+        condition: service_healthy
+      sequencer0:
+        condition: service_started
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
+      - ESPRESSO_SEQUENCER_DA_SERVER_URL
+      - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      orchestrator:
+        condition: service_healthy
+      sequencer0:
+        condition: service_started
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
+      - ESPRESSO_SEQUENCER_DA_SERVER_URL
+      - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      orchestrator:
+        condition: service_healthy
+      sequencer0:
+        condition: service_started
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
-      - ESPRESSO_SEQUENCER_CDN_URL
+      - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
+      - ESPRESSO_SEQUENCER_DA_SERVER_URL
+      - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
+      - ESPRESSO_SEQUENCER_API_PORT
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
-      - cdn-server
-      - sequencer0
+      orchestrator:
+        condition: service_healthy
+      sequencer0:
+        condition: service_started
 
   polygon-zkevm-1-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main

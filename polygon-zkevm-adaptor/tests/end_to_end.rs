@@ -15,8 +15,11 @@ use futures::{
 };
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, ZkEvmNode};
-use sequencer::hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions};
-use sequencer::SeqTypes;
+use sequencer::{
+    api::{self, HttpOptions, QueryOptions},
+    hotshot_commitment::{run_hotshot_commitment_task, CommitmentTaskOptions},
+    SeqTypes,
+};
 use sequencer_utils::{connect_rpc, wait_for_http};
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
@@ -308,15 +311,17 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> (ZkEvmNode, TempDir)
     let nodes = sequencer::testing::init_hotshot_handles().await;
     let api_node = nodes[0].clone();
     let sequencer_store = TempDir::new().unwrap();
-    let options = sequencer::api::Options {
+    api::Options::from(HttpOptions {
         port: env.sequencer_port(),
+    })
+    .query(QueryOptions {
         storage_path: sequencer_store.path().into(),
         reset_store: true,
-    };
-
-    sequencer::api::serve(options, Box::new(move |_| ready((api_node, 0)).boxed()))
-        .await
-        .unwrap();
+    })
+    .submit(Default::default())
+    .serve(Box::new(move |_| ready((api_node, 0)).boxed()))
+    .await
+    .unwrap();
     for node in nodes {
         node.start().await;
     }
