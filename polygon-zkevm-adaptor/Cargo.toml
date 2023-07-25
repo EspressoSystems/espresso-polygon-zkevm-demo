@@ -60,4 +60,4 @@ rand_chacha = "0.3"
 sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", features = [
     "testing",
 ] }
-tempfile = "3.4.0"
+tempfile = "3.7.0"
