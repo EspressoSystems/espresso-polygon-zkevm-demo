@@ -81,6 +81,7 @@ pub async fn eth_send_raw_transaction(
     let client = surf_disco::Client::<ClientError>::new(url.join("submit").unwrap());
 
     if !client.connect(Some(Duration::from_secs(5))).await {
+        tracing::error!("unable to connect to sequencer API at {url}");
         return Err(RpcError::INTERNAL_ERROR);
     }
 
