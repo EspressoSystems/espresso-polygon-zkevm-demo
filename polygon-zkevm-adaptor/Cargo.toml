@@ -13,6 +13,10 @@ required-features = ["testing"]
 name = "load-test"
 required-features = ["testing"]
 
+[[bin]]
+name = "load-test-deployment"
+required-features = ["testing"]
+
 [features]
 testing = ["portpicker"]
 
