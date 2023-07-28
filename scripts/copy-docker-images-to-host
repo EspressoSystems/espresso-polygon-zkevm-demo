@@ -8,11 +8,9 @@ function copy() {
 }
 
 copy ghcr.io/espressosystems/zkevm-node:hotshot-integration
-copy ghcr.io/espressosystems/zkevm-node:hotshot-integration
-copy ghcr.io/espressosystems/geth-zkevm-contracts:hotshot-integration
+copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
 
 copy ghcr.io/espressosystems/espresso-sequencer/sequencer:main
-copy ghcr.io/espressosystems/espresso-sequencer/cdn-server:main
-copy ghcr.io/espressosystems/espresso-sequencer/polygon-zkevm-adaptor:main
-
+copy ghcr.io/espressosystems/espresso-sequencer/web-server:main
+copy ghcr.io/espressosystems/espresso-sequencer/orchestrator:main
 copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
