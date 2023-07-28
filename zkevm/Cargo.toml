@@ -7,14 +7,14 @@ license = "GPL-3.0-or-later"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.3.0", features = [
     "logging-utils",
 ] }
 async-std = { version = "1.12", features = ["attributes"] }
 clap = { version = "4.3", features = ["derive", "env"] }
 ethers = "2.0.4"
 jf-primitives = { git = "https://github.com/EspressoSystems/jellyfish" }
-sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot" }
 tracing = "0.1"
 url = "2.3"
 zkevm-contract-bindings = { path = "../zkevm-contract-bindings" }

@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1.0.71"
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.3.0", features = [
     "logging-utils",
     "async-std-executor",
     "channel-async-std",
@@ -36,4 +36,4 @@ url = "2.4.0"
 polygon-zkevm-adaptor = { path = "../polygon-zkevm-adaptor", features = [
     "testing",
 ] }
-sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot" }

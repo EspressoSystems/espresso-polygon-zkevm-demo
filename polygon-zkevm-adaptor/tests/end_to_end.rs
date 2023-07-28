@@ -81,7 +81,7 @@ async fn test_end_to_end() {
     .await
     .unwrap();
     for node in nodes {
-        node.start().await;
+        node.hotshot.start_consensus().await;
     }
 
     // Start a Polygon zkEVM adaptor.

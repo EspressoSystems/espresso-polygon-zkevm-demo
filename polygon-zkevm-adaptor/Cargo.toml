@@ -21,7 +21,7 @@ required-features = ["testing"]
 testing = ["portpicker"]
 
 [dependencies]
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.3.0", features = [
     "logging-utils",
 ] }
 async-std = "1.12"
@@ -32,14 +32,14 @@ escargot = "0.5.7"
 ethers = "2.0"
 futures = "0.3"
 hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service.git" }
-hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = [
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", branch = "run_view_refactor", features = [
     "async-std-executor",
     "channel-async-std",
 ] }
 http-types = "2.12.0"
 jsonrpc-v2 = "0.11.0"
-sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
-sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot" }
+sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot" }
 serde_json = "1.0.82"
 surf = "2.3.2"
 surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.1" }
@@ -61,7 +61,7 @@ async-std = { version = "1.12.0", features = ["attributes"] }
 commit = { git = "https://github.com/EspressoSystems/commit", tag = "0.2.2" }
 portpicker = "0.1"
 rand_chacha = "0.3"
-sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", features = [
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot", features = [
     "testing",
 ] }
 tempfile = "3.4.0"

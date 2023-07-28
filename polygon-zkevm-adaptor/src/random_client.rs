@@ -187,14 +187,6 @@ impl Run {
         tracing::info!("Submitted all {} operations", self.operations.0.len());
     }
 
-    async fn reinit_nonce_manager(&self) {
-        tracing::info!("Reinitializing nonce manager");
-        self.state.write().await.client = Arc::new(NonceManagerMiddleware::new(
-            self.signer.clone(),
-            self.signer.address(),
-        ));
-    }
-
     pub async fn wait_for_effects(&self) {
         loop {
             tracing::info!(
@@ -226,7 +218,11 @@ impl Run {
                                 while let Some(effect) = state.pending.pop_front() {
                                     tracing::info!("effect_clear: {effect:?}");
                                 }
-                                self.reinit_nonce_manager().await;
+                                tracing::info!("Reinitializing nonce manager");
+                                state.client = Arc::new(NonceManagerMiddleware::new(
+                                    self.signer.clone(),
+                                    self.signer.address(),
+                                ));
                             } else {
                                 self.state.write().await.pending.push_back(effect);
                                 // No receipt for this transaction yet, wait a bit.
