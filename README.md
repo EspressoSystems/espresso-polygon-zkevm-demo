@@ -89,13 +89,15 @@ when
 [restaking](https://hackmd.io/@EspressoSystems/EspressoSequencer#3-Interactions-with-Ethereum-Validators-via-Restaking)
 is used to let the L1 validators themselves operate the consensus protocol.
 
-Our demo includes a second L2 node for each L2 network, which is configured to fetch new blocks
-directly from the sequencer's preconfirmations, bypassing the L1 completely. You can experience the
-results for yourself: go back into your Metmask settings, to
-"Networks" -> "espresso-polygon-zkevm-1", and set "New RPC URL" to `http://localhost:18127`.
-Similarly, set the RPC URL for "espresso-polygon-zkevm-2" to `http://localhost:28127`. This tells
-Metamask to use the L2 nodes that use preconfirmations, instead of the L2 nodes that use the L1,
-when submitting and tracking transactions.
+Of course, having your transaction _included_ in the sequence quickly isn't all that helpful if it
+still takes a long time to get _executed_. Our demo includes a second L2 node for each L2 network,
+which is configured to fetch new blocks directly from the sequencer's preconfirmations and execute
+them immediately, bypassing the slow path through the L1 completely. You can experience the results
+for yourself: go back into your Metmask settings, to "Networks" -> "espresso-polygon-zkevm-1", and
+set "New RPC URL" to `http://localhost:18127`. Similarly, set the RPC URL for
+"espresso-polygon-zkevm-2" to `http://localhost:28127`. This tells Metamask to use the L2 nodes that
+use preconfirmations, instead of the L2 nodes that use the L1, when submitting and tracking
+transactions.
 
 Once you've updated your settings, you can go back to your Metamask account and try making another
 transfer. It should complete noticeably faster, in around 5 seconds.
