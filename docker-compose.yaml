@@ -135,8 +135,8 @@ services:
         condition: service_started
     healthcheck:
       test: "curl http://localhost:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
-      interval: 1s
-      timeout: 0.5s
+      interval: 5s
+      timeout: 3s
       retries: 120
 
   polygon-zkevm-2-adaptor:
@@ -158,6 +158,6 @@ services:
         condition: service_started
     healthcheck:
       test: "curl http://localhost:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
-      interval: 1s
-      timeout: 0.5s
+      interval: 5s
+      timeout: 3s
       retries: 120
