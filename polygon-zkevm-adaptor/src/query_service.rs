@@ -314,7 +314,7 @@ impl BlockMapping {
 
     /// Subscribe to a stream of (L2, L1) block number mappings.
     async fn subscribe(&self, from: usize) -> impl Stream<Item = (u64, u64)> {
-        // Stream the blocks starting from `from` that we already have directly form memory.
+        // Stream the blocks starting from `from` that we already have directly from memory.
         let existing_blocks = stream::iter(self.l1_blocks[from..].to_vec())
             .enumerate()
             .map(move |(i, l1_block)| ((from + i) as u64, l1_block));
