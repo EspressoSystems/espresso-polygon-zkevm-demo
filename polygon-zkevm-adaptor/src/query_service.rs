@@ -343,7 +343,7 @@ impl BlockMapping {
 ///
 /// This type, derived from a sequencer block, contains the Polygon zkEVM transactions extracted
 /// from the sequencer block and hex encoded according to the format expected by the zkEVM node. It
-/// also contains metadata fields used by the node to associated this L2 block with an L1 block.
+/// also contains metadata fields used by the node to associate this L2 block with an L1 block.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct PolygonZkevmBlock {
     timestamp: u64,
