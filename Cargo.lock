@@ -1911,7 +1911,7 @@ checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#c36019dfaa3a8291d2a6d25dfd630087c3e6fde3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#be3cc8e3058f7b3b11268dc79ae8f875827cbcec"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -3755,7 +3755,7 @@ dependencies = [
 [[package]]
 name = "hotshot"
 version = "0.3.3"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-ec 0.3.0",
@@ -3807,7 +3807,7 @@ dependencies = [
 [[package]]
 name = "hotshot-centralized-server"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
@@ -3829,7 +3829,7 @@ dependencies = [
 [[package]]
 name = "hotshot-consensus"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3851,7 +3851,7 @@ dependencies = [
 [[package]]
 name = "hotshot-orchestrator"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3911,7 +3911,7 @@ dependencies = [
 [[package]]
 name = "hotshot-query-service"
 version = "0.0.7"
-source = "git+https://github.com/EspressoSystems//hotshot-query-service?branch=update/hotshot#fbcfb918a96b856313db55e4f95118a8d0124f95"
+source = "git+https://github.com/EspressoSystems//hotshot-query-service?branch=update/hotshot#9fd21c64bd9c3f96dc2748d98eaeebcd013acf4c"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
@@ -3940,7 +3940,7 @@ dependencies = [
 [[package]]
 name = "hotshot-task"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3962,7 +3962,7 @@ dependencies = [
 [[package]]
 name = "hotshot-task-impls"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3991,7 +3991,7 @@ dependencies = [
 [[package]]
 name = "hotshot-testing"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -4020,7 +4020,7 @@ dependencies = [
 [[package]]
 name = "hotshot-types"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "arbitrary",
  "ark-serialize 0.3.0",
@@ -4056,7 +4056,7 @@ dependencies = [
 [[package]]
 name = "hotshot-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "bincode",
 ]
@@ -4064,7 +4064,7 @@ dependencies = [
 [[package]]
 name = "hotshot-web-server"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -5073,7 +5073,7 @@ dependencies = [
 [[package]]
 name = "libp2p-networking"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#93f51b4145e439027c7fe8679133f2e5dab31eb8"
+source = "git+https://github.com/EspressoSystems/hotshot?branch=run_view_refactor#2830bf17b95b790791f99d3160a187d3119c1401"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -7393,7 +7393,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#c36019dfaa3a8291d2a6d25dfd630087c3e6fde3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#be3cc8e3058f7b3b11268dc79ae8f875827cbcec"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-serialize 0.4.2",
@@ -7433,7 +7433,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#c36019dfaa3a8291d2a6d25dfd630087c3e6fde3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=update/hotshot#be3cc8e3058f7b3b11268dc79ae8f875827cbcec"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
