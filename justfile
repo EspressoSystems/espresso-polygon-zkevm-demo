@@ -39,7 +39,7 @@ pull:
 
     # We are now using the default Geth image, so clear information generated when we built a local
     # version of the image.
-    rm .env.geth
+    rm -f .env.geth
 
 hardhat *args:
     cd zkevm-contracts && nix develop -c bash -c "npx hardhat {{args}}"
