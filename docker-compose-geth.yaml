@@ -36,4 +36,7 @@ services:
       - $ESPRESSO_ZKEVM_L1_PORT:$ESPRESSO_ZKEVM_L1_PORT
     stop_signal: SIGKILL
     healthcheck:
-      test: ["CMD", "curl", "-s", "-f", "http://localhost:$ESPRESSO_ZKEVM_L1_PORT"]
+      test: "curl --fail http://localhost:$ESPRESSO_ZKEVM_L1_PORT"
+      interval: 1s
+      timeout: 0.5s
+      retries: 120
