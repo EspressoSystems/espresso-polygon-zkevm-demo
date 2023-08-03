@@ -14,7 +14,9 @@ use ethers::{
 };
 use futures::join;
 use http_types::Url;
-use polygon_zkevm_adaptor::{InnerMiddleware, Layer1Backend, Operations, Run, SequencerZkEvmDemo};
+use polygon_zkevm_adaptor::{
+    InnerMiddleware, Layer1Backend, Operations, Run, SequencerZkEvmDemo, TEST_MNEMONIC,
+};
 use sequencer_utils::wait_for_rpc;
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
@@ -123,20 +125,20 @@ async fn main() {
         operations
     };
 
-    let project_name = "demo".to_string();
+    // let project_name = "demo".to_string();
 
     // Start L1 and zkevm-node
-    let demo = SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), opt.l1_backend).await;
+    // let demo = SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), opt.l1_backend).await;
 
     // Get test setup from environment.
-    let env = demo.env();
-    let l2_provider = env.l2_provider();
-    let mnemonic = env.funded_mnemonic();
+    // let env = demo.env();
+    let l2_provider = Url::parse("http://localhost:18126").unwrap();
+    let mnemonic = TEST_MNEMONIC;
     let signer = connect_rpc_simple(&l2_provider, mnemonic, 0, None)
         .await
         .unwrap();
 
-    wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 10)
+    wait_for_rpc(&l2_provider, Duration::from_secs(1), 10)
         .await
         .unwrap();
 

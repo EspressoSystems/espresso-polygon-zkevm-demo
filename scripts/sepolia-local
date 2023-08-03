@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Usage ./sepolia-local <env file>
+# The env file needs these two variables
+#
+#   MNEMONIC
+#   PROVIDER_URL
+#
+# The first account of this mnemonic needs enough funds to deploy all contracts
+# and then run the commitment task. 1 ETH should be plenty to run for a while.
+set -euxo pipefail
+
+# Read all env vars in env file
+set -a; . $1; set +a;
+
+# Set all provider env vars to sepolia
+export ESPRESSO_ZKEVM_DEPLOY_WEB3_PROVIDER_URL=$PROVIDER_URL
+export ESPRESSO_SEQUENCER_L1_PROVIDER=$PROVIDER_URL
+export ESPRESSO_ZKEVM_L1_PROVIDER=$PROVIDER_URL
+
+# Use the funded mnemonic for deployment and sequencer and faucet
+export ESPRESSO_ZKEVM_DEPLOY_MNEMONIC="$MNEMONIC"
+export ESPRESSO_SEQUENCER_ETH_MNEMONIC="$MNEMONIC"
+export ESPRESSO_ZKEVM_FAUCET_MNEMONIC=$MNEMONIC
+
+# Overwrite the keystore file for the aggregator with a new one because we can't
+# use publicly known private keys on a public testnet without bots trying to
+# steal our funds.
+cargo run --bin keygen -- --keystore-dir zkevm-node/test
+
+# Export address for deploy script
+export ESPRESSO_ZKEVM_1_TRUSTED_AGGREGATOR_ADDRESS=$(cat zkevm-node/test/aggregator.keystore | jq -r .address)
+
+# Deploy all contracts. Ensure nothing else is running that uses the same
+# mnemonic to send transactions, it will break the deployment script.
+cargo run --bin deploy
+
+# Load new env vars from deployment
+$(cat deployment.json | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"')
+
+# Start the compose environment with one zkevm-node
+docker compose -f docker-compose.yaml -f permissionless-docker-compose.yaml up \
+    sequencer0 sequencer1 sequencer2 sequencer3 sequencer4 orchestrator da-server consensus-server \
+    zkevm-1-aggregator zkevm-1-prover zkevm-1-permissionless-node polygon-zkevm-1-adaptor zkevm-1-faucet zkevm-1-state-db \
+    --wait
+
+echo "Demo is running!"

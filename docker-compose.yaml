@@ -48,8 +48,8 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
-      zkevm-mock-l1-network:
-        condition: service_healthy
+      # zkevm-mock-l1-network:
+      #   condition: service_healthy
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the commitment task to post commitments to the
