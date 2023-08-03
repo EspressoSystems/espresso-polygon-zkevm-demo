@@ -8,6 +8,7 @@ services:
       - ESPRESSO_ORCHESTRATOR_PORT
       - ESPRESSO_ORCHESTRATOR_NUM_NODES=5
       - ESPRESSO_ORCHESTRATOR_START_DELAY=5s
+      - ESPRESSO_ORCHESTRATOR_MAX_PROPOSE_TIME
       - RUST_LOG
       - RUST_LOG_FORMAT
   da-server:
@@ -136,6 +137,9 @@ services:
       interval: 1s
       timeout: 0.5s
       retries: 120
+    profiles:
+      - zkevm1
+      - zkevm1-preconfirmations
 
   polygon-zkevm-2-adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
@@ -159,3 +163,6 @@ services:
       interval: 1s
       timeout: 0.5s
       retries: 120
+    profiles:
+      - zkevm2
+      - zkevm2-preconfirmations

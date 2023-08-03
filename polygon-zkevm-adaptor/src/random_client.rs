@@ -9,11 +9,13 @@
 use async_std::sync::RwLock;
 use ethers::{
     abi::Address,
-    prelude::{NonceManagerMiddleware, SignerMiddleware},
+    prelude::{MnemonicBuilder, NonceManagerMiddleware, Signer, SignerMiddleware},
     providers::{Http, Middleware as _, Provider},
-    signers::LocalWallet,
+    signers::{coins_bip39::English, LocalWallet},
     types::{TransactionRequest, H256, U256},
 };
+use futures::future::join;
+use http_types::Url;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 use sequencer_utils::Middleware;
@@ -24,6 +26,50 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
+pub async fn connect_rpc_simple(
+    provider: &Url,
+    mnemonic: &str,
+    index: u32,
+    chain_id: Option<u64>,
+) -> Option<InnerMiddleware> {
+    let provider = match Provider::try_from(provider.to_string()) {
+        Ok(provider) => provider,
+        Err(err) => {
+            tracing::error!("error connecting to RPC {}: {}", provider, err);
+            return None;
+        }
+    };
+    let chain_id = match chain_id {
+        Some(id) => id,
+        None => match provider.get_chainid().await {
+            Ok(id) => id.as_u64(),
+            Err(err) => {
+                tracing::error!("error getting chain ID: {}", err);
+                return None;
+            }
+        },
+    };
+    let mnemonic = match MnemonicBuilder::<English>::default()
+        .phrase(mnemonic)
+        .index(index)
+    {
+        Ok(mnemonic) => mnemonic,
+        Err(err) => {
+            tracing::error!("error building wallet: {}", err);
+            return None;
+        }
+    };
+    let wallet = match mnemonic.build() {
+        Ok(wallet) => wallet,
+        Err(err) => {
+            tracing::error!("error opening wallet: {}", err);
+            return None;
+        }
+    };
+    let wallet = wallet.with_chain_id(chain_id);
+    Some(SignerMiddleware::new(provider, wallet))
+}
 
 pub type InnerMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
 
@@ -130,6 +176,31 @@ impl Operations {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CombinedOperations {
+    pub regular_node: Operations,
+    pub preconf_node: Operations,
+}
+
+impl CombinedOperations {
+    pub fn generate(total_duration: Duration) -> Self {
+        Self {
+            regular_node: Operations::generate(total_duration),
+            preconf_node: Operations::generate(total_duration),
+        }
+    }
+
+    pub fn save(&self, path: &PathBuf) {
+        let data = serde_json::to_string_pretty(self).unwrap();
+        std::fs::write(path, data).unwrap();
+    }
+
+    pub fn load(path: &PathBuf) -> Self {
+        let data = std::fs::read_to_string(path).unwrap();
+        serde_json::from_str(&data).unwrap()
+    }
+}
+
 #[derive(Debug, Clone)]
 struct State {
     pending: VecDeque<Effect>,
@@ -139,6 +210,7 @@ struct State {
 
 #[derive(Debug, Clone)]
 pub struct Run {
+    name: String,
     operations: Operations,
     // The signer is used to re-initialize the nonce manager when necessary.
     signer: SignerMiddleware<Provider<Http>, LocalWallet>,
@@ -147,10 +219,12 @@ pub struct Run {
 
 impl Run {
     pub fn new(
+        name: impl Into<String>,
         operations: Operations,
         signer: SignerMiddleware<Provider<Http>, LocalWallet>,
     ) -> Self {
         Self {
+            name: name.into(),
             operations,
             signer: signer.clone(),
             state: Arc::new(RwLock::new(State {
@@ -164,10 +238,15 @@ impl Run {
         }
     }
 
+    pub async fn wait(&self) {
+        join(self.submit_operations(), self.wait_for_effects()).await;
+    }
+
     pub async fn submit_operations(&self) {
         for (index, operation) in self.operations.0.iter().enumerate() {
             tracing::info!(
-                "Submitting operation {index: >6} / {}: {operation:?}",
+                "[{}] Submitting operation {index: >6} / {}: {operation:?}",
+                self.name,
                 self.operations.0.len()
             );
             if let Operation::Transfer(_) = operation {
@@ -184,13 +263,18 @@ impl Run {
             }
         }
         self.state.write().await.submit_operations_done = true;
-        tracing::info!("Submitted all {} operations", self.operations.0.len());
+        tracing::info!(
+            "[{}] Submitted all {} operations",
+            self.name,
+            self.operations.0.len()
+        );
     }
 
     pub async fn wait_for_effects(&self) {
         loop {
             tracing::info!(
-                "num_pending_effects={}",
+                "[{}] num_pending_effects={}",
+                self.name,
                 self.state.read().await.pending.len()
             );
             let effect = { self.state.write().await.pending.pop_front() };
@@ -207,18 +291,26 @@ impl Run {
                             .unwrap()
                             .is_some()
                         {
-                            tracing::info!("hash={hash:?} receive_receipt={:?}", start.elapsed());
+                            tracing::info!(
+                                "[{}] hash={hash:?} receive_receipt={:?}",
+                                self.name,
+                                start.elapsed()
+                            );
                         } else {
-                            tracing::info!("hash={hash:?} wait_receipt={:?}", start.elapsed());
+                            tracing::info!(
+                                "[{}] hash={hash:?} wait_receipt={:?}",
+                                self.name,
+                                start.elapsed()
+                            );
                             if start.elapsed() > Duration::from_secs(90) {
-                                tracing::info!("hash={hash:?} receipt_timeout");
-                                tracing::info!("Removing all pending effects");
+                                tracing::info!("[{}] hash={hash:?} receipt_timeout", self.name);
+                                tracing::info!("[{}] Removing all pending effects", self.name);
                                 // Keep a write lock to avoid adding more pending receipts.
                                 let mut state = self.state.write().await;
                                 while let Some(effect) = state.pending.pop_front() {
-                                    tracing::info!("effect_clear: {effect:?}");
+                                    tracing::info!("[{}] effect_clear: {effect:?}", self.name);
                                 }
-                                tracing::info!("Reinitializing nonce manager");
+                                tracing::info!("[{}] Reinitializing nonce manager", self.name);
                                 state.client = Arc::new(NonceManagerMiddleware::new(
                                     self.signer.clone(),
                                     self.signer.address(),
@@ -237,7 +329,7 @@ impl Run {
             }
             let state = self.state.read().await;
             if state.submit_operations_done && state.pending.is_empty() {
-                tracing::info!("All effects completed!");
+                tracing::info!("[{}] All effects completed!", self.name);
                 break;
             }
         }
