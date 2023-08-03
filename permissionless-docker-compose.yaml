@@ -258,6 +258,7 @@ services:
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
+      - ZKEVM_NODE_ETHTXMANAGER_POLLINGINTERVAL=$ESPRESSO_ZKEVM_ETH_TX_MANAGER_POLLING_INTERVAL
     volumes:
       - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
       - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
@@ -553,6 +554,7 @@ services:
       - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
       - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
       - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
+      - ZKEVM_NODE_ETHTXMANAGER_POLLINGINTERVAL=$ESPRESSO_ZKEVM_ETH_TX_MANAGER_POLLING_INTERVAL
     volumes:
       - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
       - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
