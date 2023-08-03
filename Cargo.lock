@@ -1878,7 +1878,7 @@ checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#a9aca7c8afdc74beff7e73a93ef508b898aa59c3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=release-doppio-v1.0.0#019ade85e694cdbcd940593331b7e742f72a7597"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -7375,7 +7375,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#a9aca7c8afdc74beff7e73a93ef508b898aa59c3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=release-doppio-v1.0.0#019ade85e694cdbcd940593331b7e742f72a7597"
 dependencies = [
  "anyhow",
  "ark-bls12-381 0.3.0",
@@ -7416,7 +7416,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#a9aca7c8afdc74beff7e73a93ef508b898aa59c3"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git?branch=release-doppio-v1.0.0#019ade85e694cdbcd940593331b7e742f72a7597"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
