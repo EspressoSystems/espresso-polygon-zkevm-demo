@@ -8,11 +8,11 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::task::sleep;
 use clap::Parser;
-use ethers::{prelude::*, signers::coins_bip39::English};
+use ethers::prelude::*;
 use futures::join;
-use http_types::Url;
-use polygon_zkevm_adaptor::{InnerMiddleware, Layer1Backend, Operations, Run, SequencerZkEvmDemo};
-use serde::{Deserialize, Serialize};
+use polygon_zkevm_adaptor::{
+    connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemo,
+};
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
 /// Run a load test on the ZkEVM node.
@@ -56,75 +56,6 @@ pub struct Options {
     /// Layer 1 backend to use.
     #[arg(long, default_value = "geth")]
     pub l1_backend: Layer1Backend,
-}
-
-pub async fn connect_rpc_simple(
-    provider: &Url,
-    mnemonic: &str,
-    index: u32,
-    chain_id: Option<u64>,
-) -> Option<InnerMiddleware> {
-    let provider = match Provider::try_from(provider.to_string()) {
-        Ok(provider) => provider,
-        Err(err) => {
-            tracing::error!("error connecting to RPC {}: {}", provider, err);
-            return None;
-        }
-    };
-    let chain_id = match chain_id {
-        Some(id) => id,
-        None => match provider.get_chainid().await {
-            Ok(id) => id.as_u64(),
-            Err(err) => {
-                tracing::error!("error getting chain ID: {}", err);
-                return None;
-            }
-        },
-    };
-    let mnemonic = match MnemonicBuilder::<English>::default()
-        .phrase(mnemonic)
-        .index(index)
-    {
-        Ok(mnemonic) => mnemonic,
-        Err(err) => {
-            tracing::error!("error building wallet: {}", err);
-            return None;
-        }
-    };
-    let wallet = match mnemonic.build() {
-        Ok(wallet) => wallet,
-        Err(err) => {
-            tracing::error!("error opening wallet: {}", err);
-            return None;
-        }
-    };
-    let wallet = wallet.with_chain_id(chain_id);
-    Some(SignerMiddleware::new(provider, wallet))
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CombinedOperations {
-    regular_node: Operations,
-    preconf_node: Operations,
-}
-
-impl CombinedOperations {
-    pub fn generate(total_duration: Duration) -> Self {
-        Self {
-            regular_node: Operations::generate(total_duration),
-            preconf_node: Operations::generate(total_duration),
-        }
-    }
-
-    pub fn save(&self, path: &PathBuf) {
-        let data = serde_json::to_string_pretty(self).unwrap();
-        std::fs::write(path, data).unwrap();
-    }
-
-    pub fn load(path: &PathBuf) -> Self {
-        let data = std::fs::read_to_string(path).unwrap();
-        serde_json::from_str(&data).unwrap()
-    }
 }
 
 #[async_std::main]
@@ -190,8 +121,8 @@ async fn main() {
         sleep(Duration::from_secs(1)).await;
     }
 
-    let run = Run::new(operations.regular_node, signer);
-    let preconf_run = Run::new(operations.preconf_node, preconf_signer);
+    let run = Run::new("regular", operations.regular_node, signer);
+    let preconf_run = Run::new("preconf", operations.preconf_node, preconf_signer);
     join!(run.wait(), preconf_run.wait());
 
     tracing::info!("Run complete!");
