@@ -2,7 +2,7 @@ version: "3"
 services:
 
   zkevm-1-aggregator:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     expose:
       - 50081
       - 9091 # needed if metrics enabled
@@ -83,7 +83,7 @@ services:
       retries: 20
 
   zkevm-1-permissionless-node:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     ports:
       - $ESPRESSO_ZKEVM_1_L2_PORT:$ESPRESSO_ZKEVM_1_L2_PORT
       - $ESPRESSO_ZKEVM_1_L2_PORT_WS:$ESPRESSO_ZKEVM_1_L2_PORT_WS
@@ -133,7 +133,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   zkevm-1-eth-tx-manager:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     environment:
       - ZKEVM_NODE_STATEDB_USER=state_user
       - ZKEVM_NODE_STATEDB_PASSWORD=state_password
@@ -162,7 +162,7 @@ services:
         condition: service_healthy
 
   zkevm-1-faucet:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:release-doppio-v1.0.0
     ports:
       - $ESPRESSO_ZKEVM_1_FAUCET_PORT:$ESPRESSO_ZKEVM_1_FAUCET_PORT
     environment:
@@ -186,7 +186,7 @@ services:
 
   # Polygon zkevm-node 2
   zkevm-2-aggregator:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     expose:
       - 50081
       - 9091 # needed if metrics enabled
@@ -264,7 +264,7 @@ services:
       retries: 20
 
   zkevm-2-permissionless-node:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     ports:
       - $ESPRESSO_ZKEVM_2_L2_PORT:$ESPRESSO_ZKEVM_2_L2_PORT
       - $ESPRESSO_ZKEVM_2_L2_PORT_WS:$ESPRESSO_ZKEVM_2_L2_PORT_WS
@@ -314,7 +314,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   zkevm-2-eth-tx-manager:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0
     environment:
       - ZKEVM_NODE_STATEDB_USER=state_user
       - ZKEVM_NODE_STATEDB_PASSWORD=state_password
@@ -343,7 +343,7 @@ services:
         condition: service_healthy
 
   zkevm-2-faucet:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:release-doppio-v1.0.0
     ports:
       - $ESPRESSO_ZKEVM_2_FAUCET_PORT:$ESPRESSO_ZKEVM_2_FAUCET_PORT
     environment:

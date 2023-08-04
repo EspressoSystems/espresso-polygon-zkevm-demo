@@ -3,8 +3,8 @@ set -e
 
 nix develop .#crossShell --ignore-environment --keep HOME --command cargo build --release
 
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main -f docker/faucet.Dockerfile .
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main -f docker/polygon-zkevm-adaptor.Dockerfile .
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/state-db:main -f docker/state-db.Dockerfile .
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:main -f docker/node.Dockerfile .
-docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-prover:main -f docker/prover.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:release-doppio-v1.0.0 -f docker/faucet.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:release-doppio-v1.0.0 -f docker/polygon-zkevm-adaptor.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/state-db:release-doppio-v1.0.0 -f docker/state-db.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-node:release-doppio-v1.0.0 -f docker/node.Dockerfile .
+docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/zkevm-prover:release-doppio-v1.0.0 -f docker/prover.Dockerfile .
