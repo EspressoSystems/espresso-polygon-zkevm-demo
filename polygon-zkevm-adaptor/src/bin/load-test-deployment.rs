@@ -6,16 +6,12 @@
 // You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
+use async_std::task::sleep;
 use clap::Parser;
-use ethers::{
-    prelude::SignerMiddleware,
-    providers::{Middleware as _, Provider},
-    signers::{coins_bip39::English, MnemonicBuilder, Signer},
-};
+use ethers::prelude::*;
 use futures::join;
 use http_types::Url;
-use polygon_zkevm_adaptor::{InnerMiddleware, Operations, Run};
-use sequencer_utils::wait_for_rpc;
+use polygon_zkevm_adaptor::{connect_rpc_simple, CombinedOperations, Run};
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
 /// Run a load test against an existing ZkEVM node.
@@ -60,53 +56,13 @@ pub struct Options {
     #[arg(long)]
     pub l2_provider: Url,
 
+    /// URL for an optional L2 JSON-RPC service using preconfirmations.
+    #[arg(long)]
+    pub preconfirmations_l2_provider: Option<Url>,
+
     /// Mnemonic for a funded L2 account, which the load test will drain.
     #[arg(long)]
     pub mnemonic: String,
-}
-
-pub async fn connect_rpc_simple(
-    provider: &Url,
-    mnemonic: &str,
-    index: u32,
-    chain_id: Option<u64>,
-) -> Option<InnerMiddleware> {
-    let provider = match Provider::try_from(provider.to_string()) {
-        Ok(provider) => provider,
-        Err(err) => {
-            tracing::error!("error connecting to RPC {}: {}", provider, err);
-            return None;
-        }
-    };
-    let chain_id = match chain_id {
-        Some(id) => id,
-        None => match provider.get_chainid().await {
-            Ok(id) => id.as_u64(),
-            Err(err) => {
-                tracing::error!("error getting chain ID: {}", err);
-                return None;
-            }
-        },
-    };
-    let mnemonic = match MnemonicBuilder::<English>::default()
-        .phrase(mnemonic)
-        .index(index)
-    {
-        Ok(mnemonic) => mnemonic,
-        Err(err) => {
-            tracing::error!("error building wallet: {}", err);
-            return None;
-        }
-    };
-    let wallet = match mnemonic.build() {
-        Ok(wallet) => wallet,
-        Err(err) => {
-            tracing::error!("error opening wallet: {}", err);
-            return None;
-        }
-    };
-    let wallet = wallet.with_chain_id(chain_id);
-    Some(SignerMiddleware::new(provider, wallet))
 }
 
 #[async_std::main]
@@ -118,9 +74,9 @@ async fn main() {
 
     let operations = if let Some(path) = opt.load_plan {
         tracing::info!("Loading plan from {}", path.display());
-        Operations::load(&path)
+        CombinedOperations::load(&path)
     } else {
-        let operations = Operations::generate(opt.mins);
+        let operations = CombinedOperations::generate(opt.mins);
         let path = opt.save_plan.unwrap();
         tracing::info!("Saved plan to {}", path.display());
         operations.save(&path);
@@ -131,20 +87,53 @@ async fn main() {
     let signer = connect_rpc_simple(&opt.l2_provider, &opt.mnemonic, 0, None)
         .await
         .unwrap();
+    // Use the second account for the second connection. Even though the two signers will be
+    // _submitting_ transactions to different RPCs, both RPCs will see the transactions from both
+    // signers come out of the sequencer, which means using the same account for both could cause
+    // the two random clients to interfere with each other.
+    //
+    // Using two different signers connected to the two RPCs ensures we are continuously testing
+    // that both RPCs are still working, and stresses the scenario where an RPC sees a transaction
+    // that it didn't submit.
+    let preconf_signer = match &opt.preconfirmations_l2_provider {
+        Some(provider) => {
+            let preconf_signer = connect_rpc_simple(provider, &opt.mnemonic, 1, None)
+                .await
+                .unwrap();
+            // Find the balance of the funded account.
+            let balance = signer.get_balance(signer.address(), None).await.unwrap();
 
-    wait_for_rpc(&opt.l2_provider, Duration::from_secs(1), 10)
-        .await
-        .unwrap();
+            // Transfer some funds from the first (funded) account to the second one.
+            let transfer_amount = balance / 2;
+            tracing::info!("Transferring {transfer_amount}/{balance} to unfunded account");
+            let tx = TransactionRequest::default()
+                .to(preconf_signer.address())
+                .value(transfer_amount);
+            let hash = signer.send_transaction(tx, None).await.unwrap().tx_hash();
 
-    // At this point we may still get errors when talking to the RPC,
-    // so wait a bit more.
-    async_std::task::sleep(Duration::from_secs(10)).await;
+            // Wait for the transfer to complete.
+            loop {
+                if let Some(receipt) = signer.get_transaction_receipt(hash).await.unwrap() {
+                    tracing::info!("transfer {hash} completed: {receipt:?}");
+                    break;
+                }
+                tracing::info!("Waiting for transfer {hash} to complete");
+                sleep(Duration::from_secs(1)).await;
+            }
 
-    let run = Run::new(operations, signer);
+            Some(preconf_signer)
+        }
+        None => None,
+    };
 
-    let submit_handle = run.submit_operations();
-    let wait_handle = run.wait_for_effects();
-    join!(submit_handle, wait_handle);
+    let run = Run::new("regular", operations.regular_node, signer);
+    let preconf_run =
+        preconf_signer.map(|signer| Run::new("preconf", operations.preconf_node, signer));
+    join!(run.wait(), async move {
+        if let Some(run) = preconf_run {
+            run.wait().await
+        }
+    });
 
     tracing::info!("Run complete!");
 }
