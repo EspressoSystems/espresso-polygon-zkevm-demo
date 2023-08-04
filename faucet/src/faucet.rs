@@ -203,6 +203,7 @@ impl ClientPool {
 struct State {
     clients: ClientPool,
     inflight: HashMap<H256, Transfer>,
+    clients_being_funded: HashMap<Address, Arc<Middleware>>,
     // Funding wallets has priority, these transfer requests must be pushed to
     // the front.
     transfer_queue: VecDeque<TransferRequest>,
@@ -262,16 +263,18 @@ impl Faucet {
             clients.push((balance, client));
         }
 
-        let average_balance = total_balance / options.num_clients;
+        let desired_balance = total_balance / options.num_clients * 8 / 10;
 
         for (balance, client) in clients {
-            // Fund all clients who have less than average balance.
-            if options.enable_funding && balance < average_balance {
+            // Fund all clients who have significantly less than average balance.
+            if options.enable_funding && balance < desired_balance {
                 tracing::info!("Queuing funding transfer for {:?}", client.address());
-                let transfer = TransferRequest::funding(client.address(), average_balance);
+                let transfer = TransferRequest::funding(client.address(), desired_balance);
                 state.transfer_queue.push_back(transfer);
+                state.clients_being_funded.insert(client.address(), client);
+            } else {
+                state.clients.push(balance, client);
             }
-            state.clients.push(balance, client);
         }
 
         Ok(Self {
@@ -326,7 +329,7 @@ impl Faucet {
                         tracing::error!("Failed to execute transfer: {:?}", err)
                     }
                     TransferError::NoClient => {
-                        tracing::warn!("No clients to handle transfer requests.")
+                        tracing::info!("No clients to handle transfer requests.")
                     }
                     TransferError::NoRequests => {}
                 };
@@ -336,7 +339,7 @@ impl Faucet {
         }
     }
 
-    async fn execute_transfer(&self) -> Result<(), TransferError> {
+    async fn execute_transfer(&self) -> Result<H256, TransferError> {
         let mut state = self.state.write().await;
         if state.transfer_queue.is_empty() {
             Err(TransferError::NoRequests)?;
@@ -356,6 +359,7 @@ impl Faucet {
             TransferRequest::Funding { .. } => balance / 2,
         };
         match sender
+            .clone()
             .send_transaction(TransactionRequest::pay(transfer.to(), amount), None)
             .await
         {
@@ -373,6 +377,7 @@ impl Faucet {
                     .await
                     .inflight
                     .insert(tx.tx_hash(), Transfer::new(sender.clone(), transfer));
+                Ok(tx.tx_hash())
             }
             Err(err) => {
                 // Make the client available again.
@@ -392,8 +397,6 @@ impl Faucet {
                 })?
             }
         }
-
-        Ok(())
     }
 
     async fn handle_receipt(&self, tx_hash: H256) -> Result<()> {
@@ -402,8 +405,8 @@ impl Faucet {
         let Transfer {
             sender, request, ..
         } = {
-            if let Some(inflight) = self.state.write().await.inflight.remove(&tx_hash) {
-                inflight
+            if let Some(inflight) = self.state.read().await.inflight.get(&tx_hash) {
+                inflight.clone()
             } else {
                 // Not a transaction we are monitoring.
                 return Ok(());
@@ -421,14 +424,41 @@ impl Faucet {
 
         tracing::info!("Received receipt for {:?}", request);
 
-        // Mark the sender as available
-        let balance = self.balance(sender.address()).await?;
-        let mut state = self.state.write().await;
-        state.clients.push(balance, sender);
+        // Do all external calls before state modifications
+        let new_sender_balance = self.balance(sender.address()).await?;
 
-        // If the transaction failed, schedule it again
+        // For successful funding transfers, we also need to update the receiver's balance.
+        let receiver_update = if receipt.status == Some(1.into()) {
+            if let TransferRequest::Funding { to: receiver, .. } = request {
+                Some((receiver, self.balance(receiver).await?))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Update state, the rest of the operations must be atomic.
+        let mut state = self.state.write().await;
+
+        // Make the sender available
+        state.clients.push(new_sender_balance, sender.clone());
+
+        // Apply the receiver update, if there is one.
+        if let Some((receiver, balance)) = receiver_update {
+            if let Some(client) = state.clients_being_funded.remove(&receiver) {
+                tracing::info!("Funded client {:?} with {:?}", receiver, balance);
+                state.clients.push(balance, client);
+            } else {
+                tracing::warn!(
+                    "Received funding transfer for unknown client {:?}",
+                    receiver
+                );
+            }
+        }
+
+        // If the transaction failed, schedule it again.
         if receipt.status == Some(0.into()) {
-            // If the transaction failed send it again.
             // TODO: this code is currently untested.
             tracing::warn!(
                 "Transfer failed tx_hash={:?}, will resend: {:?}",
@@ -436,7 +466,10 @@ impl Faucet {
                 request
             );
             state.transfer_queue.push_back(request);
-        }
+        };
+
+        // Finally remove the transaction from the inflight list.
+        state.inflight.remove(&tx_hash);
 
         // TODO: I think for transactions with bad nonces we would not even get
         // a transactions receipt. As a result the sending client would remain
@@ -551,6 +584,46 @@ mod test {
 
         // Assert that the transaction was not executed.
         assert_eq!(faucet.balance(Address::zero()).await?, 0.into());
+
+        Ok(())
+    }
+
+    // A regression test for a bug where clients that received funding transfers
+    // were not made available.
+    #[async_std::test]
+    async fn test_faucet_funding() -> Result<()> {
+        setup_logging();
+        setup_backtrace();
+
+        let anvil = AnvilOptions::default().spawn().await;
+
+        let mut ws_url = anvil.url();
+        ws_url.set_scheme("ws").unwrap();
+        let options = Options {
+            // 10 clients are already funded with anvil
+            num_clients: 11,
+            provider_url: ws_url,
+            ..Default::default()
+        };
+
+        let (_, receiver) = async_std::channel::unbounded();
+        let faucet = Faucet::create(options.clone(), receiver).await?;
+
+        // There is one client that needs funding.
+        assert_eq!(faucet.state.read().await.clients_being_funded.len(), 1);
+
+        let tx_hash = faucet.execute_transfer().await?;
+        faucet.handle_receipt(tx_hash).await?;
+
+        let mut state = faucet.state.write().await;
+        // The newly funded client is now funded.
+        assert_eq!(state.clients_being_funded.len(), 0);
+        assert_eq!(state.clients.clients.len(), 11);
+
+        // All clients now have a non-zero balance.
+        while let Some((balance, _)) = state.clients.pop() {
+            assert!(balance > 0.into());
+        }
 
         Ok(())
     }
