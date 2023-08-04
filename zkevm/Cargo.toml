@@ -14,7 +14,7 @@ async-std = { version = "1.12", features = ["attributes"] }
 clap = { version = "4.3", features = ["derive", "env"] }
 ethers = "2.0.4"
 jf-primitives = { git = "https://github.com/EspressoSystems/jellyfish" }
-sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "update/hotshot" }
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 tracing = "0.1"
 url = "2.3"
 zkevm-contract-bindings = { path = "../zkevm-contract-bindings" }
