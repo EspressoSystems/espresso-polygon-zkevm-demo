@@ -79,6 +79,10 @@ pub struct Options {
     /// The authentication token for the discord bot.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN")]
     pub discord_token: Option<String>,
+
+    /// Enable the funding on startup (currently broken).
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_ENABLE_FUNDING")]
+    pub enable_funding: bool,
 }
 
 impl Default for Options {
@@ -91,6 +95,7 @@ impl Default for Options {
             transaction_timeout: Duration::from_secs(300),
             provider_url: Url::parse("ws://localhost:8545").unwrap(),
             discord_token: None,
+            enable_funding: true,
         }
     }
 }
@@ -261,7 +266,7 @@ impl Faucet {
 
         for (balance, client) in clients {
             // Fund all clients who have less than average balance.
-            if balance < average_balance {
+            if options.enable_funding && balance < average_balance {
                 tracing::info!("Queuing funding transfer for {:?}", client.address());
                 let transfer = TransferRequest::funding(client.address(), average_balance);
                 state.transfer_queue.push_back(transfer);
