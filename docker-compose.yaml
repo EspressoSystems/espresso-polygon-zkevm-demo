@@ -9,6 +9,7 @@ services:
       - ESPRESSO_ORCHESTRATOR_NUM_NODES=5
       - ESPRESSO_ORCHESTRATOR_START_DELAY=5s
       - ESPRESSO_ORCHESTRATOR_MAX_PROPOSE_TIME
+      - ESPRESSO_ORCHESTRATOR_NEXT_VIEW_TIMEOUT
       - RUST_LOG
       - RUST_LOG_FORMAT
   da-server:
@@ -134,8 +135,8 @@ services:
         condition: service_started
     healthcheck:
       test: "curl http://localhost:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
-      interval: 1s
-      timeout: 0.5s
+      interval: 5s
+      timeout: 3s
       retries: 120
     profiles:
       - zkevm1
@@ -160,8 +161,8 @@ services:
         condition: service_started
     healthcheck:
       test: "curl http://localhost:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
-      interval: 1s
-      timeout: 0.5s
+      interval: 5s
+      timeout: 3s
       retries: 120
     profiles:
       - zkevm2

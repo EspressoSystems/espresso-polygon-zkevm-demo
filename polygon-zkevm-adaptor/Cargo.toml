@@ -21,7 +21,7 @@ required-features = ["testing"]
 testing = ["portpicker"]
 
 [dependencies]
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.3.0", features = [
     "logging-utils",
 ] }
 async-std = "1.12"
@@ -32,7 +32,7 @@ escargot = "0.5.7"
 ethers = "2.0"
 futures = "0.3"
 hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service.git" }
-hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = [
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", branch = "run_view_refactor", features = [
     "async-std-executor",
     "channel-async-std",
 ] }

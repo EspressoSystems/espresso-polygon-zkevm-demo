@@ -57,8 +57,8 @@ services:
       # Postgres can be falsely "ready" once before running init scripts.
       # See https://github.com/docker-library/postgres/issues/146 for discusson.
       test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm1"
@@ -108,8 +108,8 @@ services:
     stop_signal: SIGKILL
     healthcheck:
       test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm1"
@@ -182,8 +182,8 @@ services:
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT -q --spider --tries 1 || exit 1"
-      interval: 1s
-      timeout: 0.5s
+      interval: 3s
+      timeout: 2s
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -356,8 +356,8 @@ services:
       # Postgres can be falsely "ready" once before running init scripts.
       # See https://github.com/docker-library/postgres/issues/146 for discusson.
       test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm2"
@@ -404,8 +404,8 @@ services:
     stop_signal: SIGKILL
     healthcheck:
       test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm2"
@@ -478,8 +478,8 @@ services:
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT -q --spider --tries 1 || exit 1"
-      interval: 1s
-      timeout: 0.5s
+      interval: 3s
+      timeout: 2s
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"

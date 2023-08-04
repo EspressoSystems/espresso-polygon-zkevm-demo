@@ -323,7 +323,7 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> (ZkEvmNode, TempDir)
     .await
     .unwrap();
     for node in nodes {
-        node.start().await;
+        node.hotshot.start_consensus().await;
     }
 
     // Start a Polygon zkEVM adaptor.

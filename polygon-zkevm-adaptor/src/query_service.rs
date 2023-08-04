@@ -412,7 +412,7 @@ mod test {
         .await
         .unwrap();
         for node in &nodes {
-            node.start().await;
+            node.hotshot.start_consensus().await;
         }
 
         // Start the query service adaptor.
