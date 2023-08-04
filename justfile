@@ -43,11 +43,11 @@ anvil *args:
     docker run ghcr.io/foundry-rs/foundry:latest "anvil {{args}}"
 
 build-docker-zkevm-node:
-    cd zkevm-node && nix develop -c bash -c "make build-docker && docker tag zkevm-node:latest ghcr.io/espressosystems/zkevm-node:hotshot-integration"
+    cd zkevm-node && nix develop -c bash -c "make build-docker && docker tag zkevm-node:latest ghcr.io/espressosystems/zkevm-node:release-doppio-v1.0.0"
 
 build-docker-l1-geth:
     scripts/build-l1-image
-    docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main  -f docker/geth.Dockerfile .
+    docker build -t ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:release-doppio-v1.0.0  -f docker/geth.Dockerfile .
 
 build-docker: build-docker-l1-geth build-docker-zkevm-node
 

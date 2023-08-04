@@ -1,7 +1,7 @@
 version: "3"
 services:
   orchestrator:
-    image: ghcr.io/espressosystems/espresso-sequencer/orchestrator:main
+    image: ghcr.io/espressosystems/espresso-sequencer/orchestrator:release-doppio-v1.0.0
     ports:
       - "$ESPRESSO_ORCHESTRATOR_PORT:$ESPRESSO_ORCHESTRATOR_PORT"
     environment:
@@ -11,7 +11,7 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
   da-server:
-    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:release-doppio-v1.0.0
     ports:
       - "$ESPRESSO_DA_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
@@ -21,7 +21,7 @@ services:
       orchestrator:
         condition: service_healthy
   consensus-server:
-    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:release-doppio-v1.0.0
     ports:
       - "$ESPRESSO_CONSENSUS_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
@@ -32,7 +32,7 @@ services:
         condition: service_healthy
 
   sequencer0:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-doppio-v1.0.0
     # Run consensus *plus* the sequencer API server.
     command: /bin/sequencer -- http -- query -- submit
     ports:
@@ -51,7 +51,7 @@ services:
       zkevm-mock-l1-network:
         condition: service_healthy
   sequencer1:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-doppio-v1.0.0
     # Run consensus *plus* the commitment task to post commitments to the
     # hotshot contract.
     command: /bin/sequencer -- http -- commitment-task
@@ -72,7 +72,7 @@ services:
       sequencer0:
         condition: service_started
   sequencer2:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-doppio-v1.0.0
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -86,7 +86,7 @@ services:
       sequencer0:
         condition: service_started
   sequencer3:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-doppio-v1.0.0
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -100,7 +100,7 @@ services:
       sequencer0:
         condition: service_started
   sequencer4:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-doppio-v1.0.0
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -115,7 +115,7 @@ services:
         condition: service_started
 
   polygon-zkevm-1-adaptor:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:release-doppio-v1.0.0
     ports:
       - "$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT:$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT"
       - "$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT:$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"
@@ -138,7 +138,7 @@ services:
       retries: 120
 
   polygon-zkevm-2-adaptor:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:release-doppio-v1.0.0
     ports:
       - "$ESPRESSO_ZKEVM_2_ADAPTOR_RPC_PORT:$ESPRESSO_ZKEVM_2_ADAPTOR_RPC_PORT"
       - "$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT:$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_PORT"
