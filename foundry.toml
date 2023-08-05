@@ -1,0 +1,7 @@
+# This foundry profile is currently only used for etherscan verification
+[profile.default]
+src = 'zkevm-contracts/contracts'
+out = 'zkevm-contracts/out'
+libs = ['zkevm-contracts/node_modules', 'zkevm-contracts/lib']
+test = 'zkevm-contracts/test/foundry'
+cache_path  = 'zkevm-contracts/forge-cache'
