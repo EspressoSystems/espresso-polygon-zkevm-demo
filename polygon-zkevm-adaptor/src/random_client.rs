@@ -238,11 +238,17 @@ impl Run {
         }
     }
 
-    pub async fn wait(&self) {
-        join(self.submit_operations(), self.wait_for_effects()).await;
+    /// Run the test and wait for completion.
+    ///
+    /// Returns
+    /// * Number of transactions submitted
+    /// * Number of transactions successful
+    pub async fn wait(&self) -> (usize, usize) {
+        join(self.submit_operations(), self.wait_for_effects()).await
     }
 
-    pub async fn submit_operations(&self) {
+    pub async fn submit_operations(&self) -> usize {
+        let mut submitted = 0;
         for (index, operation) in self.operations.0.iter().enumerate() {
             tracing::info!(
                 "[{}] Submitting operation {index: >6} / {}: {operation:?}",
@@ -250,6 +256,7 @@ impl Run {
                 self.operations.0.len()
             );
             if let Operation::Transfer(_) = operation {
+                submitted += 1;
                 let effect = operation
                     .execute(self.state.read().await.client.clone())
                     .await;
@@ -264,13 +271,15 @@ impl Run {
         }
         self.state.write().await.submit_operations_done = true;
         tracing::info!(
-            "[{}] Submitted all {} operations",
+            "[{}] Submitted all {} operations ({submitted} transactions)",
             self.name,
             self.operations.0.len()
         );
+        submitted
     }
 
-    pub async fn wait_for_effects(&self) {
+    pub async fn wait_for_effects(&self) -> usize {
+        let mut received = 0;
         loop {
             tracing::info!(
                 "[{}] num_pending_effects={}",
@@ -296,6 +305,7 @@ impl Run {
                                 self.name,
                                 start.elapsed()
                             );
+                            received += 1;
                         } else {
                             tracing::info!(
                                 "[{}] hash={hash:?} wait_receipt={:?}",
@@ -329,10 +339,15 @@ impl Run {
             }
             let state = self.state.read().await;
             if state.submit_operations_done && state.pending.is_empty() {
-                tracing::info!("[{}] All effects completed!", self.name);
+                tracing::info!(
+                    "[{}] All effects completed ({received} successful)!",
+                    self.name
+                );
                 break;
             }
         }
+
+        received
     }
 }
 

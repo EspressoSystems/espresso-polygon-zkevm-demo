@@ -123,7 +123,14 @@ async fn main() {
 
     let run = Run::new("regular", operations.regular_node, signer);
     let preconf_run = Run::new("preconf", operations.preconf_node, preconf_signer);
-    join!(run.wait(), preconf_run.wait());
+    let ((regular_submitted, regular_successful), (preconf_submitted, preconf_successful)) =
+        join!(run.wait(), preconf_run.wait());
 
     tracing::info!("Run complete!");
+    tracing::info!(
+        "{regular_successful}/{regular_submitted} transactions successful via regular node"
+    );
+    tracing::info!(
+        "{preconf_successful}/{preconf_submitted} transactions successful via preconf node"
+    );
 }
