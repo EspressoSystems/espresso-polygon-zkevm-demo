@@ -10,7 +10,7 @@ use async_std::{channel::Receiver, sync::RwLock, task::JoinHandle};
 use clap::Parser;
 use ethers::{
     prelude::SignerMiddleware,
-    providers::{Middleware as _, Provider, StreamExt, Ws},
+    providers::{Http, Middleware as _, Provider, StreamExt, Ws},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::{Address, TransactionRequest, H256, U256},
     utils::{parse_ether, ConversionError},
@@ -25,7 +25,7 @@ use std::{
 use thiserror::Error;
 use url::Url;
 
-pub type Middleware = SignerMiddleware<Provider<Ws>, LocalWallet>;
+pub type Middleware = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 #[derive(Parser, Debug, Clone)]
 pub struct Options {
@@ -74,7 +74,11 @@ pub struct Options {
 
     /// The URL of the JsonRPC the faucet connects to.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS")]
-    pub provider_url: Url,
+    pub provider_url_ws: Url,
+
+    /// The URL of the JsonRPC the faucet connects to.
+    #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_HTTP")]
+    pub provider_url_http: Url,
 
     /// The authentication token for the discord bot.
     #[arg(long, env = "ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN")]
@@ -93,7 +97,8 @@ impl Default for Options {
             port: 8111,
             faucet_grant_amount: parse_ether("100").unwrap(),
             transaction_timeout: Duration::from_secs(300),
-            provider_url: Url::parse("ws://localhost:8545").unwrap(),
+            provider_url_ws: Url::parse("ws://localhost:8545").unwrap(),
+            provider_url_http: Url::parse("http://localhost:8545").unwrap(),
             discord_token: None,
             enable_funding: true,
         }
@@ -215,7 +220,7 @@ pub struct Faucet {
     config: Options,
     state: Arc<RwLock<State>>,
     /// Used to monitor Ethereum transactions.
-    provider: Provider<Ws>,
+    provider: Provider<Http>,
     /// Channel to receive faucet requests.
     faucet_receiver: Arc<RwLock<Receiver<Address>>>,
 }
@@ -227,7 +232,8 @@ impl Faucet {
     /// from the ones with most balance to the ones with less than average
     /// balance.
     pub async fn create(options: Options, faucet_receiver: Receiver<Address>) -> Result<Self> {
-        let provider = Provider::<Ws>::connect(options.provider_url.clone()).await?;
+        // Use a http provider for non-subscribe requests
+        let provider = Provider::<Http>::try_from(options.provider_url_http.to_string())?;
         let chain_id = provider.get_chainid().await?.as_u64();
 
         let mut state = State::default();
@@ -482,18 +488,34 @@ impl Faucet {
     }
 
     async fn monitor_transactions(&self) -> Result<()> {
-        let mut stream = self
-            .provider
-            .subscribe_blocks()
-            .await
-            .unwrap()
-            .flat_map(|block| futures::stream::iter(block.transactions));
-        self.state.write().await.monitoring_started = true;
-        tracing::info!("Transaction monitoring started ...");
-        while let Some(tx_hash) = stream.next().await {
-            self.handle_receipt(tx_hash).await?;
+        loop {
+            let provider = match Provider::<Ws>::connect(self.config.provider_url_ws.clone()).await
+            {
+                Ok(provider) => provider,
+                Err(err) => {
+                    tracing::error!("Failed to connect to provider: {}, will retry", err);
+                    async_std::task::sleep(Duration::from_secs(5)).await;
+                    continue;
+                }
+            };
+
+            let mut stream = provider
+                .subscribe_blocks()
+                .await
+                .unwrap()
+                .flat_map(|block| futures::stream::iter(block.transactions));
+
+            self.state.write().await.monitoring_started = true;
+            tracing::info!("Transaction monitoring started ...");
+            while let Some(tx_hash) = stream.next().await {
+                self.handle_receipt(tx_hash).await?;
+            }
+
+            // If we get here, the subscription was closed. This happens for example
+            // if the RPC server is restarted.
+            tracing::warn!("Block subscription closed, will restart ...");
+            async_std::task::sleep(Duration::from_secs(5)).await;
         }
-        Ok(())
     }
 
     async fn monitor_faucet_requests(&self) -> Result<()> {
@@ -559,7 +581,8 @@ mod test {
 
         let options = Options {
             num_clients: 1,
-            provider_url: ws_url,
+            provider_url_ws: ws_url,
+            provider_url_http: anvil.url(),
             transaction_timeout: Duration::from_secs(0),
             ..Default::default()
         };
@@ -602,7 +625,8 @@ mod test {
         let options = Options {
             // 10 clients are already funded with anvil
             num_clients: 11,
-            provider_url: ws_url,
+            provider_url_ws: ws_url,
+            provider_url_http: anvil.url(),
             ..Default::default()
         };
 

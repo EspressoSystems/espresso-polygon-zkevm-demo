@@ -3178,6 +3178,7 @@ dependencies = [
  "ethers",
  "futures",
  "polygon-zkevm-adaptor",
+ "portpicker",
  "regex",
  "sequencer-utils",
  "serde",
