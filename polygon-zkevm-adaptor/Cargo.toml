@@ -32,7 +32,7 @@ escargot = "0.5.7"
 ethers = "2.0"
 futures = "0.3"
 hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service.git" }
-hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", branch = "run_view_refactor", features = [
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", features = [
     "async-std-executor",
     "channel-async-std",
 ] }
