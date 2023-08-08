@@ -179,8 +179,6 @@ services:
         condition: service_started
       zkevm-1-state-db:
         condition: service_healthy
-      polygon-zkevm-1-adaptor:
-        condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT -q --spider --tries 1 || exit 1"
@@ -233,8 +231,6 @@ services:
       zkevm-mock-l1-network:
         condition: service_started
       zkevm-1-preconfirmations-state-db:
-        condition: service_healthy
-      polygon-zkevm-1-adaptor:
         condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is
@@ -479,8 +475,6 @@ services:
         condition: service_started
       zkevm-2-state-db:
         condition: service_healthy
-      polygon-zkevm-2-adaptor:
-        condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT -q --spider --tries 1 || exit 1"
@@ -533,8 +527,6 @@ services:
       zkevm-mock-l1-network:
         condition: service_started
       zkevm-2-preconfirmations-state-db:
-        condition: service_healthy
-      polygon-zkevm-2-adaptor:
         condition: service_healthy
     healthcheck:
       # curl not installed in container, but wget is

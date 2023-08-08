@@ -13,6 +13,7 @@ use futures::join;
 use polygon_zkevm_adaptor::{
     connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemo,
 };
+use sequencer_utils::wait_for_http;
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
 /// Run a load test on the ZkEVM node.
@@ -97,6 +98,11 @@ async fn main() {
     // that both RPCs are still working, and stresses the scenario where an RPC sees a transaction
     // that it didn't submit.
     let preconf_signer = connect_rpc_simple(&env.l2_preconfirmations_provider(), mnemonic, 1, None)
+        .await
+        .unwrap();
+
+    // Even though we might be able to connect, the L2 RPCs won't work until the adaptor is running.
+    wait_for_http(&env.l2_adaptor_rpc(), Duration::from_secs(1), 60)
         .await
         .unwrap();
 
