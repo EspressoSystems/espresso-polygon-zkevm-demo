@@ -65,10 +65,6 @@ services:
 
   zkevm-1-preconfirmations-state-db:
     image: postgres
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     expose:
       - 5432
     volumes:
@@ -83,8 +79,8 @@ services:
       # Postgres can be falsely "ready" once before running init scripts.
       # See https://github.com/docker-library/postgres/issues/146 for discusson.
       test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm1-preconfirmations"
@@ -364,10 +360,6 @@ services:
 
   zkevm-2-preconfirmations-state-db:
     image: postgres
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     expose:
       - 5432
     volumes:
@@ -382,8 +374,8 @@ services:
       # Postgres can be falsely "ready" once before running init scripts.
       # See https://github.com/docker-library/postgres/issues/146 for discusson.
       test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
-      interval: 1s
-      timeout: 2s
+      interval: 5s
+      timeout: 4s
       retries: 20
     profiles:
       - "zkevm2-preconfirmations"
