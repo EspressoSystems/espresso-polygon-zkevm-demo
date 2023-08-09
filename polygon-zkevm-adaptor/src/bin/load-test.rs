@@ -13,6 +13,7 @@ use futures::join;
 use polygon_zkevm_adaptor::{
     connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemo,
 };
+use sequencer_utils::wait_for_http;
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
 /// Run a load test on the ZkEVM node.
@@ -100,6 +101,11 @@ async fn main() {
         .await
         .unwrap();
 
+    // Even though we might be able to connect, the L2 RPCs won't work until the adaptor is running.
+    wait_for_http(&env.l2_adaptor_rpc(), Duration::from_secs(1), 60)
+        .await
+        .unwrap();
+
     // Find the balance of the funded account.
     let balance = signer.get_balance(signer.address(), None).await.unwrap();
 
@@ -123,7 +129,14 @@ async fn main() {
 
     let run = Run::new("regular", operations.regular_node, signer);
     let preconf_run = Run::new("preconf", operations.preconf_node, preconf_signer);
-    join!(run.wait(), preconf_run.wait());
+    let ((regular_submitted, regular_successful), (preconf_submitted, preconf_successful)) =
+        join!(run.wait(), preconf_run.wait());
 
     tracing::info!("Run complete!");
+    tracing::info!(
+        "{regular_successful}/{regular_submitted} transactions successful via regular node"
+    );
+    tracing::info!(
+        "{preconf_successful}/{preconf_submitted} transactions successful via preconf node"
+    );
 }

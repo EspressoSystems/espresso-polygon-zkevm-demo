@@ -129,11 +129,22 @@ async fn main() {
     let run = Run::new("regular", operations.regular_node, signer);
     let preconf_run =
         preconf_signer.map(|signer| Run::new("preconf", operations.preconf_node, signer));
-    join!(run.wait(), async move {
-        if let Some(run) = preconf_run {
-            run.wait().await
-        }
-    });
+    let ((regular_submitted, regular_successful), preconf_results) =
+        join!(run.wait(), async move {
+            if let Some(run) = preconf_run {
+                Some(run.wait().await)
+            } else {
+                None
+            }
+        });
 
     tracing::info!("Run complete!");
+    tracing::info!(
+        "{regular_successful}/{regular_submitted} transactions successful via regular node"
+    );
+    if let Some((preconf_submitted, preconf_successful)) = preconf_results {
+        tracing::info!(
+            "{preconf_successful}/{preconf_submitted} transactions successful via preconf node"
+        );
+    }
 }
