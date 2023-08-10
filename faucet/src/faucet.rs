@@ -12,7 +12,7 @@ use ethers::{
     prelude::SignerMiddleware,
     providers::{Http, Middleware as _, Provider, StreamExt, Ws},
     signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
-    types::{Address, TransactionRequest, H256, U256},
+    types::{Address, TransactionRequest, H256, U256, U512},
     utils::{parse_ether, ConversionError},
 };
 use std::{
@@ -238,7 +238,11 @@ impl Faucet {
 
         let mut state = State::default();
         let mut clients = vec![];
-        let mut total_balance = U256::zero();
+
+        // We want each account to have a minimum value that is at least 80% of the average value.
+        // For this computation, convert into U512 to avoid overflow while adding up the total
+        // balance or multiplying to compute 80%.
+        let mut total_balance = U512::zero();
 
         // Create clients
         for index in 0..options.num_clients {
@@ -265,11 +269,15 @@ impl Faucet {
                 client.address(),
             );
 
-            total_balance += balance;
+            total_balance += balance.into();
             clients.push((balance, client));
         }
 
         let desired_balance = total_balance / options.num_clients * 8 / 10;
+        // At this point, `desired_balance` is less than the average of all the clients' balances,
+        // each of which was a `U256`, so we can safely cast back into a `U256`.
+        let desired_balance =
+            U256::try_from(desired_balance).expect("average balance overflows U256");
 
         for (balance, client) in clients {
             // Fund all clients who have significantly less than average balance.
