@@ -18,11 +18,16 @@ pub struct Options {
     #[clap(long, env = "ESPRESSO_SEQUENCER_URL")]
     pub sequencer_url: Url,
 
+    /// URL of layer 1 Ethereum JSON-RPC provider.
+    #[clap(long, env = "ESPRESSO_ZKEVM_L1_PROVIDER")]
+    pub l1_provider: Url,
+
     /// Chain ID for layer 2 EVM.
     ///
     /// This will be used as the VM ID for layer 2 EVM transactions within the HotShot sequencer.
     #[clap(long, env = "ESPRESSO_ZKEVM_L2_CHAIN_ID", default_value = "1001")]
     pub l2_chain_id: u64,
+
     /// Port on which to serve the JSON-RPC API.
     #[clap(
         short,

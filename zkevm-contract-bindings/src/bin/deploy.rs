@@ -10,13 +10,12 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
 use contract_bindings::HotShot;
 use ethers::{
-    prelude::SignerMiddleware,
     providers::{Http, Middleware, Provider},
-    signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
     types::Address,
     utils::{get_contract_address, parse_ether},
 };
 use hex::{FromHex, FromHexError};
+use sequencer_utils::{connect_rpc, Middleware as EthMiddleware};
 use serde::{Deserialize, Serialize};
 use serde_with::with_prefix;
 use std::path::PathBuf;
@@ -28,8 +27,6 @@ use zkevm_contract_bindings::{
     shared_types::InitializePackedParameters,
     verifier_rollup_helper_mock::VerifierRollupHelperMock, Deploy, PolygonZkEVM,
 };
-
-pub type EthMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 /// A script to deploy all contracts for the demo to an Ethereum RPC.
 ///
@@ -96,9 +93,10 @@ pub struct Options {
 
     /// Output file path where deployment info will be stored.
     #[arg(
+        short,
         long,
         env = "ESPRESSO_ZKEVM_DEPLOY_OUTPUT",
-        default_value = "deployment.json"
+        default_value = "deployment.env"
     )]
     pub output_path: PathBuf,
 }
@@ -131,7 +129,7 @@ struct ZkEvmDeploymentOutput {
     /// The address of the bridge contract.
     bridge_address: Address,
     /// The address of the global exit root contract.
-    global_exit_root_address: Address,
+    ger_address: Address,
     /// The address of the verifier contract.
     verifier_address: Address,
     /// The block number when the rollup contract was deployed.
@@ -162,6 +160,17 @@ struct DeploymentOutput {
     zkevm_2_output: ZkEvmDeploymentOutput,
 }
 
+impl DeploymentOutput {
+    fn to_dotenv(&self) -> String {
+        let mut dotenv = "# Deployment configuration\n".to_owned();
+        let json = serde_json::to_value(self).unwrap();
+        for (key, val) in json.as_object().unwrap() {
+            dotenv = format!("{dotenv}{key}={val}\n")
+        }
+        dotenv
+    }
+}
+
 /// Deploys the contracts for a demo Polygon ZkEVM.
 ///
 /// For the demo they are considered independent systems so all contracts
@@ -174,13 +183,14 @@ async fn deploy_zkevm(
 ) -> Result<ZkEvmDeploymentOutput> {
     let (_, verifier) = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 
+    let deployer_address = deployer.inner().address();
     let matic_token_initial_balance = parse_ether("20000000")?;
     let (_, matic) = ERC20PermitMock::deploy_contract(
         &deployer,
         (
             "Matic Token".to_string(),
             "MATIC".to_string(),
-            deployer.address(),
+            deployer_address,
             matic_token_initial_balance,
         ),
     )
@@ -188,10 +198,10 @@ async fn deploy_zkevm(
 
     // We need to pass the addresses to the GER constructor.
     let nonce = provider
-        .get_transaction_count(deployer.address(), None)
+        .get_transaction_count(deployer.inner().address(), None)
         .await?;
-    let precalc_bridge_address = get_contract_address(deployer.address(), nonce + 1);
-    let precalc_rollup_address = get_contract_address(deployer.address(), nonce + 2);
+    let precalc_bridge_address = get_contract_address(deployer_address, nonce + 1);
+    let precalc_rollup_address = get_contract_address(deployer_address, nonce + 2);
     let (_, global_exit_root) = PolygonZkEVMGlobalExitRoot::deploy_contract(
         &deployer,
         (precalc_rollup_address, precalc_bridge_address),
@@ -244,7 +254,7 @@ async fn deploy_zkevm(
     rollup
         .initialize(
             InitializePackedParameters {
-                admin: deployer.address(),
+                admin: deployer_address,
                 trusted_sequencer: Address::zero(), // Not used.
                 pending_state_timeout: 10,
                 trusted_aggregator: *trusted_aggregator,
@@ -263,7 +273,7 @@ async fn deploy_zkevm(
         rollup_address: rollup.address(),
         bridge_address: bridge.address(),
         matic_address: matic.address(),
-        global_exit_root_address: global_exit_root.address(),
+        ger_address: global_exit_root.address(),
         verifier_address: verifier.address(),
         genesis_block_number,
     })
@@ -272,15 +282,10 @@ async fn deploy_zkevm(
 async fn deploy(opts: Options) -> Result<()> {
     let mut provider = Provider::try_from(opts.provider_url.to_string())?;
     provider.set_interval(Duration::from_millis(100));
-    let chain_id = provider.get_chainid().await?.as_u64();
-    let deployer = Arc::new(SignerMiddleware::new(
-        provider.clone(),
-        MnemonicBuilder::<English>::default()
-            .phrase(opts.mnemonic.as_str())
-            .index(0u32)?
-            .build()?
-            .with_chain_id(chain_id),
-    ));
+    let deployer = connect_rpc(&opts.provider_url, &opts.mnemonic, 0, None)
+        .await
+        .unwrap();
+    tracing::info!("Using deployer account {:?}", deployer.inner().address());
 
     // Deploy the hotshot contract.
     let hotshot = HotShot::deploy(deployer.clone(), ())?.send().await?;
@@ -318,8 +323,7 @@ async fn deploy(opts: Options) -> Result<()> {
         zkevm_2_output,
     };
 
-    let data = serde_json::to_string_pretty(&output)?;
-    std::fs::write(&opts.output_path, data)?;
+    std::fs::write(&opts.output_path, output.to_dotenv())?;
     tracing::info!("Wrote deployment output to {}", opts.output_path.display());
 
     Ok(())

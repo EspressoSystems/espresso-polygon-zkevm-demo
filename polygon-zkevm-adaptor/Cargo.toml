@@ -13,11 +13,15 @@ required-features = ["testing"]
 name = "load-test"
 required-features = ["testing"]
 
+[[bin]]
+name = "load-test-deployment"
+required-features = ["testing"]
+
 [features]
 testing = ["portpicker"]
 
 [dependencies]
-async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.2.0", features = [
+async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.3.0", features = [
     "logging-utils",
 ] }
 async-std = "1.12"

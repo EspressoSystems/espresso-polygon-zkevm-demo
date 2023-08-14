@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Usage
+#
+#   ./source-dotenv <env> <command>
+#
+# This is a simple utility script to run a command with an environment modified according to the
+# given dotenv file.
+
+DOTENV="$1"
+shift
+
+set -a
+source "$DOTENV"
+set +a
+
+"$@"

@@ -111,7 +111,7 @@ mod test {
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
     use async_std::task::spawn;
     use ethers::{
-        providers::{Middleware, Provider, Ws},
+        providers::{Http, Middleware, Provider},
         types::U256,
         utils::parse_ether,
     };
@@ -139,7 +139,7 @@ mod test {
             total_transfer_amount += options.faucet_grant_amount;
         }
 
-        let provider = Provider::<Ws>::connect(options.provider_url).await?;
+        let provider = Provider::<Http>::try_from(options.provider_url_http.to_string())?;
         loop {
             let balance = provider.get_balance(recipient, None).await.unwrap();
             tracing::info!("Balance is {balance}");
@@ -167,7 +167,9 @@ mod test {
         let options = Options {
             num_clients: 12,
             faucet_grant_amount: parse_ether(1).unwrap(),
-            provider_url: ws_url,
+            provider_url_ws: ws_url,
+            provider_url_http: anvil.url(),
+            port: portpicker::pick_unused_port().unwrap(),
             ..Default::default()
         };
 
@@ -217,10 +219,52 @@ mod test {
         let options = Options {
             num_clients,
             faucet_grant_amount: parse_ether(faucet_grant_amount_ethers).unwrap(),
-            provider_url: ws_url,
+            provider_url_ws: ws_url,
+            provider_url_http: env.l2_provider(),
             ..Default::default()
         };
         run_faucet_test(options, 3).await?;
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn test_node_restart() -> Result<()> {
+        setup_logging();
+        setup_backtrace();
+
+        let anvil_opts = AnvilOptions::default();
+        let mut anvil = anvil_opts.clone().spawn().await;
+
+        let mut ws_url = anvil.url();
+        ws_url.set_scheme("ws").unwrap();
+
+        // With anvil 10 clients are pre-funded. We use more than that to make
+        // sure the funding logic runs.
+        let options = Options {
+            num_clients: 12,
+            faucet_grant_amount: parse_ether(1).unwrap(),
+            provider_url_ws: ws_url,
+            provider_url_http: anvil.url(),
+            port: portpicker::pick_unused_port().unwrap(),
+            ..Default::default()
+        };
+
+        let (sender, receiver) = async_std::channel::unbounded();
+
+        // Start the faucet
+        let faucet = Faucet::create(options.clone(), receiver).await?;
+        let _handle = faucet.start().await;
+
+        // Start the web server
+        spawn(async move { serve(options.port, WebState::new(sender)).await });
+
+        run_faucet_test(options.clone(), 3).await?;
+
+        tracing::info!("Restarting anvil to trigger web socket reconnect");
+        anvil.restart(anvil_opts).await;
+
+        run_faucet_test(options, 3).await?;
+
         Ok(())
     }
 }

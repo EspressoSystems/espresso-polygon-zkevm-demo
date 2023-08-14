@@ -23,11 +23,14 @@ use zkevm_contract_bindings::TestPolygonContracts;
 
 #[derive(Clone, Debug)]
 pub struct ZkEvmEnv {
-    cdn_server_port: u16,
+    orchestrator_port: u16,
+    consensus_server_port: u16,
+    da_server_port: u16,
     sequencer_api_port: u16,
     sequencer_storage_path: PathBuf,
     l1_port: u16,
     l2_port: u16,
+    l2_preconfirmations_port: u16,
     l1_chain_id: Option<u64>,
     l2_chain_id: Option<u64>,
     sequencer_mnemonic: String,
@@ -40,11 +43,14 @@ pub const TEST_MNEMONIC: &str = "test test test test test test test test test te
 impl Default for ZkEvmEnv {
     fn default() -> Self {
         Self {
-            cdn_server_port: 50000,
+            orchestrator_port: 40001,
+            consensus_server_port: 40002,
+            da_server_port: 40003,
             sequencer_api_port: 50001,
             sequencer_storage_path: "/store/sequencer".into(),
             l1_port: 8545,
-            l2_port: 8126,
+            l2_port: 18126,
+            l2_preconfirmations_port: 18127,
             l1_chain_id: None,
             l2_chain_id: None,
             sequencer_mnemonic: TEST_MNEMONIC.into(),
@@ -56,10 +62,13 @@ impl Default for ZkEvmEnv {
 
 impl ZkEvmEnv {
     pub fn random() -> Self {
-        let cdn_server_port = pick_unused_port().unwrap();
+        let orchestrator_port = pick_unused_port().unwrap();
+        let consensus_server_port = pick_unused_port().unwrap();
+        let da_server_port = pick_unused_port().unwrap();
         let sequencer_api_port = pick_unused_port().unwrap();
         let l1_port = pick_unused_port().unwrap();
         let l2_port = pick_unused_port().unwrap();
+        let l2_preconfirmations_port = pick_unused_port().unwrap();
         let adaptor_rpc_port = pick_unused_port().unwrap();
         let adaptor_query_port = pick_unused_port().unwrap();
 
@@ -72,10 +81,13 @@ impl ZkEvmEnv {
         let l2_chain_id = None;
 
         Self {
-            cdn_server_port,
+            orchestrator_port,
+            consensus_server_port,
+            da_server_port,
             sequencer_api_port,
             l1_port,
             l2_port,
+            l2_preconfirmations_port,
             l1_chain_id,
             l2_chain_id,
             adaptor_rpc_port,
@@ -91,11 +103,16 @@ impl ZkEvmEnv {
             .map(Result::unwrap)
             .collect();
         Self {
-            cdn_server_port: dotenv["ESPRESSO_CDN_SERVER_PORT"].parse().unwrap(),
+            orchestrator_port: dotenv["ESPRESSO_ORCHESTRATOR_PORT"].parse().unwrap(),
+            consensus_server_port: dotenv["ESPRESSO_CONSENSUS_SERVER_PORT"].parse().unwrap(),
+            da_server_port: dotenv["ESPRESSO_DA_SERVER_PORT"].parse().unwrap(),
             sequencer_api_port: dotenv["ESPRESSO_SEQUENCER_API_PORT"].parse().unwrap(),
             sequencer_storage_path: dotenv["ESPRESSO_SEQUENCER_STORAGE_PATH"].parse().unwrap(),
             l1_port: dotenv["ESPRESSO_ZKEVM_L1_PORT"].parse().unwrap(),
             l2_port: dotenv["ESPRESSO_ZKEVM_1_L2_PORT"].parse().unwrap(),
+            l2_preconfirmations_port: dotenv["ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT"]
+                .parse()
+                .unwrap(),
             l1_chain_id: None,
             l2_chain_id: None,
             sequencer_mnemonic: dotenv["ESPRESSO_SEQUENCER_ETH_MNEMONIC"].clone(),
@@ -108,40 +125,52 @@ impl ZkEvmEnv {
 
     pub fn cmd(&self, command: &str) -> Command {
         let mut cmd = Command::new(command);
-        cmd.env("ESPRESSO_CDN_SERVER_PORT", self.cdn_server_port.to_string())
-            .env(
-                "ESPRESSO_SEQUENCER_API_PORT",
-                self.sequencer_api_port.to_string(),
-            )
-            .env("ESPRESSO_SEQUENCER_URL", self.sequencer().as_ref())
-            .env(
-                "ESPRESSO_SEQUENCER_STORAGE_PATH",
-                self.sequencer_storage_path.as_os_str(),
-            )
-            .env("ESPRESSO_ZKEVM_L1_PORT", self.l1_port.to_string())
-            .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider().as_ref())
-            .env("ESPRESSO_ZKEVM_1_L2_PORT", self.l2_port.to_string())
-            .env("ESPRESSO_ZKEVM_1_L2_PROVIDER", self.l2_provider().as_ref())
-            .env(
-                "ESPRESSO_ZKEVM_1_SEQUENCER_MNEMONIC",
-                &self.sequencer_mnemonic,
-            )
-            .env(
-                "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT",
-                self.adaptor_rpc_port.to_string(),
-            )
-            .env(
-                "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL",
-                format!("http://host.docker.internal:{}", self.adaptor_rpc_port),
-            )
-            .env(
-                "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT",
-                self.adaptor_query_port.to_string(),
-            )
-            .env(
-                "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL",
-                format!("http://host.docker.internal:{}", self.adaptor_query_port),
-            );
+        cmd.env(
+            "ESPRESSO_ORCHESTRATOR_PORT",
+            self.orchestrator_port.to_string(),
+        )
+        .env(
+            "ESPRESSO_CONSENSUS_SERVER_PORT",
+            self.consensus_server_port.to_string(),
+        )
+        .env("ESPRESSO_DA_SERVER_PORT", self.da_server_port.to_string())
+        .env(
+            "ESPRESSO_SEQUENCER_API_PORT",
+            self.sequencer_api_port.to_string(),
+        )
+        .env("ESPRESSO_SEQUENCER_URL", self.sequencer().as_ref())
+        .env(
+            "ESPRESSO_SEQUENCER_STORAGE_PATH",
+            self.sequencer_storage_path.as_os_str(),
+        )
+        .env("ESPRESSO_ZKEVM_L1_PORT", self.l1_port.to_string())
+        .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider().as_ref())
+        .env("ESPRESSO_ZKEVM_1_L2_PORT", self.l2_port.to_string())
+        .env(
+            "ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT",
+            self.l2_preconfirmations_port.to_string(),
+        )
+        .env("ESPRESSO_ZKEVM_1_L2_PROVIDER", self.l2_provider().as_ref())
+        .env(
+            "ESPRESSO_ZKEVM_1_SEQUENCER_MNEMONIC",
+            &self.sequencer_mnemonic,
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_PORT",
+            self.adaptor_rpc_port.to_string(),
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL",
+            format!("http://host.docker.internal:{}", self.adaptor_rpc_port),
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT",
+            self.adaptor_query_port.to_string(),
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL",
+            format!("http://host.docker.internal:{}", self.adaptor_query_port),
+        );
         if let Some(id) = self.l1_chain_id {
             cmd.env("ESPRESSO_ZKEVM_L1_CHAIN_ID", id.to_string());
         }
@@ -163,6 +192,12 @@ impl ZkEvmEnv {
 
     pub fn l2_provider(&self) -> Url {
         format!("http://localhost:{}", self.l2_port)
+            .parse()
+            .unwrap()
+    }
+
+    pub fn l2_preconfirmations_provider(&self) -> Url {
+        format!("http://localhost:{}", self.l2_preconfirmations_port)
             .parse()
             .unwrap()
     }
@@ -349,6 +384,9 @@ impl ZkEvmNode {
             .arg("zkevm-1-aggregator")
             .arg("zkevm-1-state-db")
             .arg("zkevm-1-permissionless-node")
+            .arg("zkevm-1-preconfirmations-prover")
+            .arg("zkevm-1-preconfirmations-state-db")
+            .arg("zkevm-1-preconfirmations-node")
             .arg("zkevm-1-eth-tx-manager")
             .arg("-V")
             .arg("--force-recreate")
@@ -359,6 +397,13 @@ impl ZkEvmNode {
         wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 100)
             .await
             .expect("Failed to start zkevm-node");
+        wait_for_rpc(
+            &env.l2_preconfirmations_provider(),
+            Duration::from_secs(1),
+            100,
+        )
+        .await
+        .expect("Failed to start preconfirmations node");
 
         Self {
             env,

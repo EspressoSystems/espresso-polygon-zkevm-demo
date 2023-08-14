@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Usage
+#
+#   ./demo-with-profiles [profiles] [--] [compose-args]
+#
+# This script is a convenient interface for launching the docker-compose demo with a list of
+# profiles (sets of related services). It separates the profiles from the arguments to
+# docker-compose and creates a list of `--profile <profile>` arguments which are passed to
+# docker-compose before the `up` command.
+#
+# Profile names and other arguments to docker-compose should be separated by `--`, with the profiles
+# coming first. Otherwise, it will be assumed that the first argument starting with `--` is the end
+# of the profile list and the first argument to docker-compose.
+
+PROFILES=""
+while [[ $# != 0 ]]; do
+	case "$1" in
+		--)
+			shift
+			break
+			;;
+		--*)
+			break
+			;;
+		*)
+			PROFILES="$PROFILES --profile $1"
+			shift
+			;;
+	esac
+done
+
+COMPOSE_BASE="docker compose --project-name demo -f docker-compose.yaml -f permissionless-docker-compose.yaml"
+COMPOSE="$COMPOSE_BASE -f docker-compose-geth.yaml"
+
+$COMPOSE $PROFILES up "$@" --wait

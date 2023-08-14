@@ -10,12 +10,11 @@ use async_std::task::sleep;
 use clap::Parser;
 use ethers::prelude::*;
 use futures::join;
-use polygon_zkevm_adaptor::{
-    connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemo,
-};
+use http_types::Url;
+use polygon_zkevm_adaptor::{connect_rpc_simple, CombinedOperations, Run};
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
 
-/// Run a load test on the ZkEVM node.
+/// Run a load test against an existing ZkEVM node.
 ///
 /// It is the responsibility of the user to save the log output for inspection
 /// later.
@@ -53,9 +52,17 @@ pub struct Options {
     )]
     pub mins: Duration,
 
-    /// Layer 1 backend to use.
-    #[arg(long, default_value = "geth")]
-    pub l1_backend: Layer1Backend,
+    /// URL for the L2 JSON-RPC service.
+    #[arg(long)]
+    pub l2_provider: Url,
+
+    /// URL for an optional L2 JSON-RPC service using preconfirmations.
+    #[arg(long)]
+    pub preconfirmations_l2_provider: Option<Url>,
+
+    /// Mnemonic for a funded L2 account, which the load test will drain.
+    #[arg(long)]
+    pub mnemonic: String,
 }
 
 #[async_std::main]
@@ -76,16 +83,8 @@ async fn main() {
         operations
     };
 
-    let project_name = "demo".to_string();
-
-    // Start L1 and zkevm-node
-    let demo = SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), opt.l1_backend).await;
-
     // Get test setup from environment.
-    let env = demo.env();
-    let mnemonic = env.funded_mnemonic();
-    // Connect clients to stress test both the regular L2 node and the preconfirmations node.
-    let signer = connect_rpc_simple(&env.l2_provider(), mnemonic, 0, None)
+    let signer = connect_rpc_simple(&opt.l2_provider, &opt.mnemonic, 0, None)
         .await
         .unwrap();
     // Use the second account for the second connection. Even though the two signers will be
@@ -96,34 +95,45 @@ async fn main() {
     // Using two different signers connected to the two RPCs ensures we are continuously testing
     // that both RPCs are still working, and stresses the scenario where an RPC sees a transaction
     // that it didn't submit.
-    let preconf_signer = connect_rpc_simple(&env.l2_preconfirmations_provider(), mnemonic, 1, None)
-        .await
-        .unwrap();
+    let preconf_signer = match &opt.preconfirmations_l2_provider {
+        Some(provider) => {
+            let preconf_signer = connect_rpc_simple(provider, &opt.mnemonic, 1, None)
+                .await
+                .unwrap();
+            // Find the balance of the funded account.
+            let balance = signer.get_balance(signer.address(), None).await.unwrap();
 
-    // Find the balance of the funded account.
-    let balance = signer.get_balance(signer.address(), None).await.unwrap();
+            // Transfer some funds from the first (funded) account to the second one.
+            let transfer_amount = balance / 2;
+            tracing::info!("Transferring {transfer_amount}/{balance} to unfunded account");
+            let tx = TransactionRequest::default()
+                .to(preconf_signer.address())
+                .value(transfer_amount);
+            let hash = signer.send_transaction(tx, None).await.unwrap().tx_hash();
 
-    // Transfer some funds from the first (funded) account to the second one.
-    let transfer_amount = balance / 2;
-    tracing::info!("Transferring {transfer_amount}/{balance} to unfunded account");
-    let tx = TransactionRequest::default()
-        .to(preconf_signer.address())
-        .value(transfer_amount);
-    let hash = signer.send_transaction(tx, None).await.unwrap().tx_hash();
+            // Wait for the transfer to complete.
+            loop {
+                if let Some(receipt) = signer.get_transaction_receipt(hash).await.unwrap() {
+                    tracing::info!("transfer {hash} completed: {receipt:?}");
+                    break;
+                }
+                tracing::info!("Waiting for transfer {hash} to complete");
+                sleep(Duration::from_secs(1)).await;
+            }
 
-    // Wait for the transfer to complete.
-    loop {
-        if let Some(receipt) = signer.get_transaction_receipt(hash).await.unwrap() {
-            tracing::info!("transfer {hash} completed: {receipt:?}");
-            break;
+            Some(preconf_signer)
         }
-        tracing::info!("Waiting for transfer {hash} to complete");
-        sleep(Duration::from_secs(1)).await;
-    }
+        None => None,
+    };
 
     let run = Run::new("regular", operations.regular_node, signer);
-    let preconf_run = Run::new("preconf", operations.preconf_node, preconf_signer);
-    join!(run.wait(), preconf_run.wait());
+    let preconf_run =
+        preconf_signer.map(|signer| Run::new("preconf", operations.preconf_node, signer));
+    join!(run.wait(), async move {
+        if let Some(run) = preconf_run {
+            run.wait().await
+        }
+    });
 
     tracing::info!("Run complete!");
 }

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#
+# Usage env ETHERSCAN_API_KEY=XYZ ./verify-contracts /path/to/deployment.json
+#
+# Note: This script hasn't been tested very much, it may fail. Testing is
+# currently difficult because the contracts are already verified on Etherscan,
+# and newly deployed contracts with the same bytecode are automatically
+# verified.
+set -euo pipefail
+
+# Note: when we have time we should add this address to the output of the deployment script.
+DEPLOYER_ADDRESS="0x7823f0E6C4368f3978e93D5830f594dE5A9F878F"
+
+# These are unlikely to change, but could also be added to the output of the deployment script.
+TOKEN_INITIAL_BALANCE="20000000000000000000000000"
+TOKEN_NAME="Matic Token"
+TOKEN_SYMBOL="MATIC"
+
+DEPLOYMENT_FILE="$1"
+# The zkevm-contracts repo uses 100 optimizer runs, by default.
+CMD="forge verify-contract --chain sepolia --etherscan-api-key $ETHERSCAN_API_KEY --watch --optimizer-runs 100"
+
+# Load env vars from deployment
+$(cat "$DEPLOYMENT_FILE" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"')
+
+# Note thanks to some automagicness by etherscan we don't need to verify the
+# contracts of the seconds ZKEVM after doing the first one. However, the script
+# will ensure they are actually verified.
+for ZKEVM in 1 2; do
+    # Load env vars for this ZKEVM, strip the ESPRESSO_ZKEVM_{1,2} prefix.
+    $(cat "$DEPLOYMENT_FILE" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' | sed "s|ESPRESSO_ZKEVM_${ZKEVM}_||g")
+
+    # Verifier
+    $CMD $VERIFIER_ADDRESS zkevm-contracts/contracts/mocks/VerifierRollupHelperMock.sol:VerifierRollupHelperMock
+
+    # Matic
+    ARGS=$(cast abi-encode "constructor(string,string,address,uint)" "$TOKEN_NAME" "$TOKEN_SYMBOL" $DEPLOYER_ADDRESS $TOKEN_INITIAL_BALANCE)
+    $CMD --constructor-args "$ARGS" $MATIC_ADDRESS zkevm-contracts/contracts/mocks/ERC20PermitMock.sol:ERC20PermitMock
+
+    # Global Exit Root
+    ARGS=$(cast abi-encode "constructor(address,address)" $ROLLUP_ADDRESS $BRIDGE_ADDRESS)
+    $CMD --constructor-args "$ARGS" $GER_ADDRESS zkevm-contracts/contracts/PolygonZkEVMGlobalExitRoot.sol:PolygonZkEVMGlobalExitRoot
+
+    # Bridge
+    $CMD $BRIDGE_ADDRESS zkevm-contracts/contracts/PolygonZkEVMBridge.sol:PolygonZkEVMBridge
+
+    # Rollup
+    ARGS=$(cast abi-encode "constructor(address,address,address,address,address,uint256,uint256)" \
+        $GER_ADDRESS $MATIC_ADDRESS $VERIFIER_ADDRESS $BRIDGE_ADDRESS $ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS $CHAIN_ID $FORK_ID)
+    $CMD --constructor-args "$ARGS" $ROLLUP_ADDRESS zkevm-contracts/contracts/PolygonZkEVM.sol:PolygonZkEVM
+
+done
