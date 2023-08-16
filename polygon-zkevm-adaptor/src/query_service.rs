@@ -374,6 +374,7 @@ mod test {
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
     use sequencer::{
         api::{self, HttpOptions, QueryOptions},
+        testing::submit_txn_to_handle,
         Vm,
     };
     use sequencer_utils::AnvilOptions;
@@ -449,7 +450,7 @@ mod test {
         let txn = EvmTransaction::new(txn, sig);
 
         // Sequence the transaction.
-        nodes[0].submit_transaction(zkevm.wrap(&txn)).await.unwrap();
+        submit_txn_to_handle(&nodes[0], zkevm.wrap(&txn)).await;
 
         // Wait for it to be sequenced.
         let expected = encode_transactions(vec![&txn]);
