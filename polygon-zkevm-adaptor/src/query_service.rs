@@ -102,7 +102,7 @@ pub async fn serve(opt: &Options) {
     };
     state.hotshot.connect(None).await;
 
-    let api = toml::from_str(include_str!("query_api.toml")).unwrap();
+    let api: toml::Value = toml::from_str(include_str!("query_api.toml")).unwrap();
     let mut app = App::<_, ServerError>::with_state(RwLock::new(state));
     app.module::<ServerError>("availability", api)
         .unwrap()
