@@ -17,7 +17,7 @@ async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-co
     "channel-async-std",
 ] }
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
-async-trait = "0.1.63"
+async-trait = "0.1.72"
 clap = "4.3.11"
 contract-bindings = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 ethers = { version = "2.0.4", features = ["abigen"] }
@@ -29,7 +29,7 @@ sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer
 serde = { version = "1.0.167", features = ["derive"] }
 serde_json = "1.0.91"
 serde_with = "3.0.0"
-tempfile = "3.6.0"
+tempfile = "3.7.0"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 url = "2.4.0"
