@@ -19,21 +19,12 @@
 //! extracting the relevant transactions and decoding them directly from HotShot.
 
 use crate::Options;
-use async_compatibility_layer::async_primitives::broadcast::{channel, BroadcastSender};
-use async_std::{
-    sync::{Arc, RwLock},
-    task::{sleep, spawn},
-};
-use ethers::prelude::*;
-use futures::{
-    stream::{self, Stream},
-    FutureExt, StreamExt, TryFutureExt,
-};
+use async_std::sync::RwLock;
+use futures::{FutureExt, StreamExt, TryFutureExt};
 use hotshot_query_service::availability::BlockQueryData;
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tide_disco::{error::ServerError, App, Error, StatusCode};
+use tide_disco::{error::ServerError, App};
 use zkevm::{polygon_zkevm::encode_transactions, ZkEvm};
 
 type HotShotClient = surf_disco::Client<ServerError>;
@@ -44,16 +35,6 @@ struct State {
 }
 
 pub async fn serve(opt: &Options) {
-    let l1 = loop {
-        match Provider::try_from(opt.l1_provider.to_string()) {
-            Ok(l1) => break l1,
-            Err(err) => {
-                tracing::warn!("error connecting to L1, retrying: {err}");
-                sleep(Duration::from_secs(1)).await;
-            }
-        }
-    };
-
     let hotshot = HotShotClient::new(opt.sequencer_url.clone());
     let state = State {
         hotshot,
@@ -129,7 +110,7 @@ struct PolygonZkevmBlock {
 }
 
 impl PolygonZkevmBlock {
-    fn new(zkevm: ZkEvm, l2_block: BlockQueryData<SeqTypes>, l1_block: u64) -> Self {
+    fn new(zkevm: ZkEvm, l2_block: BlockQueryData<SeqTypes>) -> Self {
         Self {
             timestamp: l2_block.block().timestamp(),
             height: l2_block.height(),
@@ -144,7 +125,7 @@ mod test {
     use super::*;
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
     use async_std::task::spawn;
-    use ethers::types::transaction::eip2718::TypedTransaction;
+    use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction};
     use futures::future::ready;
     use portpicker::pick_unused_port;
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
@@ -155,6 +136,7 @@ mod test {
     };
     use sequencer_utils::AnvilOptions;
     use std::str::FromStr;
+    use std::time::Duration;
     use tempfile::TempDir;
     use zkevm::EvmTransaction;
 
