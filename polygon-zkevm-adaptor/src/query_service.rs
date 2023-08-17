@@ -112,7 +112,7 @@ struct PolygonZkevmBlock {
 impl PolygonZkevmBlock {
     fn new(zkevm: ZkEvm, l2_block: BlockQueryData<SeqTypes>) -> Self {
         Self {
-            timestamp: l2_block.block().timestamp(),
+            timestamp: l2_block.timestamp().unix_timestamp() as u64,
             height: l2_block.height(),
             l1_block: l2_block.block().l1_block().number,
             transactions: encode_transactions(zkevm.vm_transactions(l2_block.block())).to_string(),
