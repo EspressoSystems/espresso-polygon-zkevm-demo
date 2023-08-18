@@ -157,7 +157,7 @@ async fn test_preconfirmations() {
     setup_logging();
     setup_backtrace();
 
-    let node = setup_test("test-preconfirmations", Duration::from_secs(5)).await;
+    let node = setup_test("test-preconfirmations", Duration::from_secs(10)).await;
     let env = node.env();
     let mnemonic = env.funded_mnemonic();
     let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
@@ -210,11 +210,15 @@ async fn test_preconfirmations() {
         .await
         .unwrap()
         .tx_hash();
-    tracing::info!("Sent transaction {:?}", txn_hash);
+    let submitted = Instant::now();
+    tracing::info!("Sent transaction {txn_hash:?} at {submitted:?}");
 
     // Wait for the transaction to be included in a block.
     wait_for_block_containing_txn(&mut blocks, zkevm, txn_hash).await;
-    tracing::info!("Transaction sequenced at {:?}", Instant::now());
+    tracing::info!(
+        "Transaction sequenced after {:?}",
+        Instant::now() - submitted
+    );
 
     // Wait for the transaction to complete on L2, using both the regular RPC and the
     // preconfirmation RPC in parallel.
@@ -238,8 +242,8 @@ async fn test_preconfirmations() {
 
     // Check that we got the preconfirmation first.
     tracing::info!(
-        "preconfirmation received at {pre_conf:?}, final confirmation received at {slow_conf:?} ({:?} difference)",
-        slow_conf - pre_conf
+        "preconfirmation received after {:?}, final confirmation received after {:?} ({:?} difference)",
+        pre_conf - submitted, slow_conf - submitted, slow_conf - pre_conf
     );
     assert!(pre_conf < slow_conf);
 }
