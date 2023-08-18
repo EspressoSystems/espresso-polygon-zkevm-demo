@@ -193,13 +193,13 @@ impl SequencerZkEvmDemo {
             .spawn()
             .expect("Failed to start compose environment");
 
-        wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 100)
+        wait_for_rpc(&env.l2_provider(), Duration::from_secs(1), 200)
             .await
             .expect("Failed to start zkevm-node");
         wait_for_rpc(
             &env.l2_preconfirmations_provider(),
             Duration::from_secs(1),
-            100,
+            200,
         )
         .await
         .expect("Failed to start preconfirmations node");
