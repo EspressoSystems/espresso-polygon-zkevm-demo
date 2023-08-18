@@ -27,7 +27,7 @@ serenity = { version = "0.11", default-features = false, features = [
     "model",
 ] }
 surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.2" }
-thiserror = "1.0.40"
+thiserror = "1.0.47"
 tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.2" }
 toml = "0.7"
 tracing = "0.1.37"
