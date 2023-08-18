@@ -21,6 +21,19 @@ use std::{
 use surf_disco::Url;
 use zkevm_contract_bindings::TestPolygonContracts;
 
+const L1_SERVICES: [&str; 1] = ["zkevm-mock-l1-network"];
+
+const L2_SERVICES: [&str; 8] = [
+    "zkevm-1-prover",
+    "zkevm-1-aggregator",
+    "zkevm-1-state-db",
+    "zkevm-1-permissionless-node",
+    "zkevm-1-preconfirmations-prover",
+    "zkevm-1-preconfirmations-state-db",
+    "zkevm-1-preconfirmations-node",
+    "zkevm-1-eth-tx-manager",
+];
+
 #[derive(Clone, Debug)]
 pub struct ZkEvmEnv {
     orchestrator_port: u16,
@@ -338,10 +351,28 @@ impl ZkEvmNode {
             Self::compose_cmd_prefix(&env, &project_name, &layer1_backend)
         );
 
+        // Remove all existing containers, so that if any configuration has changed since the last
+        // time we ran this demo (with this `project_name`) the containers will be rebuilt. We have
+        // to do this as a separate step, rather than with the `--force-recreate` option to
+        // `docker-compose up`, because we will start the services in two steps: first the L1, then,
+        // after deploying contracts, the remaining services. We don't want the second step to force
+        // recreation of the L1 after we have deployed contracts to it.
+        Self::compose_cmd_prefix(&env, &project_name, &layer1_backend)
+            .arg("rm")
+            .arg("-f")
+            .arg("-s")
+            .arg("-v")
+            .args(L1_SERVICES)
+            .args(L2_SERVICES)
+            .spawn()
+            .expect("Failed to spawn docker-compose rm")
+            .wait()
+            .expect("Failed to remove old docker containers");
+
         // Start L1
         Self::compose_cmd_prefix(&env, &project_name, &layer1_backend)
             .arg("up")
-            .arg("zkevm-mock-l1-network")
+            .args(L1_SERVICES)
             .arg("-V")
             .arg("--force-recreate")
             .arg("--abort-on-container-exit")
@@ -376,20 +407,13 @@ impl ZkEvmNode {
                 format!("{:?}", l1.hotshot.address()),
             )
             .env(
-                "ESPRESSO_ZKEVM_1_GENBLOCKNUMBER",
+                "ESPRESSO_ZKEVM_1_GENESIS_BLOCK_NUMBER",
                 l1.gen_block_number.to_string(),
             )
             .arg("up")
-            .arg("zkevm-1-prover")
-            .arg("zkevm-1-aggregator")
-            .arg("zkevm-1-state-db")
-            .arg("zkevm-1-permissionless-node")
-            .arg("zkevm-1-preconfirmations-prover")
-            .arg("zkevm-1-preconfirmations-state-db")
-            .arg("zkevm-1-preconfirmations-node")
-            .arg("zkevm-1-eth-tx-manager")
+            .args(L2_SERVICES)
             .arg("-V")
-            .arg("--force-recreate")
+            .arg("--no-recreate")
             .arg("--abort-on-container-exit")
             .spawn()
             .expect("Failed to start zkevm-node compose environment");
@@ -419,7 +443,9 @@ impl ZkEvmNode {
             .arg("-v")
             .arg("--remove-orphans")
             .spawn()
-            .expect("Failed to run docker compose down");
+            .expect("Failed to run docker compose down")
+            .wait()
+            .unwrap_or_else(|err| panic!("Failed to stop demo {}: {err}", self.project_name()));
         self
     }
 }
