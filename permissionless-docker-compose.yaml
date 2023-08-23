@@ -231,8 +231,8 @@ services:
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT -q --spider --tries 1 || exit 1"
-      interval: 0.5s
-      timeout: 0.5s
+      interval: 3s
+      timeout: 2s
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -525,8 +525,8 @@ services:
     healthcheck:
       # curl not installed in container, but wget is
       test: "wget http://localhost:$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT -q --spider --tries 1 || exit 1"
-      interval: 0.5s
-      timeout: 0.5s
+      interval: 3s
+      timeout: 2s
       retries: 120
     extra_hosts:
       - "host.docker.internal:host-gateway"

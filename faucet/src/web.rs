@@ -115,7 +115,7 @@ mod test {
         types::U256,
         utils::parse_ether,
     };
-    use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo};
+    use polygon_zkevm_adaptor::SequencerZkEvmDemo;
     use sequencer_utils::AnvilOptions;
     use std::time::Duration;
     use surf_disco::Client;
@@ -204,11 +204,9 @@ mod test {
             faucet_grant_amount_ethers.to_string(),
         );
 
-        let demo = SequencerZkEvmDemo::start_with_sequencer(
-            "faucet-test".to_string(),
-            Layer1Backend::Anvil,
-        )
-        .await;
+        let demo =
+            SequencerZkEvmDemo::start_with_sequencer("faucet-test".to_string(), Default::default())
+                .await;
         let env = demo.env();
 
         // Connect to the faucet running inside the docker compose environment.

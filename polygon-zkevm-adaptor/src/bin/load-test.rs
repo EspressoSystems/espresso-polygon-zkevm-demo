@@ -11,7 +11,7 @@ use clap::Parser;
 use ethers::prelude::*;
 use futures::join;
 use polygon_zkevm_adaptor::{
-    connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemo,
+    connect_rpc_simple, CombinedOperations, Layer1Backend, Run, SequencerZkEvmDemoOptions,
 };
 use sequencer_utils::wait_for_http;
 use std::{num::ParseIntError, path::PathBuf, time::Duration};
@@ -80,7 +80,10 @@ async fn main() {
     let project_name = "demo".to_string();
 
     // Start L1 and zkevm-node
-    let demo = SequencerZkEvmDemo::start_with_sequencer(project_name.clone(), opt.l1_backend).await;
+    let demo = SequencerZkEvmDemoOptions::default()
+        .l1_backend(opt.l1_backend)
+        .start(project_name.clone())
+        .await;
 
     // Get test setup from environment.
     let env = demo.env();
