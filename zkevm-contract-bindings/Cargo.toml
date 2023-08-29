@@ -18,7 +18,7 @@ async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-co
 ] }
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 async-trait = "0.1.63"
-clap = "4.3.11"
+clap = "4.4.1"
 contract-bindings = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 ethers = { version = "2.0.4", features = ["abigen"] }
 ethers-solc = "2.0.3"
