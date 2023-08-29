@@ -151,9 +151,9 @@ impl PolygonZkevmBlock {
         // monotonically increasing. This breaks a basic invariant of the zkEVM node. For demo
         // purposes, rather than fixing this in consensus, we adjust the numbers here if they are
         // not increasing.
-        let mut l1_block = l2_block.block().l1_block().number;
+        let mut l1_block = l2_block.block().l1_head();
         if let Some(prev) = prev {
-            let prev_l1_block = prev.block().l1_block().number;
+            let prev_l1_block = prev.block().l1_head();
             if l1_block < prev_l1_block {
                 l1_block = prev_l1_block;
             }

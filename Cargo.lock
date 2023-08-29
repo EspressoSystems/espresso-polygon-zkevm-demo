@@ -177,7 +177,7 @@ dependencies = [
  "serde_urlencoded",
  "smallvec",
  "socket2 0.4.9",
- "time 0.3.25",
+ "time 0.3.28",
  "url",
 ]
 
@@ -875,7 +875,7 @@ dependencies = [
  "async-lock",
  "async-task",
  "concurrent-queue",
- "fastrand",
+ "fastrand 1.9.0",
  "futures-lite",
  "slab",
 ]
@@ -1408,7 +1408,7 @@ dependencies = [
  "async-lock",
  "async-task",
  "atomic-waker",
- "fastrand",
+ "fastrand 1.9.0",
  "futures-lite",
  "log",
 ]
@@ -1881,7 +1881,7 @@ checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#7f0722fb85ca6c0e13111d6197dcd4adbba62d25"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#4574f1c396d7834347aacd7dfcd349966d8adca6"
 dependencies = [
  "anyhow",
  "async-compatibility-layer",
@@ -1926,7 +1926,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e859cd57d0710d9e06c381b550c06e76992472a8c6d527aecd2fc673dcc231fb"
 dependencies = [
  "percent-encoding",
- "time 0.3.25",
+ "time 0.3.28",
  "version_check",
 ]
 
@@ -2295,9 +2295,9 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.5.0"
+version = "5.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6943ae99c34386c84a470c499d3414f66502a41340aa895406e0d2e4a207b91d"
+checksum = "edd72493923899c6f10c641bdbdeddc7183d6396641d99c1a0d1597f37f92e28"
 dependencies = [
  "cfg-if 1.0.0",
  "hashbrown 0.14.0",
@@ -3187,6 +3187,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
+
+[[package]]
 name = "faucet"
 version = "0.1.0"
 dependencies = [
@@ -3389,7 +3395,7 @@ version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a9d51ce47660b1e808d3c990b4709f2f415d928835a17dfd16991515c46bce"
 dependencies = [
- "fastrand",
+ "fastrand 1.9.0",
  "futures-core",
  "futures-io",
  "memchr",
@@ -3752,7 +3758,7 @@ dependencies = [
 [[package]]
 name = "hotshot"
 version = "0.3.3"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "ark-ec 0.3.0",
@@ -3796,14 +3802,14 @@ dependencies = [
  "serde",
  "snafu",
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco.git?branch=main)",
- "time 0.3.25",
+ "time 0.3.28",
  "tracing",
 ]
 
 [[package]]
 name = "hotshot-consensus"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3818,14 +3824,14 @@ dependencies = [
  "hotshot-types",
  "hotshot-utils",
  "snafu",
- "time 0.3.25",
+ "time 0.3.28",
  "tracing",
 ]
 
 [[package]]
 name = "hotshot-orchestrator"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3844,7 +3850,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snafu",
- "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
+ "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco.git?tag=v0.4.1)",
  "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
  "tracing",
@@ -3885,7 +3891,7 @@ dependencies = [
 [[package]]
 name = "hotshot-query-service"
 version = "0.0.7"
-source = "git+https://github.com/EspressoSystems/hotshot-query-service.git#fe5eee725ee03ac6fabf9d0f32f2389d6d6c6532"
+source = "git+https://github.com/EspressoSystems/hotshot-query-service.git#d55627e1a5d521e201529e6da61d56539a4d391e"
 dependencies = [
  "async-compatibility-layer",
  "async-std",
@@ -3907,7 +3913,7 @@ dependencies = [
  "snafu",
  "spin_sleep",
  "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.2)",
- "time 0.3.25",
+ "time 0.3.28",
  "toml 0.7.6",
  "tracing",
 ]
@@ -3915,7 +3921,7 @@ dependencies = [
 [[package]]
 name = "hotshot-task"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3934,7 +3940,7 @@ dependencies = [
 [[package]]
 name = "hotshot-task-impls"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -3956,14 +3962,14 @@ dependencies = [
  "rand_chacha 0.3.1",
  "serde",
  "snafu",
- "time 0.3.25",
+ "time 0.3.28",
  "tracing",
 ]
 
 [[package]]
 name = "hotshot-testing"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -3992,7 +3998,7 @@ dependencies = [
 [[package]]
 name = "hotshot-types"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "arbitrary",
  "ark-serialize 0.3.0",
@@ -4025,14 +4031,14 @@ dependencies = [
  "serde",
  "snafu",
  "tagged-base64 0.2.4",
- "time 0.3.25",
+ "time 0.3.28",
  "tracing",
 ]
 
 [[package]]
 name = "hotshot-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "bincode",
 ]
@@ -4040,7 +4046,7 @@ dependencies = [
 [[package]]
 name = "hotshot-web-server"
 version = "0.1.1"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "ark-bls12-381 0.3.0",
  "async-compatibility-layer",
@@ -4061,7 +4067,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snafu",
- "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1)",
+ "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco.git?tag=v0.4.1)",
  "tide",
  "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.1)",
  "toml 0.5.11",
@@ -5041,7 +5047,7 @@ dependencies = [
 [[package]]
 name = "libp2p-networking"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/hotshot#72ffe224e183e5556eb918c15016cab006c3ced9"
+source = "git+https://github.com/EspressoSystems/hotshot#0fea552d3eca281a64afc06837d3c830931c9b6c"
 dependencies = [
  "async-compatibility-layer",
  "async-lock",
@@ -5806,9 +5812,9 @@ dependencies = [
 
 [[package]]
 name = "num-complex"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e0d21255c828d6f128a1e41534206671e8c3ea0c62f32291e808dc82cff17d"
+checksum = "1ba157ca0885411de85d6ca030ba7e2a83a28636056c7c699b07c8b6f7383214"
 dependencies = [
  "num-traits",
 ]
@@ -7262,7 +7268,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#7f0722fb85ca6c0e13111d6197dcd4adbba62d25"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#4574f1c396d7834347aacd7dfcd349966d8adca6"
 dependencies = [
  "anyhow",
  "ark-bls12-381 0.3.0",
@@ -7296,7 +7302,7 @@ dependencies = [
  "snafu",
  "surf-disco 0.4.1 (git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.2)",
  "tide-disco 0.4.1 (git+https://github.com/EspressoSystems/tide-disco?tag=v0.4.2)",
- "time 0.3.25",
+ "time 0.3.28",
  "toml 0.7.6",
  "tracing",
  "typenum",
@@ -7306,7 +7312,7 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#7f0722fb85ca6c0e13111d6197dcd4adbba62d25"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#4574f1c396d7834347aacd7dfcd349966d8adca6"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
@@ -7321,9 +7327,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.183"
+version = "1.0.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32ac8da02677876d532745a130fc9d8e6edfa81a269b107c5b00829b91d8eb3c"
+checksum = "cf9e0fcba69a370eed61bcf2b728575f726b50b55cba78064753d708ddc7549e"
 dependencies = [
  "serde_derive",
 ]
@@ -7340,9 +7346,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.183"
+version = "1.0.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aafe972d60b0b9bee71a91b92fee2d4fb3c9d7e8f6b179aa99f27203d99a4816"
+checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7414,7 +7420,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros 2.3.3",
- "time 0.3.25",
+ "time 0.3.28",
 ]
 
 [[package]]
@@ -7430,7 +7436,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros 3.1.0",
- "time 0.3.25",
+ "time 0.3.28",
 ]
 
 [[package]]
@@ -7488,7 +7494,7 @@ dependencies = [
  "serde",
  "serde-value",
  "serde_json",
- "time 0.3.25",
+ "time 0.3.28",
  "tokio",
  "tracing",
  "typemap_rev",
@@ -7603,7 +7609,7 @@ version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da03fa3b94cc19e3ebfc88c4229c49d8f08cdbd1228870a45f0ffdf84988e14b"
 dependencies = [
- "dirs 4.0.0",
+ "dirs 5.0.1",
 ]
 
 [[package]]
@@ -8025,7 +8031,7 @@ dependencies = [
 [[package]]
 name = "surf-disco"
 version = "0.4.1"
-source = "git+https://github.com/EspressoSystems/surf-disco?tag=v0.4.1#3f85fd53b9e5b2c0b801cf8c2252f2397aa80da0"
+source = "git+https://github.com/EspressoSystems/surf-disco.git?tag=v0.4.1#3f85fd53b9e5b2c0b801cf8c2252f2397aa80da0"
 dependencies = [
  "async-std",
  "async-tungstenite 0.15.0",
@@ -8297,15 +8303,14 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tempfile"
-version = "3.6.0"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31c0432476357e58790aaa47a8efb0c5138f137343f3b5f23bd36a27e3b0a6d6"
+checksum = "cb94d2f3cc536af71caac6b6fcebf65860b347e7ce0cc9ebe8f70d3e521054ef"
 dependencies = [
- "autocfg",
  "cfg-if 1.0.0",
- "fastrand",
+ "fastrand 2.0.0",
  "redox_syscall 0.3.5",
- "rustix 0.37.23",
+ "rustix 0.38.4",
  "windows-sys",
 ]
 
@@ -8511,15 +8516,15 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.25"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fdd63d58b18d663fbdf70e049f00a22c8e42be082203be7f26589213cd75ea"
+checksum = "17f6bb557fd245c28e6411aa56b6403c689ad95061f50e4be16c274e70a17e48"
 dependencies = [
  "deranged",
  "itoa 1.0.9",
  "serde",
  "time-core",
- "time-macros 0.2.11",
+ "time-macros 0.2.14",
 ]
 
 [[package]]
@@ -8540,9 +8545,9 @@ dependencies = [
 
 [[package]]
 name = "time-macros"
-version = "0.2.11"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb71511c991639bb078fd5bf97757e03914361c48100d52878b8e52b46fb92cd"
+checksum = "1a942f44339478ef67935ab2bbaec2fb0322496cf3cbe84b261e06ac3814c572"
 dependencies = [
  "time-core",
 ]
@@ -9620,7 +9625,7 @@ dependencies = [
  "hmac 0.12.1",
  "pbkdf2 0.11.0",
  "sha1 0.10.5",
- "time 0.3.25",
+ "time 0.3.28",
  "zstd 0.11.2+zstd.1.5.2",
 ]
 
