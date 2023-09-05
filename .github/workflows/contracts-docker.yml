@@ -17,7 +17,7 @@ jobs:
           submodules: true
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v22
+        uses: cachix/install-nix-action@v23
 
       - uses: cachix/cachix-action@v12
         # If PR is from a non-collaborator (e. g. dependabot) the secrets are missing and the login to cachix fails.
