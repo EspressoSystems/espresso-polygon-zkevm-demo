@@ -43,6 +43,14 @@ pub struct Options {
     )]
     pub mnemonic: String,
 
+    /// The account index of the deployer wallet.
+    #[arg(
+        long,
+        env = "ESPRESSO_ZKEVM_DEPLOY_ACCOUNT_INDEX",
+        default_value = "12"
+    )]
+    pub account_index: u32,
+
     /// The URL of an Ethereum JsonRPC where the contracts will be deployed.
     #[arg(
         long,
@@ -50,6 +58,10 @@ pub struct Options {
         default_value = "http://localhost:8545"
     )]
     pub provider_url: Url,
+
+    /// The address of the hotshot contract, if already deployed.
+    #[arg(long, env = "ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS")]
+    pub hotshot_address: Option<Address>,
 
     /// Wallet address of the trusted aggregator for the first zkevm.
     ///
@@ -282,15 +294,21 @@ async fn deploy_zkevm(
 async fn deploy(opts: Options) -> Result<()> {
     let mut provider = Provider::try_from(opts.provider_url.to_string())?;
     provider.set_interval(Duration::from_millis(100));
-    let deployer = connect_rpc(&opts.provider_url, &opts.mnemonic, 0, None)
+    let deployer = connect_rpc(&opts.provider_url, &opts.mnemonic, opts.account_index, None)
         .await
         .unwrap();
     tracing::info!("Using deployer account {:?}", deployer.inner().address());
 
     // Deploy the hotshot contract.
-    let hotshot = HotShot::deploy(deployer.clone(), ())?.send().await?;
-    let hotshot_address = hotshot.address();
-    tracing::info!("Deployed HotShot at {:?}", hotshot.address());
+    let hotshot_address = if opts.hotshot_address.is_none() {
+        tracing::info!("Deploying HotShot contract");
+        let hotshot = HotShot::deploy(deployer.clone(), ())?.send().await?;
+        tracing::info!("Deployed HotShot at {:?}", hotshot.address());
+        hotshot.address()
+    } else {
+        tracing::info!("Using existing HotShot contract");
+        opts.hotshot_address.unwrap()
+    };
 
     // Deploy the contracts for the first zkevm-node.
     let zkevm_1_input = ZkEvmDeploymentInput {

@@ -1,0 +1,588 @@
+version: "3"
+
+networks:
+  default:
+    name: espresso-sequencer
+
+services:
+
+  zkevm-1-aggregator:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    expose:
+      - 50081
+      - 9091 # needed if metrics enabled
+    environment:
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
+      # - ZKEVM_NODE_AGGREGATOR_VERIFYPROOFINTERVAL=10s # Defaults to 90s
+      # - ZKEVM_NODE_AGGREGATOR_RETRYTIME=2s # Defaults to 5s
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      # Use the deployer account to match zkevm-contracts geth L1 deployment.
+      - ZKEVM_NODE_AGGREGATOR_SENDERADDRESS=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
+      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
+    depends_on:
+      zkevm-1-prover:
+        condition: service_healthy
+      # Avoid running DB migrations at the same time:
+      zkevm-1-permissionless-node:
+        condition: service_healthy
+    profiles:
+      - "zkevm1"
+
+  zkevm-1-state-db:
+    image: postgres
+    expose:
+      - 5432
+    volumes:
+      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
+    environment:
+      - POSTGRES_USER=state_user
+      - POSTGRES_PASSWORD=state_password
+      - POSTGRES_DB=state_db
+    command: [ "postgres", "-N", "500" ]
+    healthcheck:
+      # Postgres can be falsely "ready" once before running init scripts.
+      # See https://github.com/docker-library/postgres/issues/146 for discusson.
+      test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm1"
+
+  zkevm-1-preconfirmations-state-db:
+    image: postgres
+    expose:
+      - 5432
+    volumes:
+      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
+    environment:
+      - POSTGRES_USER=state_user
+      - POSTGRES_PASSWORD=state_password
+      - POSTGRES_DB=state_db
+    command: [ "postgres", "-N", "500" ]
+    healthcheck:
+      # Postgres can be falsely "ready" once before running init scripts.
+      # See https://github.com/docker-library/postgres/issues/146 for discusson.
+      test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm1-preconfirmations"
+
+  zkevm-1-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+    # The prover does not support configuration via env vars. The only
+    # difference between the prover of zkevm-1 and zkevm-2 are the values of
+    # "aggregatorClientHost" and "databaseURL".
+      - ./zkevm-node/test/config/test.prover.1.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-1-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm1"
+
+  zkevm-1-preconfirmations-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+    # The prover does not support configuration via env vars. The only difference between the
+    # preconfirmations prover and the regular prover is the state database that they use.
+      - ./zkevm-node/test/config/test.prover.1.preconf.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-1-preconfirmations-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 1s
+      timeout: 2s
+      retries: 20
+    profiles:
+      - "zkevm1-preconfirmations"
+
+  zkevm-1-permissionless-node:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    ports:
+      - $ESPRESSO_ZKEVM_1_L2_PORT:$ESPRESSO_ZKEVM_1_L2_PORT
+      - $ESPRESSO_ZKEVM_1_L2_PORT_WS:$ESPRESSO_ZKEVM_1_L2_PORT_WS
+    environment:
+      - ZKEVM_NODE_TRUSTED=false
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
+      - ZKEVM_NODE_POOL_DB_USER=state_user
+      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
+      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
+      - ZKEVM_NODE_POOL_DB_HOST=zkevm-1-state-db
+      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_1_L2_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_1_L2_PORT_WS
+      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_1_GENESIS_BLOCK_NUMBER
+      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+    depends_on:
+      zkevm-1-state-db:
+        condition: service_healthy
+    healthcheck:
+      # curl not installed in container, but wget is
+      test: "wget http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT -q --spider --tries 1 || exit 1"
+      interval: 3s
+      timeout: 2s
+      retries: 120
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm1"
+
+  zkevm-1-preconfirmations-node:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    ports:
+      - $ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT
+      - $ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT_WS:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT_WS
+    environment:
+      - ZKEVM_NODE_TRUSTED=false
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-1-preconfirmations-state-db
+      - ZKEVM_NODE_POOL_DB_USER=state_user
+      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
+      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
+      - ZKEVM_NODE_POOL_DB_HOST=zkevm-1-preconfirmations-state-db
+      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT_WS
+      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_1_GENESIS_BLOCK_NUMBER
+      - ZKEVM_NODE_SYNCHRONIZER_PRECONFIRMATIONSSYNCINTERVAL=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_SYNC_INTERVAL
+      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+    depends_on:
+      zkevm-1-preconfirmations-state-db:
+        condition: service_healthy
+    healthcheck:
+      # curl not installed in container, but wget is
+      test: "wget http://localhost:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT -q --spider --tries 1 || exit 1"
+      interval: 3s
+      timeout: 2s
+      retries: 120
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm1-preconfirmations"
+
+  zkevm-1-eth-tx-manager:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    environment:
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-1-state-db
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_1_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_1_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_1_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_1_EXECUTOR_URI
+      - ZKEVM_NODE_ETHTXMANAGER_POLLINGINTERVAL=$ESPRESSO_ZKEVM_ETH_TX_MANAGER_POLLING_INTERVAL
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
+      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components eth-tx-manager"
+    depends_on:
+      zkevm-1-permissionless-node:
+        condition: service_healthy
+    profiles:
+      - "zkevm1"
+
+  zkevm-1-faucet:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+    ports:
+      - $ESPRESSO_ZKEVM_1_FAUCET_PORT:$ESPRESSO_ZKEVM_1_FAUCET_PORT
+    environment:
+      - ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN
+      - ESPRESSO_ZKEVM_FAUCET_GRANT_AMOUNT_ETHERS
+      - ESPRESSO_ZKEVM_FAUCET_MNEMONIC
+      - ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS
+      - ESPRESSO_ZKEVM_FAUCET_PORT=$ESPRESSO_ZKEVM_1_FAUCET_PORT
+      - ESPRESSO_ZKEVM_FAUCET_TRANSACTION_TIMEOUT_SECS
+      - ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS=$ESPRESSO_ZKEVM_1_FAUCET_WEB3_PROVIDER_URL_WS
+      - ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_HTTP=$ESPRESSO_ZKEVM_1_FAUCET_WEB3_PROVIDER_URL_HTTP
+      - RUST_LOG
+      - RUST_LOG_FORMAT
+      - RUST_BACKTRACE=1
+    depends_on:
+      zkevm-1-permissionless-node:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:$ESPRESSO_ZKEVM_1_FAUCET_PORT/healthcheck || exit 1
+      interval: 2s
+      retries: 10
+      timeout: 1s
+    profiles:
+      - "zkevm1"
+
+  # Polygon zkevm-node 2
+  zkevm-2-aggregator:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    expose:
+      - 50081
+      - 9091 # needed if metrics enabled
+    environment:
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
+      # - ZKEVM_NODE_AGGREGATOR_VERIFYPROOFINTERVAL=10s # Defaults to 90s
+      # - ZKEVM_NODE_AGGREGATOR_RETRYTIME=2s # Defaults to 5s
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      # Use the deployer account to match zkevm-contracts geth L1 deployment.
+      - ZKEVM_NODE_AGGREGATOR_SENDERADDRESS=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
+      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components aggregator"
+    depends_on:
+      zkevm-2-prover:
+        condition: service_healthy
+      # Avoid running DB migrations at the same time:
+      zkevm-2-permissionless-node:
+        condition: service_healthy
+    profiles:
+      - "zkevm2"
+
+  zkevm-2-state-db:
+    image: postgres
+    expose:
+      - 5432
+    volumes:
+      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
+    environment:
+      - POSTGRES_USER=state_user
+      - POSTGRES_PASSWORD=state_password
+      - POSTGRES_DB=state_db
+    command: [ "postgres", "-N", "500" ]
+    healthcheck:
+      # Postgres can be falsely "ready" once before running init scripts.
+      # See https://github.com/docker-library/postgres/issues/146 for discusson.
+      test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm2"
+
+  zkevm-2-preconfirmations-state-db:
+    image: postgres
+    expose:
+      - 5432
+    volumes:
+      - ./zkevm-node/db/scripts/init_prover_db.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./zkevm-node-additions/init_pool_db.sql:/docker-entrypoint-initdb.d/2.sql
+    environment:
+      - POSTGRES_USER=state_user
+      - POSTGRES_PASSWORD=state_password
+      - POSTGRES_DB=state_db
+    command: [ "postgres", "-N", "500" ]
+    healthcheck:
+      # Postgres can be falsely "ready" once before running init scripts.
+      # See https://github.com/docker-library/postgres/issues/146 for discusson.
+      test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm2-preconfirmations"
+
+  zkevm-2-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+      - ./zkevm-node/test/config/test.prover.2.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-2-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    profiles:
+      - "zkevm2"
+
+  zkevm-2-preconfirmations-prover:
+    image: hermeznetwork/zkevm-prover:88f3835
+    expose:
+      - 50052 # Mock prover
+      - 50061 # MT
+      - 50071 # Executor
+    volumes:
+    # The prover does not support configuration via env vars. The only difference between the
+    # preconfirmations prover and the regular prover is the state database that they use.
+      - ./zkevm-node/test/config/test.prover.2.preconf.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+    depends_on:
+      zkevm-2-preconfirmations-state-db:
+        condition: service_healthy
+    stop_signal: SIGKILL
+    healthcheck:
+      test: timeout 1 bash -c "cat < /dev/null > /dev/tcp/localhost/50071"
+      interval: 1s
+      timeout: 2s
+      retries: 20
+    profiles:
+      - "zkevm2-preconfirmations"
+
+  zkevm-2-permissionless-node:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    ports:
+      - $ESPRESSO_ZKEVM_2_L2_PORT:$ESPRESSO_ZKEVM_2_L2_PORT
+      - $ESPRESSO_ZKEVM_2_L2_PORT_WS:$ESPRESSO_ZKEVM_2_L2_PORT_WS
+    environment:
+      - ZKEVM_NODE_TRUSTED=false
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
+      - ZKEVM_NODE_POOL_DB_USER=state_user
+      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
+      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
+      - ZKEVM_NODE_POOL_DB_HOST=zkevm-2-state-db
+      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_2_L2_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_2_L2_PORT_WS
+      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_2_ADAPTOR_RPC_URL
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_2_GENESIS_BLOCK_NUMBER
+      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+    depends_on:
+      zkevm-2-state-db:
+        condition: service_healthy
+    healthcheck:
+      # curl not installed in container, but wget is
+      test: "wget http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT -q --spider --tries 1 || exit 1"
+      interval: 3s
+      timeout: 2s
+      retries: 120
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm2"
+
+  zkevm-2-preconfirmations-node:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    ports:
+      - $ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT:$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT
+      - $ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT_WS:$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT_WS
+    environment:
+      - ZKEVM_NODE_TRUSTED=false
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-2-preconfirmations-state-db
+      - ZKEVM_NODE_POOL_DB_USER=state_user
+      - ZKEVM_NODE_POOL_DB_PASSWORD=state_password
+      - ZKEVM_NODE_POOL_DB_NAME=pool_db # different DB name to run pool migrations
+      - ZKEVM_NODE_POOL_DB_HOST=zkevm-2-preconfirmations-state-db
+      - ZKEVM_NODE_RPC_PORT=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT
+      - ZKEVM_NODE_RPC_WEBSOCKETS_PORT=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT_WS
+      - ZKEVM_NODE_RPC_SEQUENCERNODEURI=$ESPRESSO_ZKEVM_2_ADAPTOR_RPC_URL
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_SYNCHRONIZER_GENBLOCKNUMBER=$ESPRESSO_ZKEVM_2_GENESIS_BLOCK_NUMBER
+      - ZKEVM_NODE_SYNCHRONIZER_PRECONFIRMATIONSSYNCINTERVAL=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_SYNC_INTERVAL
+      - ZKEVM_NODE_SYNCHRONIZER_IGNOREGENBLOCKNUMBERCHECK=$ESPRESSO_ZKEVM_IGNORE_GEN_BLOCK_NUMBER_CHECK
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_EXECUTOR_URI
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components \"rpc,synchronizer\""
+    depends_on:
+      zkevm-2-preconfirmations-state-db:
+        condition: service_healthy
+    healthcheck:
+      # curl not installed in container, but wget is
+      test: "wget http://localhost:$ESPRESSO_ZKEVM_2_PRECONFIRMATIONS_L2_PORT -q --spider --tries 1 || exit 1"
+      interval: 3s
+      timeout: 2s
+      retries: 120
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - "zkevm2-preconfirmations"
+
+  zkevm-2-eth-tx-manager:
+    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    environment:
+      - ZKEVM_NODE_STATEDB_USER=state_user
+      - ZKEVM_NODE_STATEDB_PASSWORD=state_password
+      - ZKEVM_NODE_STATEDB_NAME=state_db
+      - ZKEVM_NODE_STATEDB_HOST=zkevm-2-state-db
+      - ZKEVM_NODE_ETHERMAN_POEADDR=$ESPRESSO_ZKEVM_2_ROLLUP_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_MATICADDR=$ESPRESSO_ZKEVM_2_MATIC_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_GLOBALEXITROOTMANAGERADDR=$ESPRESSO_ZKEVM_2_GER_ADDRESS
+      - ZKEVM_NODE_ETHERMAN_URL=$L1_PROVIDER
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTQUERYSERVICEURL=$ESPRESSO_ZKEVM_2_ADAPTOR_QUERY_URL
+      - ZKEVM_NODE_ETHERMAN_HOTSHOTADDR=$ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ZKEVM_NODE_MTCLIENT_URI=$ESPRESSO_ZKEVM_2_MTCLIENT_URI
+      - ZKEVM_NODE_EXECUTOR_URI=$ESPRESSO_ZKEVM_2_EXECUTOR_URI
+      - ZKEVM_NODE_ETHTXMANAGER_POLLINGINTERVAL=$ESPRESSO_ZKEVM_ETH_TX_MANAGER_POLLING_INTERVAL
+    volumes:
+      - ./zkevm-node/test/sequencer.keystore:/pk/sequencer.keystore
+      - ./zkevm-node/test/aggregator.keystore:/pk/aggregator.keystore
+      - ./zkevm-node/test/config/test.node.config.toml:/app/config.toml
+      - ./zkevm-node/test/config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-node run --genesis /app/genesis.json --cfg /app/config.toml --components eth-tx-manager"
+    depends_on:
+      zkevm-2-permissionless-node:
+        condition: service_healthy
+    profiles:
+      - "zkevm2"
+
+  zkevm-2-faucet:
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+    ports:
+      - $ESPRESSO_ZKEVM_2_FAUCET_PORT:$ESPRESSO_ZKEVM_2_FAUCET_PORT
+    environment:
+      - ESPRESSO_ZKEVM_FAUCET_DISCORD_TOKEN
+      - ESPRESSO_ZKEVM_FAUCET_GRANT_AMOUNT_ETHERS
+      - ESPRESSO_ZKEVM_FAUCET_MNEMONIC
+      - ESPRESSO_ZKEVM_FAUCET_NUM_CLIENTS
+      - ESPRESSO_ZKEVM_FAUCET_PORT=$ESPRESSO_ZKEVM_2_FAUCET_PORT
+      - ESPRESSO_ZKEVM_FAUCET_TRANSACTION_TIMEOUT_SECS
+      - ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_WS=$ESPRESSO_ZKEVM_2_FAUCET_WEB3_PROVIDER_URL_WS
+      - ESPRESSO_ZKEVM_FAUCET_WEB3_PROVIDER_URL_HTTP=$ESPRESSO_ZKEVM_2_FAUCET_WEB3_PROVIDER_URL_HTTP
+      - RUST_LOG
+      - RUST_LOG_FORMAT
+    depends_on:
+      zkevm-2-permissionless-node:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:$ESPRESSO_ZKEVM_2_FAUCET_PORT/healthcheck || exit 1
+      interval: 2s
+      retries: 10
+      timeout: 1s
+    profiles:
+      - "zkevm2"

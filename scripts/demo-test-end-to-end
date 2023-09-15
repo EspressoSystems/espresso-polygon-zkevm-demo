@@ -6,18 +6,18 @@
 # It requires curl, jq, just and docker to be installed.
 set -euo pipefail
 
-trap "exit" INT TERM
-trap cleanup EXIT
-cleanup(){
-    echo "Stopping child processes"
-    just down
-}
+# trap "exit" INT TERM
+# trap cleanup EXIT
+# cleanup(){
+#     echo "Stopping child processes"
+#     just down
+# }
 
 # Load env vars
 set -a; source .env; set +a;
 
-echo "Starting demo..."
-just demo --force-recreate -d
+# echo "Starting demo..."
+# just demo --force-recreate -d
 
 export ADDR=0x1234567890123456789012345678901234567890
 export RPC_1=http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT
@@ -25,12 +25,13 @@ export RPC_2=http://localhost:$ESPRESSO_ZKEVM_2_L2_PORT
 
 echo "Requesting funds from faucet"
 curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_1_FAUCET_PORT/faucet/request/$ADDR > /dev/null
-curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_2_FAUCET_PORT/faucet/request/$ADDR > /dev/null
+# curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_2_FAUCET_PORT/faucet/request/$ADDR > /dev/null
 
 echo "Waiting for balance to be updated..."
 
 function check_balance() {
-    for RPC in $RPC_1 $RPC_2; do
+    # for RPC in $RPC_1 $RPC_2; do
+    for RPC in $RPC_1; do
         echo "Checking balance for $RPC"
         while true; do
             balance=$(curl -s -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\": \"2.0\", \"method\": \"eth_getBalance\", \"params\": [\"$ADDR\", \"latest\"], \"id\": 1}" $RPC | jq -r '.result')
