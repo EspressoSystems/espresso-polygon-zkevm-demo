@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-  "faucet",
   "gen-bindings",
   "keygen",
   "polygon-zkevm-adaptor",

@@ -13,4 +13,4 @@ copy ghcr.io/espressosystems/espresso-sequencer/web-server:main
 copy ghcr.io/espressosystems/espresso-sequencer/orchestrator:main
 copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
 copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
-copy ghcr.io/espressosystems/espresso-polygon-zkevm-demo/faucet:main
+copy ghcr.io/espressosystems/discord-faucet:main
