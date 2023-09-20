@@ -1,8 +1,6 @@
 use clap::Parser;
 use coins_bip32::{path::DerivationPath, Bip32Error};
 use eth_keystore::encrypt_key;
-use std::{path::PathBuf, str::FromStr};
-
 use ethers::{
     prelude::k256::ecdsa::SigningKey,
     signers::{
@@ -11,14 +9,15 @@ use ethers::{
     },
     utils::secret_key_to_address,
 };
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
 
 #[derive(Parser, Clone, Debug)]
 struct Options {
-    #[clap(long, env = "ESPRESSO_ZKEVM_KEYSTORE_DIR", default_value = "./")]
-    keystore_dir: PathBuf,
-
     #[clap(
         long,
         env = "ESPRESSO_ZKEVM_KEYSTORE_PASSWORD",
@@ -26,12 +25,8 @@ struct Options {
     )]
     password: String,
 
-    #[clap(
-        long,
-        env = "ESPRESSO_ZKEVM_KEYSTORE_NAME",
-        default_value = "sequencer.keystore"
-    )]
-    filename: String,
+    #[clap(long, env = "ESPRESSO_ZKEVM_KEYSTORE_PATH")]
+    path: PathBuf,
 
     #[clap(
         long,
@@ -54,12 +49,13 @@ fn mnemonic_to_key(
 }
 
 fn create_key_store(
-    dir: PathBuf,
-    name: &str,
+    path: &Path,
     mnemonic: &str,
     index: u32,
     password: &str,
 ) -> Result<(), Bip32Error> {
+    let name = path.file_name().unwrap().to_str().unwrap();
+    let dir = path.parent().unwrap().to_path_buf();
     let mnemonic = Mnemonic::<English>::new_from_phrase(mnemonic).unwrap();
     let derivation_path = DerivationPath::from_str(&format!("m/44'/60'/0'/0/{}", index)).unwrap();
     let signer = mnemonic_to_key(&mnemonic, &derivation_path).unwrap();
@@ -70,8 +66,7 @@ fn create_key_store(
     encrypt_key(dir.clone(), &mut rng, sign_key_bytes, password, Some(name)).unwrap();
     println!(
         "New Keystore with address {:?} created at {:?}",
-        address,
-        dir.join(name)
+        address, path
     );
 
     Ok(())
@@ -79,14 +74,7 @@ fn create_key_store(
 
 fn main() {
     let opt = Options::parse();
-    create_key_store(
-        opt.keystore_dir,
-        &opt.filename,
-        &opt.mnemonic,
-        opt.index,
-        &opt.password,
-    )
-    .unwrap();
+    create_key_store(&opt.path, &opt.mnemonic, opt.index, &opt.password).unwrap();
 }
 
 #[cfg(test)]
@@ -124,7 +112,7 @@ mod tests {
         let tmpdir = tempfile::tempdir().unwrap();
         let dir = tmpdir.path().to_path_buf();
         let path = dir.join(name);
-        create_key_store(dir, name, TEST_MNEMONIC, 0, "testonly").unwrap();
+        create_key_store(&path, TEST_MNEMONIC, 0, "testonly").unwrap();
 
         let decrypted_key_bytes = decrypt_key(path, "testonly").unwrap();
         assert_eq!(decrypted_key_bytes, expected_private_key);
