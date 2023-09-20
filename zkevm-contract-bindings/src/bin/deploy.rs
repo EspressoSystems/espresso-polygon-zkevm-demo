@@ -10,12 +10,14 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
 use contract_bindings::HotShot;
 use ethers::{
+    prelude::{NonceManagerMiddleware, SignerMiddleware},
     providers::{Http, Middleware, Provider},
+    signers::{coins_bip39::English, MnemonicBuilder, Signer},
     types::Address,
     utils::{get_contract_address, parse_ether},
 };
 use hex::{FromHex, FromHexError};
-use sequencer_utils::{connect_rpc, Middleware as EthMiddleware};
+use sequencer_utils::Middleware as EthMiddleware;
 use serde::{Deserialize, Serialize};
 use serde_with::with_prefix;
 use std::path::PathBuf;
@@ -289,6 +291,55 @@ async fn deploy_zkevm(
         verifier_address: verifier.address(),
         genesis_block_number,
     })
+}
+
+pub async fn connect_rpc(
+    provider: &Url,
+    mnemonic: &str,
+    index: u32,
+    chain_id: Option<u64>,
+) -> Option<Arc<EthMiddleware>> {
+    let mut provider = match Provider::try_from(provider.to_string()) {
+        Ok(provider) => provider,
+        Err(err) => {
+            tracing::error!("error connecting to RPC {}: {}", provider, err);
+            return None;
+        }
+    };
+    provider.set_interval(Duration::from_millis(100));
+    let chain_id = match chain_id {
+        Some(id) => id,
+        None => match provider.get_chainid().await {
+            Ok(id) => id.as_u64(),
+            Err(err) => {
+                tracing::error!("error getting chain ID: {}", err);
+                return None;
+            }
+        },
+    };
+    let mnemonic = match MnemonicBuilder::<English>::default()
+        .phrase(mnemonic)
+        .index(index)
+    {
+        Ok(mnemonic) => mnemonic,
+        Err(err) => {
+            tracing::error!("error building walletE: {}", err);
+            return None;
+        }
+    };
+    let wallet = match mnemonic.build() {
+        Ok(wallet) => wallet,
+        Err(err) => {
+            tracing::error!("error opening wallet: {}", err);
+            return None;
+        }
+    };
+    let wallet = wallet.with_chain_id(chain_id);
+    let address = wallet.address();
+    Some(Arc::new(NonceManagerMiddleware::new(
+        SignerMiddleware::new(provider, wallet),
+        address,
+    )))
 }
 
 async fn deploy(opts: Options) -> Result<()> {
