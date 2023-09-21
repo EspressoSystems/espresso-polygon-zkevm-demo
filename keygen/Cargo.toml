@@ -5,7 +5,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.3.9", features = ["derive", "env"] }
+clap = { version = "4.4.4", features = ["derive", "env"] }
 coins-bip32 = "0.8.7"
 eth-keystore = { version = "0.5.0", features = ["geth-compat"] }
 ethers = "2.0.7"
