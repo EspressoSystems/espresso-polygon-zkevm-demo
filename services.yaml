@@ -124,6 +124,7 @@ services:
       interval: 2s
       retries: 10
       timeout: 1s
+    stop_grace_period: 1s
 
   adaptor:
     image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
@@ -133,7 +134,8 @@ services:
       - RUST_LOG
       - RUST_LOG_FORMAT
     healthcheck:
-      test: "curl http://localhost:$$ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT"
+      test: curl http://localhost:$$ESPRESSO_ZKEVM_ADAPTOR_QUERY_PORT
       interval: 5s
       timeout: 3s
       retries: 120
+    stop_grace_period: 1s
