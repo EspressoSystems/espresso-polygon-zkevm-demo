@@ -1705,18 +1705,15 @@ checksum = "021080b0a3dbefcf1c1f0b3ad6a923b81f16801d874ec338c168ac0b0762baf5"
 
 [[package]]
 name = "coins-bip32"
-version = "0.8.3"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b30a84aab436fcb256a2ab3c80663d8aec686e6bae12827bb05fef3e1e439c9f"
+checksum = "3b6be4a5df2098cd811f3194f64ddb96c267606bffd9689ac7b0160097b01ad3"
 dependencies = [
- "bincode",
- "bs58 0.4.0",
+ "bs58 0.5.0",
  "coins-core",
  "digest 0.10.7",
- "getrandom 0.2.10",
  "hmac 0.12.1",
  "k256 0.13.1",
- "lazy_static",
  "serde",
  "sha2 0.10.7",
  "thiserror",
@@ -4621,9 +4618,11 @@ name = "keygen"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "coins-bip32",
  "eth-keystore",
  "ethers",
  "rand 0.8.5",
+ "tempfile",
 ]
 
 [[package]]
