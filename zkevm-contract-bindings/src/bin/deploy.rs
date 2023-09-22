@@ -111,10 +111,14 @@ pub struct Options {
     #[arg(
         short,
         long,
-        env = "ESPRESSO_ZKEVM_DEPLOY_OUTPUT",
+        env = "ESPRESSO_ZKEVM_DEPLOY_OUTPUT_PATH",
         default_value = "deployment.env"
     )]
     pub output_path: PathBuf,
+
+    /// Output file path where deployment info will be stored.
+    #[arg(long, env = "ESPRESSO_ZKEVM_DEPLOY_OUTPUT_JSON")]
+    pub json: bool,
 
     /// Polling interval for the RPC provider
     ///
@@ -430,8 +434,13 @@ async fn deploy(opts: Options) -> Result<()> {
         zkevm_2_output,
     };
 
-    std::fs::write(&opts.output_path, output.to_dotenv())?;
+    let content = if opts.json {
+        serde_json::to_string_pretty(&output)?
+    } else {
+        output.to_dotenv()
+    };
     tracing::info!("Wrote deployment output to {}", opts.output_path.display());
+    std::fs::write(&opts.output_path, content)?;
 
     Ok(())
 }
