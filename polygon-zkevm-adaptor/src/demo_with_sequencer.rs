@@ -185,6 +185,10 @@ impl SequencerZkEvmDemo {
                 "ESPRESSO_ZKEVM_1_GENESIS_BLOCK_NUMBER",
                 l1.gen_block_number.to_string(),
             )
+            .env(
+                "ESPRESSO_ZKEVM_1_GENESIS_HOTSHOT_BLOCK_NUMBER",
+                l1.genesis_hotshot_block_number.to_string(),
+            )
             .arg("up")
             .args(L2_SERVICES)
             .arg("-V")

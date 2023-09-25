@@ -410,6 +410,10 @@ impl ZkEvmNode {
                 "ESPRESSO_ZKEVM_1_GENESIS_BLOCK_NUMBER",
                 l1.gen_block_number.to_string(),
             )
+            .env(
+                "ESPRESSO_ZKEVM_1_GENESIS_HOTSHOT_BLOCK_NUMBER",
+                format!("{:?}", l1.genesis_hotshot_block_number),
+            )
             .arg("up")
             .args(L2_SERVICES)
             .arg("-V")
