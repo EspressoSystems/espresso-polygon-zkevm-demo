@@ -163,8 +163,10 @@ struct ZkEvmDeploymentOutput {
     ger_address: Address,
     /// The address of the verifier contract.
     verifier_address: Address,
-    /// The block number when the rollup contract was deployed.
+    /// The L1 block number when the rollup contract was deployed.
     genesis_block_number: u64,
+    /// The hotshot block number where the rollup contract was deployed.
+    genesis_hotshot_block_number: u64,
 }
 
 with_prefix!(prefix_zkevm_1 "ESPRESSO_ZKEVM_1_");
@@ -267,6 +269,17 @@ async fn deploy_zkevm(
     .await;
     assert_eq!(rollup.address(), precalc_rollup_address);
 
+    let hotshot = HotShot::new(input.hotshot_address, deployer.clone());
+    let genesis_hotshot_block_number = hotshot
+        .block_height()
+        .block(receipt.block_number.unwrap())
+        .await?
+        .as_u64();
+    tracing::info!(
+        "HotShot genesis block number: {}",
+        genesis_hotshot_block_number
+    );
+
     // Remember the genesis block number where the rollup contract was deployed.
     let genesis_block_number = receipt.block_number.unwrap().as_u64();
 
@@ -307,6 +320,7 @@ async fn deploy_zkevm(
         ger_address: global_exit_root.address(),
         verifier_address: verifier.address(),
         genesis_block_number,
+        genesis_hotshot_block_number,
     })
 }
 
@@ -386,14 +400,14 @@ async fn deploy(opts: Options) -> Result<()> {
     tracing::info!("Using deployer account {:?}", deployer.inner().address());
 
     // Deploy the hotshot contract.
-    let hotshot_address = if opts.hotshot_address.is_none() {
+    let hotshot_address = if let Some(hotshot_address) = opts.hotshot_address {
+        tracing::info!("Using existing HotShot contract at {:?}", hotshot_address);
+        hotshot_address
+    } else {
         tracing::info!("Deploying HotShot contract");
         let hotshot = HotShot::deploy(deployer.clone(), ())?.send().await?;
         tracing::info!("Deployed HotShot at {:?}", hotshot.address());
         hotshot.address()
-    } else {
-        tracing::info!("Using existing HotShot contract");
-        opts.hotshot_address.unwrap()
     };
 
     // Deploy the contracts for the first zkevm-node.
