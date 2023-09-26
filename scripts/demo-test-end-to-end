@@ -10,7 +10,8 @@ set -euo pipefail
 set -a; source .env; set +a;
 
 export ADDR=0x1234567890123456789012345678901234567890
-export RPC_1=http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT
+export RPC_1=http://localhost:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT
+export RPC_2=http://localhost:$ESPRESSO_ZKEVM_1_L2_PORT
 
 echo "Requesting funds from faucet"
 curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_1_FAUCET_PORT/faucet/request/$ADDR > /dev/null
@@ -18,12 +19,12 @@ curl -s -X POST http://localhost:$ESPRESSO_ZKEVM_1_FAUCET_PORT/faucet/request/$A
 echo "Waiting for balance to be updated..."
 
 function check_balance() {
-    for RPC in $RPC_1; do
+    for RPC in $RPC_1 $RPC_2; do
         while true; do
             balance=$(curl -s -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\": \"2.0\", \"method\": \"eth_getBalance\", \"params\": [\"$ADDR\", \"latest\"], \"id\": 1}" $RPC | jq -r '.result')
-            echo "$(date) checking balance for $RPC"
+            echo "$(date) checking balance on $RPC"
             if [ "$balance" != "0x0" ]; then
-                echo "Balance updated for $RPC: $balance"
+                echo "Balance updated on $RPC: $balance"
                 break
             fi
             sleep 1
