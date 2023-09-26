@@ -7,6 +7,8 @@
 # 3. run scripts/demo-test-end-to-end to test if it works.
 set -euo pipefail
 
-cargo run --bin deploy -- --hotshot-address 0x5fbdb2315678afecb367f032d93f642f64180aa3
-docker compose --profile zkevm1 -f zkevm-on-espresso-compose.yaml \
-    --env-file zkevm-on-espresso.env --env-file deployment.env up --force-recreate
+cargo run --bin deploy -- --hotshot-address 0x5fbdb2315678afecb367f032d93f642f64180aa3 \
+    --deploy --polling-interval 1000 --account-index 10
+
+docker compose --profile zkevm1 zkevm1-preconfirmations \
+    --env-file .env --env-file deployment.env up --force-recreate

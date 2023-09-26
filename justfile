@@ -1,9 +1,7 @@
 # The zkevm-node docker-compose file currently only works if run from the zkevm-node/test directory.
-compose-base := "docker compose --project-name demo -f docker-compose.yaml -f permissionless-docker-compose.yaml"
-compose-espresso := "docker compose --project-name demo -f docker-compose.yaml"
+compose-base := "docker compose --project-name demo -f standalone-docker-compose.yaml"
 compose-anvil := compose-base + " -f docker-compose-anvil.yaml"
 compose := compose-base + " -f docker-compose-geth.yaml"
-compose-zkevm-node := "docker compose --project-name demo -f permissionless-docker-compose.yaml -f docker-compose-geth.yaml"
 
 default:
     just --list
@@ -11,7 +9,7 @@ default:
 zkevm-node:
     cargo run --all-features --bin zkevm-node
 
-demo *args: (demo-profiles "zkevm1" "zkevm1-preconfirmations" "zkevm2" "zkevm2-preconfirmations" args)
+demo *args: (demo-profiles "zkevm1" "zkevm1-preconfirmations" args)
 
 demo-profiles *args:
     scripts/check-architecture
