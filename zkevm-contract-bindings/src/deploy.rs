@@ -174,6 +174,7 @@ pub struct TestPolygonContracts {
     pub verifier: VerifierRollupHelperMock<EthMiddleware>,
     pub matic: ERC20PermitMock<EthMiddleware>,
     pub gen_block_number: u64,
+    pub genesis_hotshot_block_number: u64,
     pub clients: TestClients,
     pub provider: Provider<Http>,
 }
@@ -213,6 +214,13 @@ impl TestPolygonContracts {
             block_num += 1;
         };
 
+        let genesis_hotshot_block_number = hotshot
+            .block_height()
+            .block(gen_block_number)
+            .await
+            .unwrap()
+            .as_u64();
+
         Self {
             hotshot,
             rollup,
@@ -224,6 +232,7 @@ impl TestPolygonContracts {
             verifier: VerifierRollupHelperMock::new(verifier_address, deployer.clone()),
             matic: ERC20PermitMock::new(matic_address, deployer.clone()),
             gen_block_number,
+            genesis_hotshot_block_number,
             clients,
             provider,
         }
@@ -308,6 +317,14 @@ impl TestPolygonContracts {
         // Remember the genesis block number where the rollup contract was deployed.
         let gen_block_number = receipt.block_number.unwrap().as_u64();
 
+        // Remember the hotshot block number where the rollup contract was deployed.
+        let genesis_hotshot_block_number = hotshot
+            .block_height()
+            .block(gen_block_number)
+            .await
+            .unwrap()
+            .as_u64();
+
         let network_id_mainnet = 0;
         bridge
             .initialize(
@@ -371,6 +388,7 @@ impl TestPolygonContracts {
             verifier,
             matic,
             gen_block_number,
+            genesis_hotshot_block_number,
             clients,
             provider,
         }
