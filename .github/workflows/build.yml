@@ -24,7 +24,6 @@ jobs:
       - name: Check /proc/cpuinfo
         run: cat /proc/cpuinfo
 
-    steps:
       - name: Check docker version
         run: |
           docker version
