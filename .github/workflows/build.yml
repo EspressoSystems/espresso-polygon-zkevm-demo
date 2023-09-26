@@ -24,12 +24,6 @@ jobs:
       - name: Check /proc/cpuinfo
         run: cat /proc/cpuinfo
 
-      - name: Check docker version
-        run: |
-          docker version
-          docker-compose version
-          docker compose version
-
       - name: Abort early if Intel ADX instructions (required by zkevm-prover) is not available
         run: cat /proc/cpuinfo | grep -q ' adx ' || ( echo "Retry CI in the hopes of getting another CPU" && exit 1 )
 
@@ -63,7 +57,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull all docker compose images
-        run: docker-compose -f standalone-docker-compose.yaml -f docker-compose-anvil.yaml pull
+        run: docker compose -f standalone-docker-compose.yaml -f docker-compose-anvil.yaml pull
 
       - uses: Swatinem/rust-cache@v2
         name: Enable Rust Caching
