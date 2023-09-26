@@ -4,3 +4,6 @@
 [submodule "zkevm-node"]
 	path = zkevm-node
 	url = https://github.com/EspressoSystems/zkevm-node.git
+[submodule "blockscout"]
+	path = blockscout
+	url = https://github.com/blockscout/blockscout.git

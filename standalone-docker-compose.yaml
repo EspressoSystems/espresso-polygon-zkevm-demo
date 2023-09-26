@@ -1,6 +1,7 @@
 version: "3"
 include:
   - docker-compose.yaml
+  - docker-compose-blockscout.yaml
 
 services:
   orchestrator:
