@@ -1,0 +1,140 @@
+version: "3"
+volumes:
+  zkevm_1_blockscout_db:
+  zkevm_1_blockscout_logs:
+  zkevm_1_blockscout_redis:
+  zkevm_1_preconfirmations_blockscout_db:
+  zkevm_1_preconfirmations_blockscout_logs:
+  zkevm_1_preconfirmations_blockscout_redis:
+
+services:
+# Original zkevm node
+  zkevm-1-blockscout-db:
+    extends:
+      file: services.yaml
+      service: blockscout-db
+    volumes:
+      - zkevm_1_blockscout_db:/var/lib/postgresql/data
+    profiles:
+      - zkevm1
+
+  zkevm-1-redis-db:
+    extends:
+      file: services.yaml
+      service: redis-db
+    volumes:
+      - zkevm_1_blockscout_redis:/data
+    profiles:
+      - zkevm1
+
+  zkevm-1-blockscout:
+    extends:
+      file: services.yaml
+      service: blockscout
+    depends_on:
+      - zkevm-1-blockscout-db
+      - zkevm-1-smart-contract-verifier
+      - zkevm-1-redis-db
+      - zkevm-1-permissionless-node
+    environment:
+        SUBNETWORK: ZkEVM
+        ETHEREUM_JSONRPC_HTTP_URL: http://zkevm-1-permissionless-node:$ESPRESSO_ZKEVM_1_L2_PORT
+        ETHEREUM_JSONRPC_TRACE_URL: http://zkevm-1-permissionless-node:$ESPRESSO_ZKEVM_1_L2_PORT
+        DATABASE_URL: postgresql://postgres:@zkevm-1-blockscout-db:5432/blockscout?ssl=false
+        ACCOUNT_REDIS_URL: redis://zkevm-1-redis-db:6379
+        MICROSERVICE_SC_VERIFIER_URL: http://zkevm-1-smart-contract-verifier:8050
+        MICROSERVICE_VISUALIZE_SOL2UML_URL: http://zkevm-1-visualizer:8050
+        MICROSERVICE_SIG_PROVIDER_URL: http://zkevm-1-sig-provider:8050
+    ports:
+      - $ESPRESSO_ZKEVM_1_BLOCKSCOUT_PORT:4000
+    volumes:
+      - zkevm_1_blockscout_logs:/app/logs/
+    profiles:
+      - zkevm1
+
+  zkevm-1-smart-contract-verifier:
+    extends:
+      file: services.yaml
+      service: smart-contract-verifier
+    profiles:
+      - zkevm1
+
+  zkevm-1-visualizer:
+    extends:
+      file: services.yaml
+      service: visualizer
+    profiles:
+      - zkevm1
+
+  zkevm-1-sig-provider:
+    extends:
+      file: services.yaml
+      service: sig-provider
+    profiles:
+      - zkevm1
+
+# Pre-confirmations
+  zkevm-1-preconfirmations-blockscout-db:
+    extends:
+      file: services.yaml
+      service: blockscout-db
+    volumes:
+      - zkevm_1_preconfirmations_blockscout_db:/var/lib/postgresql/data
+    profiles:
+      - zkevm1-preconfirmations
+
+  zkevm-1-preconfirmations-redis-db:
+    extends:
+      file: services.yaml
+      service: redis-db
+    volumes:
+      - zkevm_1_preconfirmations_blockscout_redis:/data
+    profiles:
+      - zkevm1-preconfirmations
+
+  zkevm-1-preconfirmations-blockscout:
+    extends:
+      file: services.yaml
+      service: blockscout
+    depends_on:
+      - zkevm-1-preconfirmations-blockscout-db
+      - zkevm-1-preconfirmations-smart-contract-verifier
+      - zkevm-1-preconfirmations-redis-db
+      - zkevm-1-preconfirmations-node
+    environment:
+        SUBNETWORK: ZkEVM Preconf
+        ETHEREUM_JSONRPC_HTTP_URL: http://zkevm-1-preconfirmations-node:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT
+        ETHEREUM_JSONRPC_TRACE_URL: http://zkevm-1-preconfirmations-node:$ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT
+        DATABASE_URL: postgresql://postgres:@zkevm-1-preconfirmations-blockscout-db:5432/blockscout?ssl=false
+        ACCOUNT_REDIS_URL: redis://zkevm-1-preconfirmations-redis-db:6379
+        MICROSERVICE_SC_VERIFIER_URL: http://zkevm-1-preconfirmations-smart-contract-verifier:8050
+        MICROSERVICE_VISUALIZE_SOL2UML_URL: http://zkevm-1-preconfirmations-visualizer:8050
+        MICROSERVICE_SIG_PROVIDER_URL: http://zkevm-1-preconfirmations-sig-provider:8050
+    ports:
+      - $ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_BLOCKSCOUT_PORT:4000
+    volumes:
+      - zkevm_1_preconfirmations_blockscout_logs:/app/logs/
+    profiles:
+      - zkevm1-preconfirmations
+
+  zkevm-1-preconfirmations-smart-contract-verifier:
+    extends:
+      file: services.yaml
+      service: smart-contract-verifier
+    profiles:
+      - zkevm1-preconfirmations
+      - zkevm1
+
+  zkevm-1-preconfirmations-visualizer:
+    extends:
+      file: services.yaml
+      service: visualizer
+    profiles:
+      - zkevm1-preconfirmations
+
+  zkevm-1-preconfirmations-sig-provider:
+    extends:
+      file: services.yaml
+      service: sig-provider
+    profiles:
+      - zkevm1-preconfirmations
