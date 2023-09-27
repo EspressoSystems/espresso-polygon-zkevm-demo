@@ -30,7 +30,7 @@ while [[ $# != 0 ]]; do
 	esac
 done
 
-COMPOSE_BASE="docker compose --project-name demo -f docker-compose.yaml -f permissionless-docker-compose.yaml"
+COMPOSE_BASE="docker compose --project-name demo -f standalone-docker-compose.yaml"
 COMPOSE="$COMPOSE_BASE -f docker-compose-geth.yaml"
 
 $COMPOSE $PROFILES up "$@" --wait

@@ -21,7 +21,7 @@ use std::{
 use surf_disco::Url;
 use zkevm_contract_bindings::TestPolygonContracts;
 
-const L1_SERVICES: [&str; 1] = ["zkevm-mock-l1-network"];
+const L1_SERVICES: [&str; 1] = ["demo-l1-network"];
 
 const L2_SERVICES: [&str; 8] = [
     "zkevm-1-prover",
@@ -328,7 +328,7 @@ impl ZkEvmNode {
             .arg("--project-name")
             .arg(project_name)
             .arg("-f")
-            .arg("permissionless-docker-compose.yaml")
+            .arg("standalone-docker-compose.yaml")
             .arg("-f")
             .arg(layer1_backend.compose_file());
         cmd

@@ -176,8 +176,8 @@ simultaneous L2s but don't want the overhead of the secondary preconfirmations n
 To know more about the environment check out the following files
 
 - [.env](.env): Environment variables
-- [docker-compose.yaml](docker-compose.yaml): Espresso Sequencer services
-- [permissionless-docker-compose.yaml](permissionless-docker-compose.yaml): Polygon zkEVM services
+- [docker-compose.yaml](docker-compose.yaml): Polygon zkEVM services
+- [standalone-docker-compose.yaml](standalone-docker-compose.yaml): Espresso Sequencer services
 
 Another good place to start is the end-to-end test in [polygon-zkevm-adaptor/tests/end_to_end.rs](polygon-zkevm-adaptor/tests/end_to_end.rs).
 
