@@ -170,7 +170,7 @@ services:
     restart: always
     stop_grace_period: 5m
     env_file:
-      - ../blockscout/docker-compose/envs/common-blockscout.env
+      - ./blockscout/docker-compose/envs/common-blockscout.env
     environment:
         SUBNETWORK: 'OP Rollup 901'
         ETHEREUM_JSONRPC_VARIANT: 'geth'
@@ -185,7 +185,7 @@ services:
     platform: linux/amd64
     restart: always
     env_file:
-      - ../blockscout/docker-compose/envs/common-smart-contract-verifier.env
+      - ./blockscout/docker-compose/envs/common-smart-contract-verifier.env
 
   visualizer:
     image: ghcr.io/blockscout/visualizer:${VISUALIZER_DOCKER_TAG:-latest}
@@ -193,7 +193,7 @@ services:
     platform: linux/amd64
     restart: always
     env_file:
-      -  ../blockscout/docker-compose/envs/common-visualizer.env
+      -  ./blockscout/docker-compose/envs/common-visualizer.env
 
   sig-provider:
     image: ghcr.io/blockscout/sig-provider:${SIG_PROVIDER_DOCKER_TAG:-latest}

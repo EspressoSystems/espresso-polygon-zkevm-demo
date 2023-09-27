@@ -11,6 +11,13 @@ zkevm-node:
 
 demo *args: (demo-profiles "zkevm1" "zkevm1-preconfirmations" args)
 
+deploy-contracts:
+    cargo run --bin deploy -- --hotshot-address 0x850ec3780cedfdb116e38b009d0bf7a1ef1b8b38 --polling-interval 1000 --account-index 19
+
+deploy-rollup *args:
+    cargo run --bin deploy -- --hotshot-address 0x850ec3780cedfdb116e38b009d0bf7a1ef1b8b38 --polling-interval 1000 --account-index 19
+    docker compose --profile zkevm1 --profile zkevm1-preconfirmations --env-file .env --env-file deployment.env up {{args}}
+
 demo-profiles *args:
     scripts/check-architecture
 
