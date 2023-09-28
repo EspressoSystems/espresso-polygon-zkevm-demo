@@ -107,6 +107,14 @@ pub struct Options {
       )]
     pub genesis_root_2: [u8; 32],
 
+    /// Chain ID for the first L2.
+    #[arg(long, env = "ESPRESSO_ZKEVM_1_CHAIN_ID", default_value = "1001")]
+    pub chain_id_1: u64,
+
+    /// Chain ID for the second L2.
+    #[arg(long, env = "ESPRESSO_ZKEVM_2_CHAIN_ID", default_value = "1002")]
+    pub chain_id_2: u64,
+
     /// Output file path where deployment info will be stored.
     #[arg(
         short,
@@ -415,7 +423,7 @@ async fn deploy(opts: Options) -> Result<()> {
         hotshot_address,
         trusted_aggregator: opts.trusted_aggregator_1,
         genesis_root: opts.genesis_root_1,
-        chain_id: 1001u64,
+        chain_id: opts.chain_id_1,
         fork_id: 1u64,
         network_name: "zkevm-one".to_string(),
     };
@@ -427,7 +435,7 @@ async fn deploy(opts: Options) -> Result<()> {
             hotshot_address,
             trusted_aggregator: opts.trusted_aggregator_2,
             genesis_root: opts.genesis_root_2,
-            chain_id: 1002u64,
+            chain_id: opts.chain_id_2,
             fork_id: 1u64,
             network_name: "zkevm-two".to_string(),
         };
