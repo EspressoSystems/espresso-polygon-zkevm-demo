@@ -78,5 +78,9 @@ build-docker-l1-geth:
 
 build-docker: build-docker-l1-geth build-docker-zkevm-node build-docker-zkevm-adaptor
 
+deploy-on-sequencer:
+    cargo run --bin deploy -- --hotshot-address 0x0116686e2291dbd5e317f47fadbfb43b599786ef --polling-interval 1000 --account-index 19
+    docker compose --profile zkevm1 --profile zkevm1-preconfirmations --env-file .env --env-file deployment.env up --force-recreate --renew-anon-volumes
+
 test:
     cargo test --release --all-features
