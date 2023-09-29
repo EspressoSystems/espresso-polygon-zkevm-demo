@@ -160,7 +160,7 @@ impl PolygonZkevmBlock {
         }
 
         Self {
-            timestamp: l2_block.timestamp().unix_timestamp() as u64,
+            timestamp: l2_block.block().timestamp(),
             height: l2_block.height(),
             l1_block,
             transactions: encode_transactions(zkevm.vm_transactions(l2_block.block())).to_string(),
