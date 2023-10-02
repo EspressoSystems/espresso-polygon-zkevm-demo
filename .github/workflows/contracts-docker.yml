@@ -7,6 +7,8 @@ on:
       - 'v*'
   pull_request:
   workflow_dispatch:
+env:
+  ESPRESSO_ZKEVM_L1_BLOCK_PERIOD: 12
 jobs:
   build:
     runs-on: ubuntu-latest
