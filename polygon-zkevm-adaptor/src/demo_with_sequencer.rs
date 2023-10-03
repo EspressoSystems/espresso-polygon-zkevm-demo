@@ -13,7 +13,7 @@ use zkevm_contract_bindings::TestPolygonContracts;
 
 const L1_SERVICES: [&str; 1] = ["demo-l1-network"];
 
-const L2_SERVICES: [&str; 18] = [
+const L2_SERVICES: [&str; 19] = [
     "zkevm-1-prover",
     "zkevm-1-aggregator",
     "zkevm-1-state-db",
@@ -32,6 +32,7 @@ const L2_SERVICES: [&str; 18] = [
     "sequencer2",
     "sequencer3",
     "sequencer4",
+    "commitment-task",
 ];
 
 pub struct SequencerZkEvmDemoOptions {
