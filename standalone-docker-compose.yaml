@@ -16,6 +16,7 @@ services:
       - ESPRESSO_ORCHESTRATOR_NEXT_VIEW_TIMEOUT
       - RUST_LOG
       - RUST_LOG_FORMAT
+    stop_grace_period: 1s
   da-server:
     image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
     ports:
@@ -26,6 +27,7 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
+    stop_grace_period: 1s
   consensus-server:
     image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
     ports:
@@ -36,6 +38,7 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
+    stop_grace_period: 1s
 
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
@@ -49,7 +52,7 @@ services:
       - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_STORAGE_PATH
-      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - ESPRESSO_SEQUENCER_L1_WS_PROVIDER
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
@@ -57,20 +60,17 @@ services:
         condition: service_healthy
       demo-l1-network:
         condition: service_healthy
+    stop_grace_period: 1s
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
-    # Run consensus *plus* the commitment task to post commitments to the
-    # hotshot contract.
-    command: /bin/sequencer -- http -- commitment-task
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
       - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
       - ESPRESSO_SEQUENCER_ETH_MNEMONIC
-      - ESPRESSO_SEQUENCER_ETH_ACCOUNT_INDEX
       - ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
-      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - ESPRESSO_SEQUENCER_L1_WS_PROVIDER
       - ESPRESSO_SEQUENCER_QUERY_SERVICE_URL
       - RUST_LOG
       - RUST_LOG_FORMAT
@@ -79,6 +79,7 @@ services:
         condition: service_healthy
       sequencer0:
         condition: service_started
+    stop_grace_period: 1s
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -86,7 +87,7 @@ services:
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
       - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
-      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - ESPRESSO_SEQUENCER_L1_WS_PROVIDER
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
@@ -94,6 +95,7 @@ services:
         condition: service_healthy
       sequencer0:
         condition: service_started
+    stop_grace_period: 1s
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -101,7 +103,7 @@ services:
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
       - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
-      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - ESPRESSO_SEQUENCER_L1_WS_PROVIDER
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
@@ -109,6 +111,7 @@ services:
         condition: service_healthy
       sequencer0:
         condition: service_started
+    stop_grace_period: 1s
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -116,7 +119,7 @@ services:
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
       - ESPRESSO_SEQUENCER_CONSENSUS_SERVER_URL
       - ESPRESSO_SEQUENCER_API_PORT
-      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - ESPRESSO_SEQUENCER_L1_WS_PROVIDER
       - RUST_LOG
       - RUST_LOG_FORMAT
     depends_on:
@@ -124,3 +127,20 @@ services:
         condition: service_healthy
       sequencer0:
         condition: service_started
+    stop_grace_period: 1s
+  commitment-task:
+    image: ghcr.io/espressosystems/espresso-sequencer/commitment-task:main
+    environment:
+      - ESPRESSO_SEQUENCER_ETH_MNEMONIC
+      - ESPRESSO_SEQUENCER_HOTSHOT_ACCOUNT_INDEX
+      - ESPRESSO_SEQUENCER_HOTSHOT_ADDRESS
+      - ESPRESSO_SEQUENCER_URL
+      - ESPRESSO_SEQUENCER_L1_PROVIDER
+      - RUST_LOG
+      - RUST_LOG_FORMAT
+    depends_on:
+      sequencer0:
+        condition: service_healthy
+      demo-l1-network:
+        condition: service_healthy
+    stop_grace_period: 1s
