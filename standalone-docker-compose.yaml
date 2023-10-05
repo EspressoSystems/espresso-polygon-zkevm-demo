@@ -23,7 +23,7 @@ services:
       - "$ESPRESSO_DA_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
       - ESPRESSO_WEB_SERVER_PORT
-      - RUST_LOG
+      - RUST_LOG=error
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -34,7 +34,7 @@ services:
       - "$ESPRESSO_CONSENSUS_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
       - ESPRESSO_WEB_SERVER_PORT
-      - RUST_LOG
+      - RUST_LOG=error
     depends_on:
       orchestrator:
         condition: service_healthy

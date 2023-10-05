@@ -42,6 +42,8 @@ pub struct ZkEvmEnv {
     sequencer_api_port: u16,
     sequencer_storage_path: PathBuf,
     l1_port: u16,
+    l1_provider: Url,
+    l1_ws_provider: Url,
     l2_port: u16,
     l2_preconfirmations_port: u16,
     l1_chain_id: Option<u64>,
@@ -62,6 +64,8 @@ impl Default for ZkEvmEnv {
             sequencer_api_port: 50001,
             sequencer_storage_path: "/store/sequencer".into(),
             l1_port: 8545,
+            l1_provider: "http://demo-l1-network:8545".parse().unwrap(),
+            l1_ws_provider: "ws://demo-l1-network:8546".parse().unwrap(),
             l2_port: 18126,
             l2_preconfirmations_port: 18127,
             l1_chain_id: None,
@@ -80,6 +84,8 @@ impl ZkEvmEnv {
         let da_server_port = pick_unused_port().unwrap();
         let sequencer_api_port = pick_unused_port().unwrap();
         let l1_port = pick_unused_port().unwrap();
+        let l1_provider = format!("http://demo-l1-network:{l1_port}").parse().unwrap();
+        let l1_ws_provider = format!("ws://demo-l1-network:{l1_port}").parse().unwrap();
         let l2_port = pick_unused_port().unwrap();
         let l2_preconfirmations_port = pick_unused_port().unwrap();
         let adaptor_rpc_port = pick_unused_port().unwrap();
@@ -99,6 +105,8 @@ impl ZkEvmEnv {
             da_server_port,
             sequencer_api_port,
             l1_port,
+            l1_provider,
+            l1_ws_provider,
             l2_port,
             l2_preconfirmations_port,
             l1_chain_id,
@@ -115,13 +123,20 @@ impl ZkEvmEnv {
             .unwrap()
             .map(Result::unwrap)
             .collect();
+        let l1_port = dotenv["ESPRESSO_ZKEVM_L1_PORT"].parse().unwrap();
         Self {
             orchestrator_port: dotenv["ESPRESSO_ORCHESTRATOR_PORT"].parse().unwrap(),
             consensus_server_port: dotenv["ESPRESSO_CONSENSUS_SERVER_PORT"].parse().unwrap(),
             da_server_port: dotenv["ESPRESSO_DA_SERVER_PORT"].parse().unwrap(),
             sequencer_api_port: dotenv["ESPRESSO_SEQUENCER_API_PORT"].parse().unwrap(),
             sequencer_storage_path: dotenv["ESPRESSO_SEQUENCER_STORAGE_PATH"].parse().unwrap(),
-            l1_port: dotenv["ESPRESSO_ZKEVM_L1_PORT"].parse().unwrap(),
+            l1_port,
+            // dotenvy doesn't correctly parse environment variables that reference other variables
+            // in the same file (as we do with ESPRESSO_SEQUENCER_L1_PROVIDER and
+            // ESPRESSO_SEQUENCER_L1_WS_PROVIDER in .env). So we have to manually reconstruct these
+            // URLs using the port that we parsed from the .env file.
+            l1_provider: format!("http://demo-l1-network:{l1_port}").parse().unwrap(),
+            l1_ws_provider: format!("ws://demo-l1-network:{l1_port}").parse().unwrap(),
             l2_port: dotenv["ESPRESSO_ZKEVM_1_L2_PORT"].parse().unwrap(),
             l2_preconfirmations_port: dotenv["ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT"]
                 .parse()
@@ -134,6 +149,15 @@ impl ZkEvmEnv {
                 .parse()
                 .unwrap(),
         }
+    }
+
+    pub fn with_anvil(mut self, port: u16) -> Self {
+        self.l1_port = port;
+        self.l1_provider = format!("http://host.docker.internal:{port}")
+            .parse()
+            .unwrap();
+        self.l1_ws_provider = format!("ws://host.docker.internal:{port}").parse().unwrap();
+        self
     }
 
     pub fn cmd(&self, command: &str) -> Command {
@@ -151,19 +175,30 @@ impl ZkEvmEnv {
             "ESPRESSO_SEQUENCER_API_PORT",
             self.sequencer_api_port.to_string(),
         )
-        .env("ESPRESSO_SEQUENCER_URL", self.sequencer().as_ref())
+        .env(
+            "ESPRESSO_SEQUENCER_URL",
+            format!("http://sequencer0:{}", self.sequencer_api_port).as_str(),
+        )
         .env(
             "ESPRESSO_SEQUENCER_STORAGE_PATH",
             self.sequencer_storage_path.as_os_str(),
         )
+        .env("ESPRESSO_SEQUENCER_L1_PROVIDER", self.l1_provider.as_ref())
+        .env(
+            "ESPRESSO_SEQUENCER_L1_WS_PROVIDER",
+            self.l1_ws_provider.as_ref(),
+        )
         .env("ESPRESSO_ZKEVM_L1_PORT", self.l1_port.to_string())
-        .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider().as_ref())
+        .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider.as_ref())
         .env("ESPRESSO_ZKEVM_1_L2_PORT", self.l2_port.to_string())
         .env(
             "ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT",
             self.l2_preconfirmations_port.to_string(),
         )
-        .env("ESPRESSO_ZKEVM_1_L2_PROVIDER", self.l2_provider().as_ref())
+        .env(
+            "ESPRESSO_ZKEVM_1_L2_PROVIDER",
+            format!("http://zkevm-1-permissionless-node:{}", self.l2_port).as_str(),
+        )
         .env(
             "ESPRESSO_ZKEVM_1_SEQUENCER_MNEMONIC",
             &self.sequencer_mnemonic,
@@ -174,7 +209,7 @@ impl ZkEvmEnv {
         )
         .env(
             "ESPRESSO_ZKEVM_1_ADAPTOR_RPC_URL",
-            format!("http://host.docker.internal:{}", self.adaptor_rpc_port),
+            format!("http://polygon-zkevm-1-adaptor:{}", self.adaptor_rpc_port).as_str(),
         )
         .env(
             "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT",
@@ -182,7 +217,7 @@ impl ZkEvmEnv {
         )
         .env(
             "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL",
-            format!("http://host.docker.internal:{}", self.adaptor_query_port),
+            format!("http://polygon-zkevm-1-adaptor:{}", self.adaptor_query_port).as_str(),
         );
         if let Some(id) = self.l1_chain_id {
             cmd.env("ESPRESSO_ZKEVM_L1_CHAIN_ID", id.to_string());
@@ -194,9 +229,21 @@ impl ZkEvmEnv {
     }
 
     pub fn l1_provider(&self) -> Url {
+        // `self.l1_provider` is for use in Docker containers (it uses a hostname which only
+        // resolves in the Docker network). This is for use in code running on the host to talk to
+        // the Docker containers, so we have to use a different URL to connect over the host
+        // network, via the Docker service's exposed port.
         format!("http://localhost:{}", self.l1_port)
             .parse()
             .unwrap()
+    }
+
+    pub fn l1_ws_provider(&self) -> Url {
+        // `self.l1_provider` is for use in Docker containers (it uses a hostname which only
+        // resolves in the Docker network). This is for use in code running on the host to talk to
+        // the Docker containers, so we have to use a different URL to connect over the host
+        // network, via the Docker service's exposed port.
+        format!("ws://localhost:{}", self.l1_port).parse().unwrap()
     }
 
     pub fn l1_chain_id(&self) -> Option<u64> {

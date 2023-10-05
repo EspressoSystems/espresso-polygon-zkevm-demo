@@ -38,6 +38,7 @@ const L2_SERVICES: [&str; 19] = [
 pub struct SequencerZkEvmDemoOptions {
     l1_backend: Layer1Backend,
     l1_block_period: Duration,
+    anvil_port: Option<u16>,
 }
 
 impl Default for SequencerZkEvmDemoOptions {
@@ -45,6 +46,7 @@ impl Default for SequencerZkEvmDemoOptions {
         Self {
             l1_backend: Layer1Backend::Anvil,
             l1_block_period: Duration::from_secs(1),
+            anvil_port: None,
         }
     }
 }
@@ -57,6 +59,11 @@ impl SequencerZkEvmDemoOptions {
 
     pub fn l1_block_period(mut self, period: Duration) -> Self {
         self.l1_block_period = period;
+        self
+    }
+
+    pub fn use_anvil(mut self, port: u16) -> Self {
+        self.anvil_port = Some(port);
         self
     }
 
@@ -92,10 +99,11 @@ impl SequencerZkEvmDemo {
     }
 
     pub(crate) fn compose_cmd_prefix(
+        env: &ZkEvmEnv,
         project_name: &str,
         layer1_backend: &Layer1Backend,
     ) -> Command {
-        let mut cmd = Command::new("docker");
+        let mut cmd = env.cmd("docker");
         let work_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         cmd.current_dir(work_dir)
             .arg("compose")
@@ -114,12 +122,12 @@ impl SequencerZkEvmDemo {
         project_name: String,
         opt: SequencerZkEvmDemoOptions,
     ) -> Self {
-        let env = ZkEvmEnv::from_dotenv();
+        let mut env = ZkEvmEnv::from_dotenv();
 
         tracing::info!("Starting ZkEvmNode with env: {:?}", env);
         tracing::info!(
             "Compose prefix: {:?}",
-            Self::compose_cmd_prefix(&project_name, &opt.l1_backend)
+            Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
         );
 
         // Remove all existing containers, so that if any configuration has changed since the last
@@ -128,7 +136,7 @@ impl SequencerZkEvmDemo {
         // `docker-compose up`, because we will start the services in two steps: first the L1, then,
         // after deploying contracts, the remaining services. We don't want the second step to force
         // recreation of the L1 after we have deployed contracts to it.
-        Self::compose_cmd_prefix(&project_name, &opt.l1_backend)
+        Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
             .arg("rm")
             .arg("-f")
             .arg("-s")
@@ -140,8 +148,11 @@ impl SequencerZkEvmDemo {
             .wait()
             .expect("Failed to remove old docker containers");
 
-        // Start L1
-        Self::compose_cmd_prefix(&project_name, &opt.l1_backend)
+        // Start L1. Even if we are running Anvil as an L1 (`opt.anvil_port`) we need to start this
+        // because it is a dependency of the L2 services. We start this before updating `env` to use
+        // the Anvil port as L1 so that the L1 Docker service doesn't try to start on this same
+        // port.
+        Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
             .env(
                 "ESPRESSO_ZKEVM_L1_BLOCK_PERIOD",
                 opt.l1_block_period.as_secs().to_string(),
@@ -161,11 +172,17 @@ impl SequencerZkEvmDemo {
 
         tracing::info!("L1 ready");
 
+        // Now that we have started the Docker L1, we can switch the env over to use Anvil running
+        // on the host, if the test requested that we do so.
+        if let Some(anvil_port) = opt.anvil_port {
+            env = env.with_anvil(anvil_port);
+        }
+
         // Use a dummy URL for the trusted sequencer since we're not running one anyways.
         let l1 = TestPolygonContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
 
         // Start zkevm-node
-        Self::compose_cmd_prefix(&project_name, &opt.l1_backend)
+        Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
             .env(
                 "ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS",
                 format!("{:?}", l1.rollup.address()),
@@ -218,7 +235,7 @@ impl SequencerZkEvmDemo {
     }
 
     fn stop(&self) -> &Self {
-        Self::compose_cmd_prefix(self.project_name(), self.layer1_backend())
+        Self::compose_cmd_prefix(&self.env, self.project_name(), self.layer1_backend())
             .arg("down")
             .arg("-v")
             .arg("--remove-orphans")
