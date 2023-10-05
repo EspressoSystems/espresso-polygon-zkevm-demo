@@ -36,6 +36,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         RUST_LOG = "info,libp2p=off,isahc=error,surf=error";
+        RUSTFLAGS = " --cfg async_executor_impl=\"async-std\" --cfg async_channel_impl=\"async-std\"";
         overlays = [
           (import rust-overlay)
           foundry.overlay
@@ -129,7 +130,7 @@
               RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
               RUST_BACKTRACE = 1;
               RUST_LOG_FORMAT = "full";
-              inherit RUST_LOG;
+              inherit RUST_LOG RUSTFLAGS;
             };
         devShells.crossShell =
           let
