@@ -15,7 +15,7 @@ use futures::{
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
-use sequencer_utils::{connect_rpc, wait_for_http};
+use sequencer_utils::{connect_rpc, wait_for_http, Anvil, AnvilOptions};
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
@@ -262,6 +262,148 @@ async fn test_preconfirmations() {
     }
 }
 
+#[async_std::test]
+async fn test_reorg() {
+    setup_logging();
+    setup_backtrace();
+
+    let mut anvil = AnvilOptions::default()
+        .chain_id(1337)
+        .block_time(Duration::from_secs(1))
+        .spawn()
+        .await;
+
+    let node = setup_test_anvil("test-reorg", &anvil).await;
+    let env = node.env();
+    let mnemonic = env.funded_mnemonic();
+    let rollup_address = node.l1().rollup.address();
+
+    let l1 = connect_rpc(&env.l1_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2_initial_balance = l2.get_balance(l2.inner().address(), None).await.unwrap();
+    let rollup = PolygonZkEVM::new(rollup_address, l1.clone());
+
+    // Wait for the sequencer API to start before we try submitting transactions.
+    wait_for_http(&env.sequencer(), Duration::from_secs(1), 100)
+        .await
+        .unwrap();
+
+    // Wait for the adaptor to start serving.
+    tracing::info!("connecting to adaptor RPC at {}", env.l2_adaptor_rpc());
+    // The adaptor is not a full RPC, therefore we can't use `wait_for_rpc`.`
+    wait_for_http(&env.l2_adaptor_rpc(), Duration::from_secs(1), 100)
+        .await
+        .unwrap();
+    tracing::info!(
+        "connecting to adaptor query service at {}",
+        env.l2_adaptor_query()
+    );
+    wait_for_http(&env.l2_adaptor_query(), Duration::from_secs(1), 100)
+        .await
+        .unwrap();
+
+    // Create a test transaction.
+    let transfer_amount = 1.into();
+    let txn_hash = l2
+        .send_transaction(
+            TransactionRequest {
+                from: Some(l2.inner().address()),
+                to: Some(Address::zero().into()),
+                value: Some(transfer_amount),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .tx_hash();
+    let submitted = Instant::now();
+    tracing::info!("Sent transaction {txn_hash:?} at {submitted:?}");
+
+    // Wait for the transaction to complete on L2, using both the regular RPC and the
+    // preconfirmation RPC in parallel.
+    join!(
+        await_transaction(&l2_preconf, txn_hash),
+        await_transaction(&l2, txn_hash),
+    );
+
+    // Check the effects of the transfer.
+    assert_eq!(
+        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2_initial_balance - transfer_amount
+    );
+    assert_eq!(
+        l2_preconf
+            .get_balance(l2_preconf.inner().address(), None)
+            .await
+            .unwrap(),
+        l2_initial_balance - transfer_amount
+    );
+
+    // Wait for some batches to be verified. The zkevm node does not updated its latest synced L1
+    // block until it reaches a block with relevant events, and for the preconfirmations node, the
+    // only relevant events are from verified batches (since it reads sequenced batches from
+    // HotShot, not the L1). This means that if the preconfirmations node has not seen any verified
+    // batches yet, it has not synced any L1 blocks at all, and the reorg will not affect it.
+    let verified_filter = rollup.verify_batches_trusted_aggregator_filter();
+    verified_filter.stream().await.unwrap().next().await;
+
+    // Wait a few seconds for the preconfirmations node to handle that event.
+    tracing::info!("waiting for batches to be verified");
+    sleep(Duration::from_secs(5)).await;
+
+    // Force an L1 reorg.
+    tracing::info!("causing L1 reorg");
+    anvil.reorg(1).await;
+
+    // Wait a bit for the nodes to recover.
+    sleep(Duration::from_secs(10)).await;
+
+    // Send another transaction to ensure the nodes are still syncing.
+    let txn_hash = l2
+        .send_transaction(
+            TransactionRequest {
+                from: Some(l2.inner().address()),
+                to: Some(Address::zero().into()),
+                value: Some(transfer_amount),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .tx_hash();
+    let submitted = Instant::now();
+    tracing::info!("Sent transaction {txn_hash:?} at {submitted:?}");
+
+    // Wait for the transaction to complete on L2, using both the regular RPC and the
+    // preconfirmation RPC in parallel.
+    join!(
+        await_transaction(&l2_preconf, txn_hash),
+        await_transaction(&l2, txn_hash),
+    );
+
+    // Check the effects of the transfer.
+    assert_eq!(
+        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2_initial_balance - transfer_amount * 2
+    );
+    assert_eq!(
+        l2_preconf
+            .get_balance(l2_preconf.inner().address(), None)
+            .await
+            .unwrap(),
+        l2_initial_balance - transfer_amount * 2
+    );
+}
+
 async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
 where
     B: TryStream<Ok = BlockQueryData<SeqTypes>> + Unpin,
@@ -304,6 +446,17 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> SequencerZkEvmDemo {
     SequencerZkEvmDemoOptions::default()
         .l1_backend(Layer1Backend::Anvil)
         .l1_block_period(l1_block_time)
+        .start(name.to_string())
+        .await
+}
+
+async fn setup_test_anvil(name: &str, anvil: &Anvil) -> SequencerZkEvmDemo {
+    setup_logging();
+    setup_backtrace();
+
+    SequencerZkEvmDemoOptions::default()
+        .use_anvil(anvil.url().port().unwrap())
+        .l1_backend(Layer1Backend::Anvil)
         .start(name.to_string())
         .await
 }

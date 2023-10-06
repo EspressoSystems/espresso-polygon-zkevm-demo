@@ -7827,7 +7827,6 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#013b30fd1cfb6694842b3b018d4cb7e5c6bb1bca"
 dependencies = [
  "ark-serialize 0.3.0",
  "async-std",
