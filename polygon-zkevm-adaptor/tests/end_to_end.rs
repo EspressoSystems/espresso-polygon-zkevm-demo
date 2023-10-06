@@ -260,6 +260,20 @@ async fn test_preconfirmations() {
     } else {
         assert!(ok);
     }
+
+    // Check that both nodes have consistent state roots, for the latest block that both have in
+    // common.
+    let preconf_height = l2_preconf.get_block_number().await.unwrap().as_u64();
+    let regular_height = l2.get_block_number().await.unwrap().as_u64();
+    let height = std::cmp::min(preconf_height, regular_height);
+    let preconf_state = l2_preconf
+        .get_block(height)
+        .await
+        .unwrap()
+        .unwrap()
+        .state_root;
+    let regular_state = l2.get_block(height).await.unwrap().unwrap().state_root;
+    assert_eq!(preconf_state, regular_state);
 }
 
 async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
