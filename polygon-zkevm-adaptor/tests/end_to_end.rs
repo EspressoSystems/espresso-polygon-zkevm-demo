@@ -463,6 +463,15 @@ async fn test_reorg() {
     );
 
     // Wait for the verified batches to catch up, to be sure everything is still syncing properly.
+    // This forces the test to run long enough, and for the nodes to sync enough verified batches,
+    // that it will be clearly visible in the logs if the preconfirmations node is failing to sync
+    // verified batches, which is the problem we saw when there was a reorg in production.
+    //
+    // Note that the test won't necessarily fail if the preconfirmations node is unable to sync
+    // verified batches, because syncing these batches doesn't actually affect the observable state
+    // of the preconfirmations node: it's state is only affected by blocks that it syncs directly
+    // from HotShot, asynchronously with respect to the verified state. But at least we will be able
+    // to check the logs for issues if we are actively working on reorg handling.
     let l2_height = sequencer
         .get::<u64>("status/latest_block_height")
         .send()
