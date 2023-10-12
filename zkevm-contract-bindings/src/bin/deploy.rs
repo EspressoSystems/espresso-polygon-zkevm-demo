@@ -8,7 +8,7 @@
 use anyhow::Result;
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
-use contract_bindings::HotShot;
+use contract_bindings::hot_shot::HotShot;
 use ethers::{
     prelude::{NonceManagerMiddleware, SignerMiddleware},
     providers::{Http, Middleware, Provider},

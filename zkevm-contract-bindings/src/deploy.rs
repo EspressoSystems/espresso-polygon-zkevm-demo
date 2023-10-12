@@ -16,7 +16,7 @@ use crate::{
     },
     polygon_zk_evm::InitializePackedParameters,
 };
-use contract_bindings::HotShot;
+use contract_bindings::hot_shot::HotShot;
 use ethers::{
     abi::Tokenize,
     contract::Contract,

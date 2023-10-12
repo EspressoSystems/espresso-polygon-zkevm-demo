@@ -918,7 +918,7 @@ dependencies = [
 [[package]]
 name = "async-compatibility-layer"
 version = "1.0.0"
-source = "git+https://github.com/EspressoSystems/async-compatibility-layer#f598499687f661327aa1c2e026e5f1c4e9822aee"
+source = "git+https://github.com/EspressoSystems/async-compatibility-layer#5aa6d90aaaf07ff1dea5563a97c0dca39736ec69"
 dependencies = [
  "async-channel",
  "async-lock",
@@ -2088,19 +2088,9 @@ checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 [[package]]
 name = "contract-bindings"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#013b30fd1cfb6694842b3b018d4cb7e5c6bb1bca"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#3bed6747f25ac8fb8144f76e19fd6ee39daac775"
 dependencies = [
- "anyhow",
- "async-compatibility-layer 1.0.0 (git+https://github.com/EspressoSystems/async-compatibility-layer?tag=1.3.0)",
- "async-std",
- "async-trait",
  "ethers",
- "ethers-solc",
- "glob",
- "hex",
- "serde_json",
- "tracing",
- "tracing-subscriber 0.3.17",
 ]
 
 [[package]]
@@ -4828,7 +4818,7 @@ checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 [[package]]
 name = "jf-primitives"
 version = "0.4.0-pre.0"
-source = "git+https://github.com/EspressoSystems/jellyfish#1626a8448e7af8ea153241004375deff9fd961da"
+source = "git+https://github.com/EspressoSystems/jellyfish#c0b88424ac1c362c2066971d0da5c43e8832ed5f"
 dependencies = [
  "anyhow",
  "ark-bls12-377",
@@ -4872,7 +4862,7 @@ dependencies = [
 [[package]]
 name = "jf-relation"
 version = "0.4.0-pre.0"
-source = "git+https://github.com/EspressoSystems/jellyfish#1626a8448e7af8ea153241004375deff9fd961da"
+source = "git+https://github.com/EspressoSystems/jellyfish#c0b88424ac1c362c2066971d0da5c43e8832ed5f"
 dependencies = [
  "ark-bls12-377",
  "ark-bls12-381 0.4.0",
@@ -4898,7 +4888,7 @@ dependencies = [
 [[package]]
 name = "jf-utils"
 version = "0.4.0-pre.0"
-source = "git+https://github.com/EspressoSystems/jellyfish#1626a8448e7af8ea153241004375deff9fd961da"
+source = "git+https://github.com/EspressoSystems/jellyfish#c0b88424ac1c362c2066971d0da5c43e8832ed5f"
 dependencies = [
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
@@ -7783,7 +7773,7 @@ checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 [[package]]
 name = "sequencer"
 version = "0.1.0"
-source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#013b30fd1cfb6694842b3b018d4cb7e5c6bb1bca"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#3bed6747f25ac8fb8144f76e19fd6ee39daac775"
 dependencies = [
  "anyhow",
  "ark-bls12-381 0.3.0",
@@ -7827,10 +7817,13 @@ dependencies = [
 [[package]]
 name = "sequencer-utils"
 version = "0.1.0"
+source = "git+https://github.com/EspressoSystems/espresso-sequencer.git#3bed6747f25ac8fb8144f76e19fd6ee39daac775"
 dependencies = [
+ "anyhow",
  "ark-serialize 0.3.0",
  "async-std",
  "commit 0.2.2 (git+https://github.com/EspressoSystems/commit?tag=0.2.2)",
+ "contract-bindings",
  "ethers",
  "portpicker",
  "surf",

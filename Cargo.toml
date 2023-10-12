@@ -7,6 +7,3 @@ members = [
   "zkevm",
   "zkevm-contract-bindings",
 ]
-
-[patch."https://github.com/EspressoSystems/espresso-sequencer"]
-"sequencer-utils" = { path = "../espresso-sequencer/utils" }
