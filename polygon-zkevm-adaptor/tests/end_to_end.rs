@@ -14,12 +14,72 @@ use futures::{
 };
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
+use portpicker::pick_unused_port;
 use sequencer::SeqTypes;
-use sequencer_utils::{connect_rpc, wait_for_http, Anvil, AnvilOptions};
+use sequencer_utils::{connect_rpc, wait_for_http};
 use std::fmt::Debug;
+use std::process::Command;
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
 use zkevm_contract_bindings::PolygonZkEVM;
+
+struct ReorgMe {
+    ports: [u16; 3],
+}
+
+impl ReorgMe {
+    fn start() -> Self {
+        let reorgme = Self {
+            ports: [0; 3].map(|_| pick_unused_port().unwrap()),
+        };
+        let mut command = reorgme.cmd("start");
+        command.args([
+            "--chain-id",
+            "1337",
+            "--allocation",
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266=1000000000000000000000000000",
+            "--allocation",
+            "0x70997970C51812dc3A010C7d01b50e0d17dc79C8=1000000000000000000000000000",
+        ]);
+        if !command.spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to start reorgme testnet");
+        }
+        reorgme
+    }
+
+    fn rpc_port(&self) -> u16 {
+        self.ports[0]
+    }
+
+    fn fork(&self) {
+        if !self.cmd("fork").spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to fork L1 node from reorgme testnet");
+        }
+    }
+
+    fn join(&self) {
+        if !self.cmd("join").spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to rejoin L1 node to reorgme testnet");
+        }
+    }
+
+    fn cmd(&self, command: &str) -> Command {
+        let mut cmd = Command::new("npx");
+        cmd.args(["reorgme", command]);
+        for port in self.ports {
+            cmd.args(["--rpc-port", &port.to_string()]);
+        }
+        cmd
+    }
+}
+
+impl Drop for ReorgMe {
+    fn drop(&mut self) {
+        if !self.cmd("stop").spawn().unwrap().wait().unwrap().success() {
+            tracing::error!("failed to stop reorgme");
+        }
+    }
+}
 
 #[async_std::test]
 async fn test_end_to_end() {
@@ -267,13 +327,12 @@ async fn test_reorg() {
     setup_logging();
     setup_backtrace();
 
-    let mut anvil = AnvilOptions::default()
-        .chain_id(1337)
-        .block_time(Duration::from_secs(1))
-        .spawn()
-        .await;
+    let reorgme = ReorgMe::start();
+    let node = setup_test_with_host_l1("test-reorg", reorgme.rpc_port()).await;
 
-    let node = setup_test_anvil("test-reorg", &anvil).await;
+    tracing::info!("Separating L1 node from the network");
+    reorgme.fork();
+
     let env = node.env();
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
@@ -291,9 +350,9 @@ async fn test_reorg() {
     let rollup = PolygonZkEVM::new(rollup_address, l1.clone());
 
     // Wait for the sequencer API to start before we try submitting transactions.
-    wait_for_http(&env.sequencer(), Duration::from_secs(1), 100)
-        .await
-        .unwrap();
+    tracing::info!("connecting to sequencer at {}", env.sequencer());
+    let sequencer = surf_disco::Client::<hotshot_query_service::Error>::new(env.sequencer());
+    sequencer.connect(None).await;
 
     // Wait for the adaptor to start serving.
     tracing::info!("connecting to adaptor RPC at {}", env.l2_adaptor_rpc());
@@ -361,7 +420,7 @@ async fn test_reorg() {
 
     // Force an L1 reorg.
     tracing::info!("causing L1 reorg");
-    anvil.reorg(1).await;
+    reorgme.join();
 
     // Wait a bit for the nodes to recover.
     sleep(Duration::from_secs(10)).await;
@@ -402,6 +461,29 @@ async fn test_reorg() {
             .unwrap(),
         l2_initial_balance - transfer_amount * 2
     );
+
+    // Wait for the verified batches to catch up, to be sure everything is still syncing properly.
+    let l2_height = sequencer
+        .get::<u64>("status/latest_block_height")
+        .send()
+        .await
+        .unwrap();
+    let verified_filter = rollup.verify_batches_trusted_aggregator_filter();
+    loop {
+        tracing::info!("waiting for batch {l2_height} to be verified");
+        let event = verified_filter
+            .stream()
+            .await
+            .unwrap()
+            .next()
+            .await
+            .unwrap()
+            .unwrap();
+        tracing::info!("current verified batch is {}", event.num_batch);
+        if event.num_batch >= l2_height {
+            break;
+        }
+    }
 }
 
 async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
@@ -450,12 +532,12 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> SequencerZkEvmDemo {
         .await
 }
 
-async fn setup_test_anvil(name: &str, anvil: &Anvil) -> SequencerZkEvmDemo {
+async fn setup_test_with_host_l1(name: &str, l1_port: u16) -> SequencerZkEvmDemo {
     setup_logging();
     setup_backtrace();
 
     SequencerZkEvmDemoOptions::default()
-        .use_anvil(anvil.url().port().unwrap())
+        .use_host_l1(l1_port)
         .l1_backend(Layer1Backend::Anvil)
         .start(name.to_string())
         .await

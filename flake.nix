@@ -116,6 +116,8 @@
                 nixWithFlakes
                 entr
                 jq
+                nodejs
+                nodePackages.pnpm
 
                 # Figures
                 graphviz

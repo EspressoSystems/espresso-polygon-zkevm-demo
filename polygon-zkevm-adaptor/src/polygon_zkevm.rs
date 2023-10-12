@@ -151,7 +151,7 @@ impl ZkEvmEnv {
         }
     }
 
-    pub fn with_anvil(mut self, port: u16) -> Self {
+    pub fn with_host_l1(mut self, port: u16) -> Self {
         self.l1_port = port;
         self.l1_provider = format!("http://host.docker.internal:{port}")
             .parse()

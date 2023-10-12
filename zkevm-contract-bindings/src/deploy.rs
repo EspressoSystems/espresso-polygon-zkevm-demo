@@ -252,15 +252,19 @@ impl TestPolygonContracts {
         let mut tries = 0;
         let interval = Duration::from_secs(1);
         let hotshot = loop {
-            if let Ok(contract) = HotShot::deploy(deployer.clone(), ()).unwrap().send().await {
-                break contract;
-            }
-            if tries < max_tries {
-                tries += 1;
-                tracing::info!("Failed to deploy HotShot contract, retrying in {interval:?}");
-                async_std::task::sleep(interval).await;
-            } else {
-                panic!("Failed to deploy HotShot contract");
+            match HotShot::deploy(deployer.clone(), ()).unwrap().send().await {
+                Ok(contract) => break contract,
+                Err(err) => {
+                    if tries < max_tries {
+                        tries += 1;
+                        tracing::info!(
+                            "Failed to deploy HotShot contract: {err}, retrying in {interval:?}"
+                        );
+                        async_std::task::sleep(interval).await;
+                    } else {
+                        panic!("Failed to deploy HotShot contract: {err}");
+                    }
+                }
             }
         };
 

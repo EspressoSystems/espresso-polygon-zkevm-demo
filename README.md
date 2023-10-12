@@ -171,6 +171,7 @@ simultaneous L2s but don't want the overhead of the secondary preconfirmations n
 - Make sure [nix](https://nixos.org/download.html) is installed.
 - Activate the environment with `nix-shell`, or `nix develop`, or `direnv allow`
   if using [direnv](https://direnv.net/).
+- Install NPM dependencies with `pnpm i`
 - Run `just` to see the available just recipes.
 
 To know more about the environment check out the following files
@@ -186,6 +187,10 @@ To run the tests, run
 
     just pull # to pull docker images
     cargo test --all-features
+
+Some of the tests use Docker. In particular, reorg tests automate Docker via the Docker Unix socket.
+If you are running Docker Desktop for Mac, you need to configure it to create a symlink for this
+socket, which you can enable with Settings -> Advanced -> Allow the default Docker socket to be used.
 
 ## Figures
 To build the figures, run
