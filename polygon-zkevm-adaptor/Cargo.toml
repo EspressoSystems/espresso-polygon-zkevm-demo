@@ -28,7 +28,7 @@ async-std = "1.12"
 bincode = "1.3"
 clap = { version = "4.3", features = ["derive", "env"] }
 dotenvy = "0.15.6"
-escargot = "0.5.7"
+escargot = "0.5.8"
 ethers = "2.0"
 futures = "0.3"
 hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service.git" }
