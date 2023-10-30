@@ -20,7 +20,7 @@
 
 use crate::Options;
 use async_std::sync::RwLock;
-use futures::{future::try_join, FutureExt, StreamExt, TryFutureExt};
+use futures::{FutureExt, StreamExt, TryFutureExt};
 use hotshot_query_service::availability::BlockQueryData;
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
@@ -49,27 +49,12 @@ pub async fn serve(opt: &Options) {
         .get("getblock", |req, state| {
             async move {
                 let height: u64 = req.integer_param("height")?;
-                let (block, prev) = try_join(
-                    state
-                        .hotshot
-                        .get(&format!("availability/block/{height}"))
-                        .send(),
-                    async move {
-                        Ok(if height == 0 {
-                            None
-                        } else {
-                            Some(
-                                state
-                                    .hotshot
-                                    .get(&format!("availability/block/{}", height - 1))
-                                    .send()
-                                    .await?,
-                            )
-                        })
-                    },
-                )
-                .await?;
-                Ok(PolygonZkevmBlock::new(state.zkevm, &block, prev.as_ref()))
+                let block = state
+                    .hotshot
+                    .get(&format!("availability/block/{height}"))
+                    .send()
+                    .await?;
+                Ok(PolygonZkevmBlock::new(state.zkevm, &block))
             }
             .boxed()
         })
@@ -78,29 +63,13 @@ pub async fn serve(opt: &Options) {
             async move {
                 let state = state.read().await;
                 let height: u64 = req.integer_param("height")?;
-                let mut prev = if height == 0 {
-                    None
-                } else {
-                    Some(
-                        state
-                            .hotshot
-                            .get(&format!("availability/block/{}", height - 1))
-                            .send()
-                            .await?,
-                    )
-                };
                 let blocks = state
                     .hotshot
                     .socket(&format!("availability/stream/blocks/{height}"))
                     .subscribe::<BlockQueryData<SeqTypes>>()
                     .await?;
                 let zkevm = state.zkevm;
-                Ok(blocks.map(move |block| {
-                    let block = block?;
-                    let res = PolygonZkevmBlock::new(zkevm, &block, prev.as_ref());
-                    prev = Some(block);
-                    Ok(res)
-                }))
+                Ok(blocks.map(move |block| Ok(PolygonZkevmBlock::new(zkevm, &block?))))
             }
             .try_flatten_stream()
             .boxed()
@@ -141,28 +110,11 @@ struct PolygonZkevmBlock {
 }
 
 impl PolygonZkevmBlock {
-    fn new(
-        zkevm: ZkEvm,
-        l2_block: &BlockQueryData<SeqTypes>,
-        prev: Option<&BlockQueryData<SeqTypes>>,
-    ) -> Self {
-        // Due to a limitation in HotShot (nodes create new blocks to propose without knowledge of
-        // the previous block) the L1 block numbers provided by HotShot are not guaranteed to be
-        // monotonically increasing. This breaks a basic invariant of the zkEVM node. For demo
-        // purposes, rather than fixing this in consensus, we adjust the numbers here if they are
-        // not increasing.
-        let mut l1_block = l2_block.block().l1_head();
-        if let Some(prev) = prev {
-            let prev_l1_block = prev.block().l1_head();
-            if l1_block < prev_l1_block {
-                l1_block = prev_l1_block;
-            }
-        }
-
+    fn new(zkevm: ZkEvm, l2_block: &BlockQueryData<SeqTypes>) -> Self {
         Self {
             timestamp: l2_block.block().timestamp(),
             height: l2_block.height(),
-            l1_block,
+            l1_block: l2_block.block().l1_head(),
             transactions: encode_transactions(zkevm.vm_transactions(l2_block.block())).to_string(),
         }
     }
