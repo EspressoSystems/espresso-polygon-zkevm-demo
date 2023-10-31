@@ -80,4 +80,4 @@ jobs:
         run: |
           cargo test --release --workspace --all-features --no-run
           cargo test --release --workspace --all-features --verbose -- --test-threads 1 --nocapture
-        timeout-minutes: 30
+        timeout-minutes: 60
