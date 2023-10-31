@@ -58,6 +58,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install Node Packages
+        run: pnpm install
+
       - name: Pull all docker compose images
         run: docker compose -f standalone-docker-compose.yaml -f docker-compose-anvil.yaml pull
 
