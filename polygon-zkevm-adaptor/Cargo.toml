@@ -19,6 +19,7 @@ required-features = ["testing"]
 
 [features]
 testing = ["portpicker"]
+slow-tests = []
 
 [dependencies]
 async-compatibility-layer = { git = "https://github.com/EspressoSystems/async-compatibility-layer", tag = "1.4.1", features = [

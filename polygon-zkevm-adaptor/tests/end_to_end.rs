@@ -8,29 +8,26 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::task::sleep;
 use ethers::{prelude::*, providers::Middleware};
-use futures::{
-    join,
-    stream::{StreamExt, TryStream, TryStreamExt},
-};
+use futures::stream::{StreamExt, TryStream, TryStreamExt};
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
-use portpicker::pick_unused_port;
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http};
 use std::fmt::Debug;
-use std::process::Command;
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
 use zkevm_contract_bindings::PolygonZkEVM;
 
+#[cfg(feature = "slow-tests")]
 struct ReorgMe {
     ports: [u16; 3],
 }
 
+#[cfg(feature = "slow-tests")]
 impl ReorgMe {
     fn start() -> Self {
         let reorgme = Self {
-            ports: [0; 3].map(|_| pick_unused_port().unwrap()),
+            ports: [0; 3].map(|_| portpicker::pick_unused_port().unwrap()),
         };
         let mut command = reorgme.cmd("start");
         command.args([
@@ -63,8 +60,8 @@ impl ReorgMe {
         }
     }
 
-    fn cmd(&self, command: &str) -> Command {
-        let mut cmd = Command::new("npx");
+    fn cmd(&self, command: &str) -> std::process::Command {
+        let mut cmd = std::process::Command::new("npx");
         cmd.args(["reorgme", command]);
         for port in self.ports {
             cmd.args(["--rpc-port", &port.to_string()]);
@@ -73,6 +70,7 @@ impl ReorgMe {
     }
 }
 
+#[cfg(feature = "slow-tests")]
 impl Drop for ReorgMe {
     fn drop(&mut self) {
         if !self.cmd("stop").spawn().unwrap().wait().unwrap().success() {
@@ -212,6 +210,7 @@ async fn test_end_to_end() {
         .is_none());
 }
 
+#[cfg(feature = "slow-tests")]
 #[async_std::test]
 async fn test_preconfirmations() {
     setup_logging();
@@ -282,7 +281,7 @@ async fn test_preconfirmations() {
 
     // Wait for the transaction to complete on L2, using both the regular RPC and the
     // preconfirmation RPC in parallel.
-    let (pre_conf, slow_conf) = join!(
+    let (pre_conf, slow_conf) = futures::join!(
         await_transaction(&l2_preconf, txn_hash),
         await_transaction(&l2, txn_hash),
     );
@@ -336,6 +335,7 @@ async fn test_preconfirmations() {
     assert_eq!(preconf_state, regular_state);
 }
 
+#[cfg(feature = "slow-tests")]
 #[async_std::test]
 async fn test_reorg() {
     setup_logging();
@@ -402,7 +402,7 @@ async fn test_reorg() {
 
     // Wait for the transaction to complete on L2, using both the regular RPC and the
     // preconfirmation RPC in parallel.
-    join!(
+    futures::join!(
         await_transaction(&l2_preconf, txn_hash),
         await_transaction(&l2, txn_hash),
     );
@@ -458,7 +458,7 @@ async fn test_reorg() {
 
     // Wait for the transaction to complete on L2, using both the regular RPC and the
     // preconfirmation RPC in parallel.
-    join!(
+    futures::join!(
         await_transaction(&l2_preconf, txn_hash),
         await_transaction(&l2, txn_hash),
     );
@@ -555,6 +555,7 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> SequencerZkEvmDemo {
         .await
 }
 
+#[cfg(feature = "slow-tests")]
 async fn setup_test_with_host_l1(name: &str, l1_port: u16) -> SequencerZkEvmDemo {
     setup_logging();
     setup_backtrace();

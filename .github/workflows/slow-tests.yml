@@ -1,4 +1,4 @@
-name: Build
+name: Slow Tests
 
 on:
   push:
@@ -8,8 +8,6 @@ on:
     tags:
       # YYYYMMDD
       - "20[0-9][0-9][0-1][0-9][0-3][0-9]*"
-  pull_request:
-    branches:
   workflow_dispatch:
 
 env:
@@ -58,6 +56,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install Node Packages
+        run: pnpm install
+
       - name: Pull all docker compose images
         run: docker compose -f standalone-docker-compose.yaml -f docker-compose-anvil.yaml pull
 
@@ -65,11 +71,8 @@ jobs:
         name: Enable Rust Caching
 
       - name: Build
-        run: |
-          cargo build --release --workspace
+        run: cargo test --release --workspace --features=testing,slow-tests --no-run
 
       - name: Test
-        run: |
-          cargo test --release --workspace --features testing --no-run
-          cargo test --release --workspace --features testing --verbose -- --test-threads 1 --nocapture
-        timeout-minutes: 30
+        run: cargo test --release --workspace --features=testing,slow-tests --verbose -- --test-threads 1 --nocapture
+        timeout-minutes: 60
