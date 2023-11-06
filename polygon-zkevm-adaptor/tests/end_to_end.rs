@@ -436,9 +436,6 @@ async fn test_reorg() {
     tracing::info!("causing L1 reorg");
     reorgme.join();
 
-    // Wait a bit for the nodes to recover.
-    sleep(Duration::from_secs(10)).await;
-
     // Send another transaction to ensure the nodes are still syncing.
     let txn_hash = l2
         .send_transaction(
