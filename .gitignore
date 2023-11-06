@@ -24,3 +24,7 @@ cache/
 # geth data dir for docker build
 .espresso-geth-dev-data-dir
 .env.geth
+
+# NPM stuff
+node_modules/
+pnpm-lock.yaml

@@ -23,7 +23,7 @@ services:
       - "$ESPRESSO_DA_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
       - ESPRESSO_WEB_SERVER_PORT
-      - RUST_LOG
+      - RUST_LOG=error
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -34,7 +34,7 @@ services:
       - "$ESPRESSO_CONSENSUS_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
       - ESPRESSO_WEB_SERVER_PORT
-      - RUST_LOG
+      - RUST_LOG=error
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -61,6 +61,8 @@ services:
       demo-l1-network:
         condition: service_healthy
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   sequencer1:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -80,6 +82,8 @@ services:
       sequencer0:
         condition: service_started
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   sequencer2:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -96,6 +100,8 @@ services:
       sequencer0:
         condition: service_started
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   sequencer3:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -112,6 +118,8 @@ services:
       sequencer0:
         condition: service_started
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   sequencer4:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
@@ -128,6 +136,8 @@ services:
       sequencer0:
         condition: service_started
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   commitment-task:
     image: ghcr.io/espressosystems/espresso-sequencer/commitment-task:main
     environment:
@@ -144,3 +154,5 @@ services:
       demo-l1-network:
         condition: service_healthy
     stop_grace_period: 1s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

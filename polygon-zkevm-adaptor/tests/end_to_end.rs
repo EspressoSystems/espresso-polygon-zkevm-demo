@@ -8,10 +8,7 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::task::sleep;
 use ethers::{prelude::*, providers::Middleware};
-use futures::{
-    join,
-    stream::{StreamExt, TryStream, TryStreamExt},
-};
+use futures::stream::{StreamExt, TryStream, TryStreamExt};
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
@@ -20,6 +17,67 @@ use std::fmt::Debug;
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
 use zkevm_contract_bindings::PolygonZkEVM;
+
+#[cfg(feature = "slow-tests")]
+struct ReorgMe {
+    ports: [u16; 3],
+}
+
+#[cfg(feature = "slow-tests")]
+impl ReorgMe {
+    fn start() -> Self {
+        let reorgme = Self {
+            ports: [0; 3].map(|_| portpicker::pick_unused_port().unwrap()),
+        };
+        let mut command = reorgme.cmd("start");
+        command.args([
+            "--chain-id",
+            "1337",
+            "--allocation",
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266=1000000000000000000000000000",
+            "--allocation",
+            "0x70997970C51812dc3A010C7d01b50e0d17dc79C8=1000000000000000000000000000",
+        ]);
+        if !command.spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to start reorgme testnet");
+        }
+        reorgme
+    }
+
+    fn rpc_port(&self) -> u16 {
+        self.ports[0]
+    }
+
+    fn fork(&self) {
+        if !self.cmd("fork").spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to fork L1 node from reorgme testnet");
+        }
+    }
+
+    fn join(&self) {
+        if !self.cmd("join").spawn().unwrap().wait().unwrap().success() {
+            panic!("failed to rejoin L1 node to reorgme testnet");
+        }
+    }
+
+    fn cmd(&self, command: &str) -> std::process::Command {
+        let mut cmd = std::process::Command::new("npx");
+        cmd.args(["reorgme", command]);
+        for port in self.ports {
+            cmd.args(["--rpc-port", &port.to_string()]);
+        }
+        cmd
+    }
+}
+
+#[cfg(feature = "slow-tests")]
+impl Drop for ReorgMe {
+    fn drop(&mut self) {
+        if !self.cmd("stop").spawn().unwrap().wait().unwrap().success() {
+            tracing::error!("failed to stop reorgme");
+        }
+    }
+}
 
 #[async_std::test]
 async fn test_end_to_end() {
@@ -152,6 +210,7 @@ async fn test_end_to_end() {
         .is_none());
 }
 
+#[cfg(feature = "slow-tests")]
 #[async_std::test]
 async fn test_preconfirmations() {
     setup_logging();
@@ -222,7 +281,7 @@ async fn test_preconfirmations() {
 
     // Wait for the transaction to complete on L2, using both the regular RPC and the
     // preconfirmation RPC in parallel.
-    let (pre_conf, slow_conf) = join!(
+    let (pre_conf, slow_conf) = futures::join!(
         await_transaction(&l2_preconf, txn_hash),
         await_transaction(&l2, txn_hash),
     );
@@ -276,6 +335,177 @@ async fn test_preconfirmations() {
     assert_eq!(preconf_state, regular_state);
 }
 
+#[cfg(feature = "slow-tests")]
+#[async_std::test]
+async fn test_reorg() {
+    setup_logging();
+    setup_backtrace();
+
+    let reorgme = ReorgMe::start();
+    let node = setup_test_with_host_l1("test-reorg", reorgme.rpc_port()).await;
+
+    tracing::info!("Separating L1 node from the network");
+    reorgme.fork();
+
+    let env = node.env();
+    let mnemonic = env.funded_mnemonic();
+    let rollup_address = node.l1().rollup.address();
+
+    let l1 = connect_rpc(&env.l1_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+        .await
+        .unwrap();
+    let l2_initial_balance = l2.get_balance(l2.inner().address(), None).await.unwrap();
+    let rollup = PolygonZkEVM::new(rollup_address, l1.clone());
+
+    // Wait for the sequencer API to start before we try submitting transactions.
+    tracing::info!("connecting to sequencer at {}", env.sequencer());
+    let sequencer = surf_disco::Client::<hotshot_query_service::Error>::new(env.sequencer());
+    sequencer.connect(None).await;
+
+    // Wait for the adaptor to start serving.
+    tracing::info!("connecting to adaptor RPC at {}", env.l2_adaptor_rpc());
+    // The adaptor is not a full RPC, therefore we can't use `wait_for_rpc`.`
+    wait_for_http(&env.l2_adaptor_rpc(), Duration::from_secs(1), 100)
+        .await
+        .unwrap();
+    tracing::info!(
+        "connecting to adaptor query service at {}",
+        env.l2_adaptor_query()
+    );
+    wait_for_http(&env.l2_adaptor_query(), Duration::from_secs(1), 100)
+        .await
+        .unwrap();
+
+    // Create a test transaction.
+    let transfer_amount = 1.into();
+    let txn_hash = l2
+        .send_transaction(
+            TransactionRequest {
+                from: Some(l2.inner().address()),
+                to: Some(Address::zero().into()),
+                value: Some(transfer_amount),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .tx_hash();
+    let submitted = Instant::now();
+    tracing::info!("Sent transaction {txn_hash:?} at {submitted:?}");
+
+    // Wait for the transaction to complete on L2, using both the regular RPC and the
+    // preconfirmation RPC in parallel.
+    futures::join!(
+        await_transaction(&l2_preconf, txn_hash),
+        await_transaction(&l2, txn_hash),
+    );
+
+    // Check the effects of the transfer.
+    assert_eq!(
+        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2_initial_balance - transfer_amount
+    );
+    assert_eq!(
+        l2_preconf
+            .get_balance(l2_preconf.inner().address(), None)
+            .await
+            .unwrap(),
+        l2_initial_balance - transfer_amount
+    );
+
+    // Wait for some batches to be verified. The zkevm node does not updated its latest synced L1
+    // block until it reaches a block with relevant events, and for the preconfirmations node, the
+    // only relevant events are from verified batches (since it reads sequenced batches from
+    // HotShot, not the L1). This means that if the preconfirmations node has not seen any verified
+    // batches yet, it has not synced any L1 blocks at all, and the reorg will not affect it.
+    let verified_filter = rollup.verify_batches_trusted_aggregator_filter();
+    verified_filter.stream().await.unwrap().next().await;
+
+    // Wait a few seconds for the preconfirmations node to handle that event.
+    tracing::info!("waiting for batches to be verified");
+    sleep(Duration::from_secs(5)).await;
+
+    // Force an L1 reorg.
+    tracing::info!("causing L1 reorg");
+    reorgme.join();
+
+    // Send another transaction to ensure the nodes are still syncing.
+    let txn_hash = l2
+        .send_transaction(
+            TransactionRequest {
+                from: Some(l2.inner().address()),
+                to: Some(Address::zero().into()),
+                value: Some(transfer_amount),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap()
+        .tx_hash();
+    let submitted = Instant::now();
+    tracing::info!("Sent transaction {txn_hash:?} at {submitted:?}");
+
+    // Wait for the transaction to complete on L2, using both the regular RPC and the
+    // preconfirmation RPC in parallel.
+    futures::join!(
+        await_transaction(&l2_preconf, txn_hash),
+        await_transaction(&l2, txn_hash),
+    );
+
+    // Check the effects of the transfer.
+    assert_eq!(
+        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2_initial_balance - transfer_amount * 2
+    );
+    assert_eq!(
+        l2_preconf
+            .get_balance(l2_preconf.inner().address(), None)
+            .await
+            .unwrap(),
+        l2_initial_balance - transfer_amount * 2
+    );
+
+    // Wait for the verified batches to catch up, to be sure everything is still syncing properly.
+    // This forces the test to run long enough, and for the nodes to sync enough verified batches,
+    // that it will be clearly visible in the logs if the preconfirmations node is failing to sync
+    // verified batches, which is the problem we saw when there was a reorg in production.
+    //
+    // Note that the test won't necessarily fail if the preconfirmations node is unable to sync
+    // verified batches, because syncing these batches doesn't actually affect the observable state
+    // of the preconfirmations node: it's state is only affected by blocks that it syncs directly
+    // from HotShot, asynchronously with respect to the verified state. But at least we will be able
+    // to check the logs for issues if we are actively working on reorg handling.
+    let l2_height = sequencer
+        .get::<u64>("status/latest_block_height")
+        .send()
+        .await
+        .unwrap();
+    let verified_filter = rollup.verify_batches_trusted_aggregator_filter();
+    loop {
+        tracing::info!("waiting for batch {l2_height} to be verified");
+        let event = verified_filter
+            .stream()
+            .await
+            .unwrap()
+            .next()
+            .await
+            .unwrap()
+            .unwrap();
+        tracing::info!("current verified batch is {}", event.num_batch);
+        if event.num_batch >= l2_height {
+            break;
+        }
+    }
+}
+
 async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
 where
     B: TryStream<Ok = BlockQueryData<SeqTypes>> + Unpin,
@@ -318,6 +548,18 @@ async fn setup_test(name: &str, l1_block_time: Duration) -> SequencerZkEvmDemo {
     SequencerZkEvmDemoOptions::default()
         .l1_backend(Layer1Backend::Anvil)
         .l1_block_period(l1_block_time)
+        .start(name.to_string())
+        .await
+}
+
+#[cfg(feature = "slow-tests")]
+async fn setup_test_with_host_l1(name: &str, l1_port: u16) -> SequencerZkEvmDemo {
+    setup_logging();
+    setup_backtrace();
+
+    SequencerZkEvmDemoOptions::default()
+        .use_host_l1(l1_port)
+        .l1_backend(Layer1Backend::Anvil)
         .start(name.to_string())
         .await
 }

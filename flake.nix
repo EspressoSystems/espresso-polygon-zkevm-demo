@@ -36,6 +36,9 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         RUST_LOG = "info,libp2p=off,isahc=error,surf=error";
+        RUSTFLAGS = " --cfg async_executor_impl=\"async-std\" --cfg async_channel_impl=\"async-std\"";
+        RUST_BACKTRACE = 1;
+        RUST_LOG_FORMAT = "full";
         overlays = [
           (import rust-overlay)
           foundry.overlay
@@ -115,6 +118,8 @@
                 nixWithFlakes
                 entr
                 jq
+                nodejs
+                nodePackages.pnpm
 
                 # Figures
                 graphviz
@@ -127,9 +132,7 @@
                 export CARGO_HOME=$HOME/.cargo-nix
               '' + self.checks.${system}.pre-commit-check.shellHook;
               RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
-              RUST_BACKTRACE = 1;
-              RUST_LOG_FORMAT = "full";
-              inherit RUST_LOG;
+              inherit RUST_LOG RUST_LOG_FORMAT RUSTFLAGS RUST_BACKTRACE;
             };
         devShells.crossShell =
           let
@@ -139,7 +142,7 @@
               inherit overlays localSystem crossSystem;
             };
           in
-          import ./cross-shell.nix { inherit pkgs; };
+          import ./cross-shell.nix { inherit pkgs RUST_LOG RUST_LOG_FORMAT RUSTFLAGS RUST_BACKTRACE; };
       }
     );
 }
