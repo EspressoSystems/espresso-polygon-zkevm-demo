@@ -7,7 +7,7 @@
 
 use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction, utils::rlp::Rlp};
 use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
-use sequencer::{Block, Vm, VmId, VmTransaction};
+use sequencer::{Payload, Vm, VmId, VmTransaction};
 
 pub mod polygon_zkevm;
 
@@ -64,8 +64,8 @@ impl Vm for ZkEvm {
 }
 
 impl ZkEvm {
-    /// Extract the VM transactions from a block.
-    pub fn vm_transactions(&self, block: &Block) -> Vec<<Self as Vm>::Transaction> {
+    /// Extract the VM transactions from a block payload.
+    pub fn vm_transactions(&self, block: &Payload) -> Vec<<Self as Vm>::Transaction> {
         let proof = block.get_namespace_proof(self.id());
         let transactions = proof.get_namespace_leaves();
         // Note: this discards transactions that cannot be decoded.
