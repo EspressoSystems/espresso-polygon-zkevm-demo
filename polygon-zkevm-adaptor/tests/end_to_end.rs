@@ -6,10 +6,13 @@
 // You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
-use async_std::task::sleep;
+use async_std::{sync::Arc, task::sleep};
 use ethers::{prelude::*, providers::Middleware};
 use futures::stream::{StreamExt, TryStream, TryStreamExt};
-use hotshot_query_service::availability::BlockQueryData;
+use hotshot_query_service::{
+    availability::{BlockQueryData, QueryablePayload},
+    QueryResult,
+};
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http};
@@ -90,14 +93,14 @@ async fn test_end_to_end() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = connect_rpc(&l1_provider, mnemonic, 0, None).await.unwrap();
-    let l2 = connect_rpc(&l2_provider, mnemonic, 0, None).await.unwrap();
+    let l1 = Arc::new(connect_rpc(&l1_provider, mnemonic, 0, None).await.unwrap());
+    let l2 = Arc::new(connect_rpc(&l2_provider, mnemonic, 0, None).await.unwrap());
     let zkevm = ZkEvm {
         chain_id: l2.get_chainid().await.unwrap().as_u64(),
     };
     let rollup = PolygonZkEVM::new(rollup_address, l1.clone());
     let l1_initial_block = l1.get_block_number().await.unwrap();
-    let l2_initial_balance = l2.get_balance(l2.inner().address(), None).await.unwrap();
+    let l2_initial_balance = l2.get_balance(l2.address(), None).await.unwrap();
 
     // Subscribe to a block stream so we can find the blocks that end up including our transactions.
     tracing::info!("connecting to sequencer at {}", env.sequencer());
@@ -105,7 +108,7 @@ async fn test_end_to_end() {
     sequencer.connect(None).await;
     let mut blocks = sequencer
         .socket("availability/stream/blocks/0")
-        .subscribe()
+        .subscribe::<QueryResult<BlockQueryData<SeqTypes>>>()
         .await
         .unwrap();
 
@@ -135,12 +138,15 @@ async fn test_end_to_end() {
 
     // Wait for the malformed transaction to be included in a block.
     'block: loop {
-        let block: BlockQueryData<SeqTypes> = blocks.next().await.unwrap().unwrap();
+        let block = blocks.next().await.unwrap().unwrap().unwrap();
         tracing::info!("got block {:?}", block);
-        if let Some(txn) = block.block().clone().transactions().next() {
-            assert_eq!(txn.payload(), malformed_tx_payload);
-            tracing::info!("malformed transaction sequenced");
-            break 'block;
+        for (_, txn) in block.payload().enumerate() {
+            if txn.payload() == malformed_tx_payload {
+                tracing::info!("malformed transaction sequenced");
+                break 'block;
+            } else {
+                tracing::warn!("unknown transaction sequenced: {txn:?}");
+            }
         }
     }
 
@@ -153,7 +159,7 @@ async fn test_end_to_end() {
         let hash = l2
             .send_transaction(
                 TransactionRequest {
-                    from: Some(l2.inner().address()),
+                    from: Some(l2.address()),
                     to: Some(Address::zero().into()),
                     value: Some(transfer_amount),
                     ..Default::default()
@@ -180,7 +186,7 @@ async fn test_end_to_end() {
 
     // Check the effects of the transfers.
     assert_eq!(
-        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2.get_balance(l2.address(), None).await.unwrap(),
         l2_initial_balance - U256::from(num_txns) * transfer_amount
     );
 
@@ -228,7 +234,7 @@ async fn test_preconfirmations() {
     let zkevm = ZkEvm {
         chain_id: l2.get_chainid().await.unwrap().as_u64(),
     };
-    let l2_initial_balance = l2.get_balance(l2.inner().address(), None).await.unwrap();
+    let l2_initial_balance = l2.get_balance(l2.address(), None).await.unwrap();
 
     // Subscribe to a block stream so we can find the block that ends up including our transaction.
     tracing::info!("connecting to sequencer at {}", env.sequencer());
@@ -259,7 +265,7 @@ async fn test_preconfirmations() {
     let txn_hash = l2
         .send_transaction(
             TransactionRequest {
-                from: Some(l2.inner().address()),
+                from: Some(l2.address()),
                 to: Some(Address::zero().into()),
                 value: Some(transfer_amount),
                 ..Default::default()
@@ -288,12 +294,12 @@ async fn test_preconfirmations() {
 
     // Check the effects of the transfer.
     assert_eq!(
-        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2.get_balance(l2.address(), None).await.unwrap(),
         l2_initial_balance - transfer_amount
     );
     assert_eq!(
         l2_preconf
-            .get_balance(l2_preconf.inner().address(), None)
+            .get_balance(l2_preconf.address(), None)
             .await
             .unwrap(),
         l2_initial_balance - transfer_amount
@@ -351,16 +357,20 @@ async fn test_reorg() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = connect_rpc(&env.l1_provider(), mnemonic, 0, None)
-        .await
-        .unwrap();
-    let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
-        .await
-        .unwrap();
+    let l1 = Arc::new(
+        connect_rpc(&env.l1_provider(), mnemonic, 0, None)
+            .await
+            .unwrap(),
+    );
+    let l2 = Arc::new(
+        connect_rpc(&env.l2_provider(), mnemonic, 0, None)
+            .await
+            .unwrap(),
+    );
     let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
         .await
         .unwrap();
-    let l2_initial_balance = l2.get_balance(l2.inner().address(), None).await.unwrap();
+    let l2_initial_balance = l2.get_balance(l2.address(), None).await.unwrap();
     let rollup = PolygonZkEVM::new(rollup_address, l1.clone());
 
     // Wait for the sequencer API to start before we try submitting transactions.
@@ -387,7 +397,7 @@ async fn test_reorg() {
     let txn_hash = l2
         .send_transaction(
             TransactionRequest {
-                from: Some(l2.inner().address()),
+                from: Some(l2.address()),
                 to: Some(Address::zero().into()),
                 value: Some(transfer_amount),
                 ..Default::default()
@@ -409,12 +419,12 @@ async fn test_reorg() {
 
     // Check the effects of the transfer.
     assert_eq!(
-        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2.get_balance(l2.address(), None).await.unwrap(),
         l2_initial_balance - transfer_amount
     );
     assert_eq!(
         l2_preconf
-            .get_balance(l2_preconf.inner().address(), None)
+            .get_balance(l2_preconf.address(), None)
             .await
             .unwrap(),
         l2_initial_balance - transfer_amount
@@ -440,7 +450,7 @@ async fn test_reorg() {
     let txn_hash = l2
         .send_transaction(
             TransactionRequest {
-                from: Some(l2.inner().address()),
+                from: Some(l2.address()),
                 to: Some(Address::zero().into()),
                 value: Some(transfer_amount),
                 ..Default::default()
@@ -462,12 +472,12 @@ async fn test_reorg() {
 
     // Check the effects of the transfer.
     assert_eq!(
-        l2.get_balance(l2.inner().address(), None).await.unwrap(),
+        l2.get_balance(l2.address(), None).await.unwrap(),
         l2_initial_balance - transfer_amount * 2
     );
     assert_eq!(
         l2_preconf
-            .get_balance(l2_preconf.inner().address(), None)
+            .get_balance(l2_preconf.address(), None)
             .await
             .unwrap(),
         l2_initial_balance - transfer_amount * 2
@@ -508,13 +518,13 @@ async fn test_reorg() {
 
 async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
 where
-    B: TryStream<Ok = BlockQueryData<SeqTypes>> + Unpin,
+    B: TryStream<Ok = QueryResult<BlockQueryData<SeqTypes>>> + Unpin,
     B::Error: Debug,
 {
     loop {
-        let block = blocks.try_next().await.unwrap().unwrap();
+        let block = blocks.try_next().await.unwrap().unwrap().unwrap();
         tracing::info!("got block {:?}", block);
-        for txn in zkevm.vm_transactions(block.block()) {
+        for txn in zkevm.vm_transactions(block.payload()) {
             let sequenced_hash = txn.hash();
             if sequenced_hash == hash {
                 tracing::info!("transaction {hash} sequenced");

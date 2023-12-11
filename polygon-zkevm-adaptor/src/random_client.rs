@@ -9,16 +9,16 @@
 use async_std::sync::RwLock;
 use ethers::{
     abi::Address,
-    prelude::{MnemonicBuilder, NonceManagerMiddleware, Signer, SignerMiddleware},
-    providers::{Http, Middleware as _, Provider},
-    signers::{coins_bip39::English, LocalWallet},
+    prelude::{MnemonicBuilder, Signer as _},
+    providers::{Middleware, Provider},
+    signers::coins_bip39::English,
     types::{TransactionRequest, H256, U256},
 };
 use futures::future::join;
 use http_types::Url;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
-use sequencer_utils::Middleware;
+use sequencer_utils::{NonceManager, Signer};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::VecDeque,
@@ -32,7 +32,7 @@ pub async fn connect_rpc_simple(
     mnemonic: &str,
     index: u32,
     chain_id: Option<u64>,
-) -> Option<InnerMiddleware> {
+) -> Option<Signer> {
     let provider = match Provider::try_from(provider.to_string()) {
         Ok(provider) => provider,
         Err(err) => {
@@ -68,10 +68,8 @@ pub async fn connect_rpc_simple(
         }
     };
     let wallet = wallet.with_chain_id(chain_id);
-    Some(SignerMiddleware::new(provider, wallet))
+    Some(Signer::new(provider, wallet))
 }
-
-pub type InnerMiddleware = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Transfer {
@@ -116,7 +114,7 @@ pub enum Effect {
 }
 
 impl Operation {
-    async fn execute(&self, client: Arc<Middleware>) -> Option<Effect> {
+    async fn execute(&self, client: Arc<NonceManager>) -> Option<Effect> {
         match self {
             Operation::Transfer(transfer) => {
                 let Transfer { to, amount } = transfer;
@@ -205,7 +203,7 @@ impl CombinedOperations {
 struct State {
     pending: VecDeque<Effect>,
     submit_operations_done: bool,
-    client: Arc<Middleware>,
+    client: Arc<NonceManager>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,16 +211,12 @@ pub struct Run {
     name: String,
     operations: Operations,
     // The signer is used to re-initialize the nonce manager when necessary.
-    signer: SignerMiddleware<Provider<Http>, LocalWallet>,
+    signer: Signer,
     state: Arc<RwLock<State>>,
 }
 
 impl Run {
-    pub fn new(
-        name: impl Into<String>,
-        operations: Operations,
-        signer: SignerMiddleware<Provider<Http>, LocalWallet>,
-    ) -> Self {
+    pub fn new(name: impl Into<String>, operations: Operations, signer: Signer) -> Self {
         Self {
             name: name.into(),
             operations,
@@ -230,10 +224,7 @@ impl Run {
             state: Arc::new(RwLock::new(State {
                 pending: Default::default(),
                 submit_operations_done: Default::default(),
-                client: Arc::new(NonceManagerMiddleware::new(
-                    signer.clone(),
-                    signer.address(),
-                )),
+                client: Arc::new(NonceManager::new(signer.clone(), signer.address())),
             })),
         }
     }
@@ -321,7 +312,7 @@ impl Run {
                                     tracing::info!("[{}] effect_clear: {effect:?}", self.name);
                                 }
                                 tracing::info!("[{}] Reinitializing nonce manager", self.name);
-                                state.client = Arc::new(NonceManagerMiddleware::new(
+                                state.client = Arc::new(NonceManager::new(
                                     self.signer.clone(),
                                     self.signer.address(),
                                 ));

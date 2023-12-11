@@ -10,14 +10,14 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use clap::Parser;
 use contract_bindings::hot_shot::HotShot;
 use ethers::{
-    prelude::{NonceManagerMiddleware, SignerMiddleware},
+    prelude::SignerMiddleware,
     providers::{Http, Middleware, Provider},
-    signers::{coins_bip39::English, MnemonicBuilder, Signer},
+    signers::{coins_bip39::English, MnemonicBuilder, Signer as _},
     types::Address,
     utils::{get_contract_address, parse_ether},
 };
 use hex::{FromHex, FromHexError};
-use sequencer_utils::Middleware as EthMiddleware;
+use sequencer_utils::Signer;
 use serde::{Deserialize, Serialize};
 use serde_with::with_prefix;
 use std::{num::ParseIntError, path::PathBuf};
@@ -219,12 +219,12 @@ impl DeploymentOutput {
 /// node.
 async fn deploy_zkevm(
     provider: &Provider<Http>,
-    deployer: Arc<EthMiddleware>,
+    deployer: Arc<Signer>,
     input: &ZkEvmDeploymentInput,
 ) -> Result<ZkEvmDeploymentOutput> {
     let (_, verifier) = VerifierRollupHelperMock::deploy_contract(&deployer, ()).await;
 
-    let deployer_address = deployer.inner().address();
+    let deployer_address = deployer.address();
     let matic_token_initial_balance = parse_ether("20000000")?;
     let (_, matic) = ERC20PermitMock::deploy_contract(
         &deployer,
@@ -239,7 +239,7 @@ async fn deploy_zkevm(
 
     // We need to pass the addresses to the GER constructor.
     let nonce = provider
-        .get_transaction_count(deployer.inner().address(), None)
+        .get_transaction_count(deployer.address(), None)
         .await?;
     let precalc_bridge_address = get_contract_address(deployer_address, nonce + 1);
     let precalc_rollup_address = get_contract_address(deployer_address, nonce + 2);
@@ -338,7 +338,7 @@ pub async fn connect_rpc(
     index: u32,
     chain_id: Option<u64>,
     polling_interval: Option<Duration>,
-) -> Option<Arc<EthMiddleware>> {
+) -> Option<Arc<Signer>> {
     let mut provider = match Provider::try_from(provider.to_string()) {
         Ok(provider) => provider,
         Err(err) => {
@@ -383,11 +383,7 @@ pub async fn connect_rpc(
         }
     };
     let wallet = wallet.with_chain_id(chain_id);
-    let address = wallet.address();
-    Some(Arc::new(NonceManagerMiddleware::new(
-        SignerMiddleware::new(provider, wallet),
-        address,
-    )))
+    Some(Arc::new(SignerMiddleware::new(provider, wallet)))
 }
 
 async fn deploy(opts: Options) -> Result<()> {
@@ -405,7 +401,7 @@ async fn deploy(opts: Options) -> Result<()> {
     )
     .await
     .unwrap();
-    tracing::info!("Using deployer account {:?}", deployer.inner().address());
+    tracing::info!("Using deployer account {:?}", deployer.address());
 
     // Deploy the hotshot contract.
     let hotshot_address = if let Some(hotshot_address) = opts.hotshot_address {

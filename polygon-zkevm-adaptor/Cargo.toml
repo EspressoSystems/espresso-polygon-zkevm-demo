@@ -32,7 +32,7 @@ dotenvy = "0.15.6"
 escargot = "0.5.7"
 ethers = { version = "2.0", features = ["ws"] }
 futures = "0.3"
-hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service.git" }
+hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service" }
 hotshot-types = { git = "https://github.com/EspressoSystems/hotshot" }
 http-types = "2.12.0"
 jsonrpc-v2 = "0.11.0"
@@ -40,10 +40,10 @@ sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" 
 sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
 serde_json = "1.0.82"
 surf = "2.3.2"
-surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.2" }
+surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.3" }
 tide = "0.16.0"
-tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.2" }
-toml = "0.7"
+tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.3" }
+toml = "0.8"
 tracing = "0.1"
 zkevm = { path = "../zkevm" }
 zkevm-contract-bindings = { path = "../zkevm-contract-bindings" }
@@ -56,7 +56,7 @@ snafu = "0.7.4"
 
 [dev-dependencies]
 async-std = { version = "1.12.0", features = ["attributes"] }
-commit = { git = "https://github.com/EspressoSystems/commit", tag = "0.2.2" }
+commit = { git = "https://github.com/EspressoSystems/commit" }
 portpicker = "0.1"
 rand_chacha = "0.3"
 sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", features = [

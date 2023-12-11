@@ -21,10 +21,10 @@
 use crate::Options;
 use async_std::sync::RwLock;
 use futures::{FutureExt, StreamExt, TryFutureExt};
-use hotshot_query_service::availability::BlockQueryData;
+use hotshot_query_service::{availability::BlockQueryData, QueryResult};
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
-use tide_disco::{error::ServerError, App};
+use tide_disco::{error::ServerError, App, Error};
 use zkevm::{polygon_zkevm::encode_transactions, ZkEvm};
 
 type HotShotClient = surf_disco::Client<ServerError>;
@@ -66,10 +66,16 @@ pub async fn serve(opt: &Options) {
                 let blocks = state
                     .hotshot
                     .socket(&format!("availability/stream/blocks/{height}"))
-                    .subscribe::<BlockQueryData<SeqTypes>>()
+                    .subscribe::<QueryResult<BlockQueryData<SeqTypes>>>()
                     .await?;
                 let zkevm = state.zkevm;
-                Ok(blocks.map(move |block| Ok(PolygonZkevmBlock::new(zkevm, &block?))))
+                Ok(blocks.map(move |block| {
+                    Ok(PolygonZkevmBlock::new(
+                        zkevm,
+                        &block?
+                            .map_err(|err| ServerError::catch_all(err.status(), err.to_string()))?,
+                    ))
+                }))
             }
             .try_flatten_stream()
             .boxed()
@@ -112,10 +118,11 @@ struct PolygonZkevmBlock {
 impl PolygonZkevmBlock {
     fn new(zkevm: ZkEvm, l2_block: &BlockQueryData<SeqTypes>) -> Self {
         Self {
-            timestamp: l2_block.block().timestamp(),
+            timestamp: l2_block.header().timestamp,
             height: l2_block.height(),
-            l1_block: l2_block.block().l1_head(),
-            transactions: encode_transactions(zkevm.vm_transactions(l2_block.block())).to_string(),
+            l1_block: l2_block.header().l1_head,
+            transactions: encode_transactions(zkevm.vm_transactions(l2_block.payload()))
+                .to_string(),
         }
     }
 }
@@ -130,7 +137,7 @@ mod test {
     use portpicker::pick_unused_port;
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
     use sequencer::{
-        api::{self, HttpOptions, QueryOptions},
+        api::{self, options},
         Vm,
     };
     use sequencer_utils::AnvilOptions;
@@ -159,10 +166,10 @@ mod test {
         let nodes = sequencer::testing::init_hotshot_handles().await;
         let api_node = nodes[0].clone();
         let sequencer_store = TempDir::new().unwrap();
-        api::Options::from(HttpOptions {
+        api::Options::from(options::Http {
             port: sequencer_port,
         })
-        .query(QueryOptions {
+        .query_fs(options::Fs {
             storage_path: sequencer_store.path().into(),
             reset_store: true,
         })
