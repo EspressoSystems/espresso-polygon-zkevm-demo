@@ -250,7 +250,7 @@ impl TestPolygonContracts {
         // Sometimes geth isn't ready despite the RPC being up.
         let max_tries = 5;
         let mut tries = 0;
-        let interval = Duration::from_secs(1);
+        let interval = Duration::from_secs(3);
         let hotshot = loop {
             match HotShot::deploy(deployer.clone(), ()).unwrap().send().await {
                 Ok(contract) => break contract,

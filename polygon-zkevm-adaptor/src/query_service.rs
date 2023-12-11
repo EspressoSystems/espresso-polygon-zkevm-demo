@@ -21,10 +21,10 @@
 use crate::Options;
 use async_std::sync::RwLock;
 use futures::{FutureExt, StreamExt, TryFutureExt};
-use hotshot_query_service::{availability::BlockQueryData, QueryResult};
+use hotshot_query_service::availability::BlockQueryData;
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
-use tide_disco::{error::ServerError, App, Error};
+use tide_disco::{error::ServerError, App};
 use zkevm::{polygon_zkevm::encode_transactions, ZkEvm};
 
 type HotShotClient = surf_disco::Client<ServerError>;
@@ -66,16 +66,10 @@ pub async fn serve(opt: &Options) {
                 let blocks = state
                     .hotshot
                     .socket(&format!("availability/stream/blocks/{height}"))
-                    .subscribe::<QueryResult<BlockQueryData<SeqTypes>>>()
+                    .subscribe::<BlockQueryData<SeqTypes>>()
                     .await?;
                 let zkevm = state.zkevm;
-                Ok(blocks.map(move |block| {
-                    Ok(PolygonZkevmBlock::new(
-                        zkevm,
-                        &block?
-                            .map_err(|err| ServerError::catch_all(err.status(), err.to_string()))?,
-                    ))
-                }))
+                Ok(blocks.map(move |block| Ok(PolygonZkevmBlock::new(zkevm, &block?))))
             }
             .try_flatten_stream()
             .boxed()
