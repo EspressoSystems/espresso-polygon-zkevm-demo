@@ -16,6 +16,7 @@ env:
   RUST_LOG: info,libp2p=off
   RUSTFLAGS: "--cfg async_executor_impl=\"async-std\" --cfg async_channel_impl=\"async-std\""
   ESPRESSO_DISABLE_TIMING_BASED_TESTS_FOR_CI: 'true'
+  RUST_FEATURES: testing
 
 jobs:
   docker-rust:
@@ -86,8 +87,13 @@ jobs:
         run: |
           cargo build --release --workspace
 
+      - name: Include Slow Tests
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "RUST_FEATURES=slow-tests,$RUST_FEATURES" >> "$GITHUB_ENV"
+
       - name: Test
         run: |
-          cargo test --release --workspace --features testing --no-run
-          cargo test --release --workspace --features testing --verbose -- --test-threads 1 --nocapture
+          cargo test --release --workspace --features $RUST_FEATURES --no-run
+          cargo test --release --workspace --features $RUST_FEATURES --verbose -- --test-threads 1 --nocapture
         timeout-minutes: 30
