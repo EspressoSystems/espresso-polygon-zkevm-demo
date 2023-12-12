@@ -7,15 +7,3 @@ members = [
   "zkevm",
   "zkevm-contract-bindings",
 ]
-
-[patch."https://github.com/EspressoSystems/hotshot"]
-hotshot = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-orchestrator = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-task-impls = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-testing = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-types = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-utils = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-hotshot-web-server = { git = "https://github.com/EspressoSystems//hotshot", rev = "efee8ff7dc3c903a6099a77eec7cfc18f9806ef8" }
-
-[patch."https://github.com/EspressoSystems/hotshot-query-service"]
-hotshot-query-service = { git = "https://github.com/EspressoSystems//hotshot-query-service", rev = "4baa87610e32c915a7f936913dcddbf701abb5a5" }

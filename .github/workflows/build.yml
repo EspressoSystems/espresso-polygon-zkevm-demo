@@ -16,9 +16,15 @@ env:
   RUST_LOG: info,libp2p=off
   RUSTFLAGS: "--cfg async_executor_impl=\"async-std\" --cfg async_channel_impl=\"async-std\""
   ESPRESSO_DISABLE_TIMING_BASED_TESTS_FOR_CI: 'true'
+  RUST_FEATURES: testing
 
 jobs:
+  docker-rust:
+    uses: ./.github/workflows/build_static.yml
+    secrets: inherit
+
   build:
+    needs: [docker-rust]
     # The tests that use docker compose currently only work on github's
     # public runners.
     runs-on: ubuntu-latest
@@ -52,14 +58,27 @@ jobs:
 
       - name: Login to Github Container Repo
         uses: docker/login-action@v2
-        # if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull all docker compose images
+      # Pull Docker images built by other repos.
+      - name: Pull remote Docker images
         run: docker compose -f standalone-docker-compose.yaml -f docker-compose-anvil.yaml pull
+
+      # The tests in this repo use Docker images built from the code in this repo. Since workflow
+      # runs in this repo may encompass code changes that would affect these images, we need to make
+      # sure the images are built before running the tests, and that the tests reference the correct
+      # images.
+      #
+      # The images for this branch were built in the previous job `docker-rust`. Pull them, and for
+      # each one, create a local tag `main` referencing the pulled image.
+      - name: Pull local Docker images
+        run: |
+          docker pull ${{ needs.docker-rust.outputs.zkevm-adaptor-tag }}
+          docker tag ${{ needs.docker-rust.outputs.zkevm-adaptor-tag }} \
+            ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
 
       - uses: Swatinem/rust-cache@v2
         name: Enable Rust Caching
@@ -68,8 +87,13 @@ jobs:
         run: |
           cargo build --release --workspace
 
+      - name: Include Slow Tests
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "RUST_FEATURES=slow-tests,$RUST_FEATURES" >> "$GITHUB_ENV"
+
       - name: Test
         run: |
-          cargo test --release --workspace --features testing --no-run
-          cargo test --release --workspace --features testing --verbose -- --test-threads 1 --nocapture
+          cargo test --release --workspace --features $RUST_FEATURES --no-run
+          cargo test --release --workspace --features $RUST_FEATURES --verbose -- --test-threads 1 --nocapture
         timeout-minutes: 30

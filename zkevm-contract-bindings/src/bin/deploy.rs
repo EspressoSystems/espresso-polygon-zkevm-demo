@@ -475,21 +475,60 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use async_std::task::sleep;
+    use ethers::types::{BlockNumber, TransactionRequest};
     use sequencer_utils::AnvilOptions;
     use tempfile::NamedTempFile;
+
+    async fn wait_for_anvil(opts: &Options) {
+        let provider = connect_rpc(
+            &opts.provider_url,
+            &opts.mnemonic,
+            opts.account_index,
+            None,
+            opts.polling_interval,
+        )
+        .await
+        .unwrap();
+
+        // When we are running a local Anvil node, as in tests, some endpoints (e.g. eth_feeHistory)
+        // do not work until at least one block has been mined. Send a transaction to force the
+        // mining of a block.
+        provider
+            .send_transaction(
+                TransactionRequest {
+                    to: Some(provider.address().into()),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .unwrap()
+            .await
+            .unwrap();
+        // Wait until the fee history endpoint works.
+        while let Err(err) = provider.fee_history(1, BlockNumber::Latest, &[]).await {
+            tracing::warn!("RPC is not ready: {err}");
+            sleep(opts.polling_interval.unwrap_or(Duration::from_millis(10))).await;
+        }
+    }
 
     #[async_std::test]
     async fn test_run_deploy_script_two_rollups() -> Result<()> {
         setup_logging();
         setup_backtrace();
 
-        let anvil = AnvilOptions::default().spawn().await;
+        let anvil = AnvilOptions::default()
+            .block_time(Duration::from_secs(1))
+            .spawn()
+            .await;
         let mut opts = Options::parse_from([""]);
         opts.polling_interval = Some(Duration::from_millis(10));
         opts.deploy_rollup_2 = true;
         opts.provider_url = anvil.url();
         opts.output_path = NamedTempFile::new()?.path().to_path_buf();
 
+        wait_for_anvil(&opts).await;
         deploy(opts).await?;
 
         Ok(())
@@ -506,6 +545,7 @@ mod test {
         opts.provider_url = anvil.url();
         opts.output_path = NamedTempFile::new()?.path().to_path_buf();
 
+        wait_for_anvil(&opts).await;
         deploy(opts).await?;
 
         Ok(())

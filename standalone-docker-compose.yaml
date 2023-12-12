@@ -43,7 +43,7 @@ services:
   sequencer0:
     image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the sequencer API server.
-    command: /bin/sequencer -- http -- query -- submit
+    command: /bin/sequencer -- http -- query-fs -- status -- submit
     ports:
       - "$ESPRESSO_SEQUENCER_API_PORT:$ESPRESSO_SEQUENCER_API_PORT"
     environment:
