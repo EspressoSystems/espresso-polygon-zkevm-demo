@@ -1,17 +1,11 @@
 name: Static Build
 
 on:
-  push:
-    branches:
-      - main
-      - release-*
-    tags:
-      # YYYYMMDD
-      - "20[0-9][0-9][0-1][0-9][0-3][0-9]*"
-  schedule:
-    - cron: "0 0 * * 1"
-  pull_request:
-  workflow_dispatch:
+  workflow_call:
+    outputs:
+      zkevm-adaptor-tag:
+        description: Docker tag for the zkevm adaptor
+        value: ${{ jobs.static-dockers.outputs.zkevm-adaptor-tag }}
 
 jobs:
   static-build:
@@ -59,6 +53,8 @@ jobs:
   static-dockers:
     runs-on: ubuntu-latest
     needs: static-build
+    outputs:
+      zkevm-adaptor-tag: ${{ steps.polygon-zkevm-adaptor.outputs.tags }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -74,7 +70,6 @@ jobs:
 
       - name: Login to Github Container Repo
         uses: docker/login-action@v2
-        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -92,6 +87,6 @@ jobs:
           context: ./
           file: ./docker/polygon-zkevm-adaptor.Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.polygon-zkevm-adaptor.outputs.tags }}
           labels: ${{ steps.polygon-zkevm-adaptor.outputs.labels }}
+          push: true
