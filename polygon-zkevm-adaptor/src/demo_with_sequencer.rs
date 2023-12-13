@@ -160,7 +160,7 @@ impl SequencerZkEvmDemo {
             .arg("up")
             .args(L1_SERVICES)
             .arg("-V")
-            .arg("--abort-on-container-exit")
+            .arg("--wait")
             .spawn()
             .expect("Failed to start L1 docker container");
 
@@ -211,7 +211,7 @@ impl SequencerZkEvmDemo {
             .args(L2_SERVICES)
             .arg("-V")
             .arg("--no-recreate")
-            .arg("--abort-on-container-exit")
+            .arg("--wait")
             .spawn()
             .expect("Failed to start compose environment");
 
