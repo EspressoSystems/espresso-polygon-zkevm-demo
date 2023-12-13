@@ -87,6 +87,18 @@ jobs:
         run: |
           cargo build --release --workspace
 
+      - name: Install PNPM
+        uses: pnpm/action-setup@v2
+        # PNPM is only needed for the slow tests, which we don't run in the PR workflow.
+        if: github.event_name != 'pull_request'
+        with:
+          version: 8
+
+      - name: Install Node Packages
+        # PNPM is only needed for the slow tests, which we don't run in the PR workflow.
+        if: github.event_name != 'pull_request'
+        run: pnpm install
+
       - name: Include Slow Tests
         if: github.event_name != 'pull_request'
         run: |
