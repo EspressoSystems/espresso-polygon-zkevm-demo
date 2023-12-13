@@ -17,4 +17,4 @@ services:
 
     stop_signal: SIGKILL
     healthcheck:
-      test: ["CMD", "cast", "chain-id"]
+      test: ["CMD", "cast", "chain-id", "-r", "http://localhost:$ESPRESSO_ZKEVM_L1_PORT"]

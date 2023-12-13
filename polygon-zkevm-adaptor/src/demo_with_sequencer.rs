@@ -122,7 +122,7 @@ impl SequencerZkEvmDemo {
         project_name: String,
         opt: SequencerZkEvmDemoOptions,
     ) -> Self {
-        let mut env = ZkEvmEnv::from_dotenv();
+        let mut env = ZkEvmEnv::random();
 
         tracing::info!("Starting ZkEvmNode with env: {:?}", env);
         tracing::info!(

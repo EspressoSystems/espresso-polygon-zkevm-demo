@@ -45,7 +45,9 @@ pub struct ZkEvmEnv {
     l1_provider: Url,
     l1_ws_provider: Url,
     l2_port: u16,
+    l2_ws_port: u16,
     l2_preconfirmations_port: u16,
+    l2_preconfirmations_ws_port: u16,
     l1_chain_id: Option<u64>,
     l2_chain_id: Option<u64>,
     sequencer_mnemonic: String,
@@ -67,7 +69,9 @@ impl Default for ZkEvmEnv {
             l1_provider: "http://demo-l1-network:8545".parse().unwrap(),
             l1_ws_provider: "ws://demo-l1-network:8546".parse().unwrap(),
             l2_port: 18126,
+            l2_ws_port: 18133,
             l2_preconfirmations_port: 18127,
+            l2_preconfirmations_ws_port: 18134,
             l1_chain_id: None,
             l2_chain_id: None,
             sequencer_mnemonic: TEST_MNEMONIC.into(),
@@ -87,7 +91,9 @@ impl ZkEvmEnv {
         let l1_provider = format!("http://demo-l1-network:{l1_port}").parse().unwrap();
         let l1_ws_provider = format!("ws://demo-l1-network:{l1_port}").parse().unwrap();
         let l2_port = pick_unused_port().unwrap();
+        let l2_ws_port = pick_unused_port().unwrap();
         let l2_preconfirmations_port = pick_unused_port().unwrap();
+        let l2_preconfirmations_ws_port = pick_unused_port().unwrap();
         let adaptor_rpc_port = pick_unused_port().unwrap();
         let adaptor_query_port = pick_unused_port().unwrap();
 
@@ -108,7 +114,9 @@ impl ZkEvmEnv {
             l1_provider,
             l1_ws_provider,
             l2_port,
+            l2_ws_port,
             l2_preconfirmations_port,
+            l2_preconfirmations_ws_port,
             l1_chain_id,
             l2_chain_id,
             adaptor_rpc_port,
@@ -138,7 +146,11 @@ impl ZkEvmEnv {
             l1_provider: format!("http://demo-l1-network:{l1_port}").parse().unwrap(),
             l1_ws_provider: format!("ws://demo-l1-network:{l1_port}").parse().unwrap(),
             l2_port: dotenv["ESPRESSO_ZKEVM_1_L2_PORT"].parse().unwrap(),
+            l2_ws_port: dotenv["ESPRESSO_ZKEVM_1_L2_PORT_WS"].parse().unwrap(),
             l2_preconfirmations_port: dotenv["ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT"]
+                .parse()
+                .unwrap(),
+            l2_preconfirmations_ws_port: dotenv["ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT_WS"]
                 .parse()
                 .unwrap(),
             l1_chain_id: None,
@@ -191,9 +203,14 @@ impl ZkEvmEnv {
         .env("ESPRESSO_ZKEVM_L1_PORT", self.l1_port.to_string())
         .env("ESPRESSO_ZKEVM_L1_PROVIDER", self.l1_provider.as_ref())
         .env("ESPRESSO_ZKEVM_1_L2_PORT", self.l2_port.to_string())
+        .env("ESPRESSO_ZKEVM_1_L2_PORT_WS", self.l2_ws_port.to_string())
         .env(
             "ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT",
             self.l2_preconfirmations_port.to_string(),
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_PRECONFIRMATIONS_L2_PORT_WS",
+            self.l2_preconfirmations_ws_port.to_string(),
         )
         .env(
             "ESPRESSO_ZKEVM_1_L2_PROVIDER",
