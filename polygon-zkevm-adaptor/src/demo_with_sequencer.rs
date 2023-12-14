@@ -8,7 +8,11 @@
 #![cfg(any(test, feature = "testing"))]
 use crate::{Layer1Backend, ZkEvmEnv};
 use sequencer_utils::wait_for_rpc;
-use std::{path::Path, process::Command, time::Duration};
+use std::{
+    path::Path,
+    process::{Child, Command},
+    time::Duration,
+};
 use zkevm_contract_bindings::TestPolygonContracts;
 
 const L1_SERVICES: [&str; 1] = ["demo-l1-network"];
@@ -73,12 +77,14 @@ impl SequencerZkEvmDemoOptions {
 }
 
 /// A zkevm-node inside docker compose with custom contracts
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SequencerZkEvmDemo {
     env: ZkEvmEnv,
     l1: TestPolygonContracts,
     project_name: String,
     layer1_backend: Layer1Backend,
+    l1_process: Child,
+    l2_process: Child,
 }
 
 impl SequencerZkEvmDemo {
@@ -152,7 +158,7 @@ impl SequencerZkEvmDemo {
         // this because it is a dependency of the L2 services. We start this before updating `env`
         // to use the Anvil port as L1 so that the L1 Docker service doesn't try to start on this
         // same port.
-        Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
+        let l1_process = Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
             .env(
                 "ESPRESSO_ZKEVM_L1_BLOCK_PERIOD",
                 opt.l1_block_period.as_secs().to_string(),
@@ -160,7 +166,7 @@ impl SequencerZkEvmDemo {
             .arg("up")
             .args(L1_SERVICES)
             .arg("-V")
-            .arg("--wait")
+            .arg("--abort-on-container-exit")
             .spawn()
             .expect("Failed to start L1 docker container");
 
@@ -182,7 +188,7 @@ impl SequencerZkEvmDemo {
         let l1 = TestPolygonContracts::deploy(&env.l1_provider(), "http://dummy:1234").await;
 
         // Start zkevm-node
-        Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
+        let l2_process = Self::compose_cmd_prefix(&env, &project_name, &opt.l1_backend)
             .env(
                 "ESPRESSO_ZKEVM_1_ROLLUP_ADDRESS",
                 format!("{:?}", l1.rollup.address()),
@@ -211,7 +217,7 @@ impl SequencerZkEvmDemo {
             .args(L2_SERVICES)
             .arg("-V")
             .arg("--no-recreate")
-            .arg("--wait")
+            .arg("--abort-on-container-exit")
             .spawn()
             .expect("Failed to start compose environment");
 
@@ -231,10 +237,18 @@ impl SequencerZkEvmDemo {
             project_name,
             l1,
             layer1_backend: opt.l1_backend,
+            l1_process,
+            l2_process,
         }
     }
 
-    fn stop(&self) -> &Self {
+    fn stop(&mut self) -> &Self {
+        self.l2_process.kill().unwrap();
+        self.l2_process.wait().unwrap();
+
+        self.l1_process.kill().unwrap();
+        self.l1_process.wait().unwrap();
+
         Self::compose_cmd_prefix(&self.env, self.project_name(), self.layer1_backend())
             .arg("down")
             .arg("-v")
