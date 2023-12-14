@@ -53,6 +53,7 @@ pub struct ZkEvmEnv {
     sequencer_mnemonic: String,
     adaptor_rpc_port: u16,
     adaptor_query_port: u16,
+    faucet_port: u16,
 }
 
 pub const TEST_MNEMONIC: &str = "test test test test test test test test test test test junk";
@@ -77,6 +78,7 @@ impl Default for ZkEvmEnv {
             sequencer_mnemonic: TEST_MNEMONIC.into(),
             adaptor_rpc_port: 8127,
             adaptor_query_port: 50100,
+            faucet_port: 18111,
         }
     }
 }
@@ -96,6 +98,7 @@ impl ZkEvmEnv {
         let l2_preconfirmations_ws_port = pick_unused_port().unwrap();
         let adaptor_rpc_port = pick_unused_port().unwrap();
         let adaptor_query_port = pick_unused_port().unwrap();
+        let faucet_port = pick_unused_port().unwrap();
 
         // Use default values for things that are deterministic or internal to a docker-compose
         // service.
@@ -123,6 +126,7 @@ impl ZkEvmEnv {
             adaptor_query_port,
             sequencer_storage_path,
             sequencer_mnemonic,
+            faucet_port,
         }
     }
 
@@ -160,6 +164,7 @@ impl ZkEvmEnv {
             adaptor_query_port: dotenv["ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_PORT"]
                 .parse()
                 .unwrap(),
+            faucet_port: dotenv["ESPRESSO_ZKEVM_1_FAUCET_PORT"].parse().unwrap(),
         }
     }
 
@@ -235,6 +240,15 @@ impl ZkEvmEnv {
         .env(
             "ESPRESSO_ZKEVM_1_ADAPTOR_QUERY_URL",
             format!("http://polygon-zkevm-1-adaptor:{}", self.adaptor_query_port).as_str(),
+        )
+        .env("ESPRESSO_ZKEVM_1_FAUCET_PORT", self.faucet_port.to_string())
+        .env(
+            "ESPRESSO_ZKEVM_1_FAUCET_WEB3_PROVIDER_URL_WS",
+            format!("ws://zkevm-1-permissionless-node:{}", self.l2_ws_port),
+        )
+        .env(
+            "ESPRESSO_ZKEVM_1_FAUCET_WEB3_PROVIDER_URL_HTTP",
+            format!("http://zkevm-1-permissionless-node:{}", self.l2_port),
         );
         if let Some(id) = self.l1_chain_id {
             cmd.env("ESPRESSO_ZKEVM_L1_CHAIN_ID", id.to_string());
