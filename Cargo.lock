@@ -6141,17 +6141,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nix"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eb04e9c688eff1c89d72b407f168cf79bb9e867a9d3323ed6c01519eb9cc053"
-dependencies = [
- "bitflags 2.4.1",
- "cfg-if 1.0.0",
- "libc",
-]
-
-[[package]]
 name = "nll"
 version = "1.0.0"
 source = "git+https://github.com/EspressoSystems/nll#8e7926789f8eb464cbbbb1858ba4292a6ec6d900"
@@ -6725,7 +6714,6 @@ dependencies = [
  "hotshot-types",
  "http-types",
  "jsonrpc-v2",
- "nix 0.27.1",
  "portpicker",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -7494,7 +7482,7 @@ dependencies = [
  "log",
  "netlink-packet-route",
  "netlink-proto",
- "nix 0.24.3",
+ "nix",
  "thiserror",
  "tokio",
 ]

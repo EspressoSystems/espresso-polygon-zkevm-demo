@@ -119,7 +119,9 @@ impl SequencerZkEvmDemo {
             .arg("standalone-docker-compose.yaml")
             .arg("-f")
             .arg(layer1_backend.compose_file())
-            .args(["-f", "docker-compose.yaml"]);
+            .args(["-f", "docker-compose.yaml"])
+            .args(["--profile", "zkevm1"])
+            .args(["--profile", "zkevm1-preconfirmations"]);
         cmd
     }
 
