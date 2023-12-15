@@ -166,7 +166,6 @@ impl SequencerZkEvmDemo {
             .arg("up")
             .args(L1_SERVICES)
             .arg("-V")
-            .arg("--abort-on-container-exit")
             .spawn()
             .expect("Failed to start L1 docker container");
 
@@ -217,7 +216,6 @@ impl SequencerZkEvmDemo {
             .args(L2_SERVICES)
             .arg("-V")
             .arg("--no-recreate")
-            .arg("--abort-on-container-exit")
             .spawn()
             .expect("Failed to start compose environment");
 
@@ -243,11 +241,7 @@ impl SequencerZkEvmDemo {
     }
 
     fn stop(&mut self) -> &Self {
-        self.l2_process.kill().unwrap();
-        self.l2_process.wait().unwrap();
-
-        self.l1_process.kill().unwrap();
-        self.l1_process.wait().unwrap();
+        tracing::info!("shutting down demo {}", self.project_name);
 
         Self::compose_cmd_prefix(&self.env, self.project_name(), self.layer1_backend())
             .arg("down")
@@ -257,6 +251,18 @@ impl SequencerZkEvmDemo {
             .expect("Failed to run docker compose down")
             .wait()
             .unwrap_or_else(|err| panic!("Failed to stop demo {}: {err}", self.project_name()));
+
+        // For some reason, shutting down all the containers doesn't automatically stop the two
+        // `docker compose up` commands that have been running in the background, so to clean
+        // everything up properly, we have to kill them.
+        tracing::info!("waiting for L2 containers to stop");
+        self.l2_process.kill().unwrap();
+        self.l2_process.wait().unwrap();
+
+        tracing::info!("waiting for L1 containers to stop");
+        self.l1_process.kill().unwrap();
+        self.l1_process.wait().unwrap();
+
         self
     }
 }
