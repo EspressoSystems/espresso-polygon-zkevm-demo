@@ -36,7 +36,7 @@ demo-profiles *args:
     scripts/source-dotenv .env.geth scripts/demo-with-profiles {{args}}
 
 down *args:
-   {{compose}} down {{args}}
+   {{compose}} down --remove-orphans {{args}}
 
 pull:
     {{compose-anvil}} pull && {{compose}} pull
