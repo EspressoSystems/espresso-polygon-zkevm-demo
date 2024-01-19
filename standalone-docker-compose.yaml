@@ -4,7 +4,7 @@ include:
 
 services:
   orchestrator:
-    image: ghcr.io/espressosystems/espresso-sequencer/orchestrator:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/orchestrator:main
     ports:
       - "$ESPRESSO_ORCHESTRATOR_PORT:$ESPRESSO_ORCHESTRATOR_PORT"
     environment:
@@ -18,7 +18,7 @@ services:
       - RUST_LOG_FORMAT
     stop_grace_period: 1s
   da-server:
-    image: ghcr.io/espressosystems/espresso-sequencer/web-server:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
     ports:
       - "$ESPRESSO_DA_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
@@ -29,7 +29,7 @@ services:
         condition: service_healthy
     stop_grace_period: 1s
   consensus-server:
-    image: ghcr.io/espressosystems/espresso-sequencer/web-server:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/web-server:main
     ports:
       - "$ESPRESSO_CONSENSUS_SERVER_PORT:$ESPRESSO_WEB_SERVER_PORT"
     environment:
@@ -41,7 +41,7 @@ services:
     stop_grace_period: 1s
 
   sequencer0:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     # Run consensus *plus* the sequencer API server.
     command: /bin/sequencer -- http -- query -- status -- submit
     ports:
@@ -64,7 +64,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   sequencer1:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -85,7 +85,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   sequencer2:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -103,7 +103,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   sequencer3:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -121,7 +121,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   sequencer4:
-    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/sequencer:main
     environment:
       - ESPRESSO_SEQUENCER_ORCHESTRATOR_URL
       - ESPRESSO_SEQUENCER_DA_SERVER_URL
@@ -139,7 +139,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
   commitment-task:
-    image: ghcr.io/espressosystems/espresso-sequencer/commitment-task:release-gibraltar
+    image: ghcr.io/espressosystems/espresso-sequencer/commitment-task:main
     environment:
       - ESPRESSO_SEQUENCER_ETH_MNEMONIC
       - ESPRESSO_SEQUENCER_HOTSHOT_ACCOUNT_INDEX

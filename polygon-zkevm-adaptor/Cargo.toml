@@ -33,7 +33,7 @@ escargot = "0.5.7"
 ethers = { version = "2.0", features = ["ws"] }
 futures = "0.3"
 hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service", branch = "main" }
-hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", rev = "ddb8d6f8d058ea456b2c11241cc67b821d77aeee" }
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", tag = "0.5.7" }
 http-types = "2.12.0"
 jsonrpc-v2 = "0.11.0"
 sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git" }
@@ -41,9 +41,9 @@ sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer
 serde = "1.0"
 serde_json = "1.0.82"
 surf = "2.3.2"
-surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.3" }
+surf-disco = { git = "https://github.com/EspressoSystems/surf-disco", tag = "v0.4.6" }
 tide = "0.16.0"
-tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.3" }
+tide-disco = { git = "https://github.com/EspressoSystems/tide-disco", tag = "v0.4.6" }
 toml = "0.8"
 tracing = "0.1"
 zkevm = { path = "../zkevm" }

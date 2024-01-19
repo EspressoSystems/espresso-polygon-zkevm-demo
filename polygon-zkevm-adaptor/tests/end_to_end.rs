@@ -9,7 +9,7 @@ use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::{sync::Arc, task::sleep};
 use ethers::{prelude::*, providers::Middleware};
 use futures::stream::{StreamExt, TryStream, TryStreamExt};
-use hotshot_query_service::availability::{BlockQueryData, QueryablePayload};
+use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
 use sequencer_utils::{connect_rpc, wait_for_http, NonceManager};
@@ -139,7 +139,7 @@ async fn test_end_to_end() {
     'block: loop {
         let block = blocks.next().await.unwrap().unwrap();
         tracing::info!("got block {:?}", block);
-        for (_, txn) in block.payload().enumerate() {
+        for (_, txn) in block.enumerate() {
             if txn.payload() == malformed_tx_payload {
                 tracing::info!("malformed transaction sequenced");
                 break 'block;
