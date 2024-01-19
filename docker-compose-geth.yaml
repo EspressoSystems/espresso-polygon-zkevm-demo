@@ -4,7 +4,7 @@ services:
     # This image is pinned because the deployment step is not deterministic. The
     # block number at which the contracts are deployed changes between runs.
     # image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts@sha256:8dfb508b77af42e511553e609fa6e0ef68818852737085f40cc5c769dc0ccf96
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/geth-with-contracts:release-gibraltar
     command: [
       "--verbosity",
       "2",

@@ -1,4 +1,4 @@
-FROM ghcr.io/espressosystems/zkevm-node:hotshot-integration
+FROM ghcr.io/espressosystems/zkevm-node:release-gibraltar
 RUN apk add aws-cli bash curl
 ADD ./zkevm-node/test/aggregator.keystore /pk/aggregator.keystore
 ADD ./zkevm-node/test/sequencer.keystore /pk/sequencer.keystore

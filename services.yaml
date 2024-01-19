@@ -1,7 +1,7 @@
 version: "3"
 services:
   aggregator:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-gibraltar
     expose:
       - 50081
       - 9091 # needed if metrics enabled
@@ -58,7 +58,7 @@ services:
       retries: 20
 
   permissionless-node:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-gibraltar
     environment:
       - ZKEVM_NODE_TRUSTED=false
       - ZKEVM_NODE_STATEDB_USER=state_user
@@ -85,7 +85,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   eth-tx-manager:
-    image: ghcr.io/espressosystems/zkevm-node:hotshot-integration
+    image: ghcr.io/espressosystems/zkevm-node:release-gibraltar
     environment:
       - ZKEVM_NODE_STATEDB_USER=state_user
       - ZKEVM_NODE_STATEDB_PASSWORD=state_password
@@ -131,7 +131,7 @@ services:
     stop_grace_period: 1s
 
   adaptor:
-    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:main
+    image: ghcr.io/espressosystems/espresso-polygon-zkevm-demo/polygon-zkevm-adaptor:release-gibraltar
     environment:
       - ESPRESSO_SEQUENCER_URL
       - ESPRESSO_ZKEVM_L1_PROVIDER
