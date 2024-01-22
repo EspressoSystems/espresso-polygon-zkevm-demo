@@ -84,10 +84,7 @@ pub async fn serve(opt: &Options) {
         })
         .unwrap();
 
-    if let Err(err) = app
-        .serve(format!("http://0.0.0.0:{}", opt.query_port))
-        .await
-    {
+    if let Err(err) = app.serve(format!("0.0.0.0:{}", opt.query_port)).await {
         tracing::error!("query service adaptor exited with error: {}", err);
     }
 }

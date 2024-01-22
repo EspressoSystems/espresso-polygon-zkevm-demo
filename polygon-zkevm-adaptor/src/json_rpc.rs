@@ -109,8 +109,9 @@ pub async fn serve(opt: &Options) {
         .finish();
 
     let server = build_rpc_server(rpc);
+    tracing::info!("serving RPC on port {}", opt.rpc_port);
     server
-        .listen(&format!("http://0.0.0.0:{}", opt.rpc_port))
+        .listen(&format!("0.0.0.0:{}", opt.rpc_port))
         .await
         .unwrap();
 }
