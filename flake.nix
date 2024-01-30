@@ -30,7 +30,7 @@
 
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
-  inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
+  inputs.foundry.url = "github:shazow/foundry.nix/monthly";
 
   outputs = { self, nixpkgs, rust-overlay, nixpkgs-cross-overlay, flake-utils, pre-commit-hooks, fenix, foundry, ... }:
     flake-utils.lib.eachDefaultSystem (system:
