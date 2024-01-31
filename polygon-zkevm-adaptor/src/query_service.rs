@@ -77,21 +77,14 @@ pub async fn serve(opt: &Options) {
         .unwrap()
         .get("blockheight", |_, state| {
             async move {
-                let height: usize = state
-                    .hotshot
-                    .get("status/latest_block_height")
-                    .send()
-                    .await?;
+                let height: usize = state.hotshot.get("status/block-height").send().await?;
                 Ok(height)
             }
             .boxed()
         })
         .unwrap();
 
-    if let Err(err) = app
-        .serve(format!("http://0.0.0.0:{}", opt.query_port))
-        .await
-    {
+    if let Err(err) = app.serve(format!("0.0.0.0:{}", opt.query_port)).await {
         tracing::error!("query service adaptor exited with error: {}", err);
     }
 }
@@ -132,6 +125,8 @@ mod test {
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
     use sequencer::{
         api::{self, options},
+        context::SequencerContext,
+        persistence::fs,
         Vm,
     };
     use sequencer_utils::AnvilOptions;
@@ -163,11 +158,22 @@ mod test {
         api::Options::from(options::Http {
             port: sequencer_port,
         })
-        .query_fs(options::Fs {
-            storage_path: sequencer_store.path().into(),
-            reset_store: true,
-        })
-        .serve(Box::new(move |_| ready((api_node, 0)).boxed()))
+        .query_fs(
+            Default::default(),
+            fs::Options {
+                path: sequencer_store.path().into(),
+            },
+        )
+        .serve(Box::new(move |_| {
+            ready(SequencerContext::new(
+                api_node,
+                0,
+                Default::default(),
+                Default::default(),
+                None,
+            ))
+            .boxed()
+        }))
         .await
         .unwrap();
         for node in &nodes {

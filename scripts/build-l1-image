@@ -48,9 +48,9 @@ echo "Starting geth node."
 
 # The `--syncmode full` argument is required to avoid "missing trie node" errors.
 docker run -d -v $DATA_DIR:/geth --name $NAME -p $RPC_PORT:8545 \
-    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period "$BLOCK_PERIOD" --datadir /geth --syncmode full --gcmode archive
+    ethereum/client-go --dev --http --http.addr 0.0.0.0 --dev.period "$BLOCK_PERIOD" --datadir /geth --syncmode full --gcmode archive --ipcdisable
 
-while ! nc -z localhost $RPC_PORT > /dev/null 2>&1; do
+while ! cast block-number > /dev/null 2>&1; do
   echo "Waiting for port $RPC_PORT ..."
   sleep 1
 done
