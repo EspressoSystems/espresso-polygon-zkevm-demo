@@ -493,7 +493,7 @@ async fn test_reorg() {
     // from HotShot, asynchronously with respect to the verified state. But at least we will be able
     // to check the logs for issues if we are actively working on reorg handling.
     let l2_height = sequencer
-        .get::<u64>("status/latest_block_height")
+        .get::<u64>("status/block-height")
         .send()
         .await
         .unwrap();
