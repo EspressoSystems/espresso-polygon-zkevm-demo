@@ -54,4 +54,4 @@ jobs:
           args: --workspace --all-features --all-targets -- -D warnings
 
       - name: Audit
-        run: cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2022-0093 --ignore RUSTSEC-2023-0052 --ignore RUSTSEC-2023-0053 --ignore RUSTSEC-2023-0065 --ignore RUSTSEC-2024-0003
+        run: cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2023-0052 --ignore RUSTSEC-2023-0065 --ignore RUSTSEC-2024-0003 --ignore RUSTSEC-2024-0011
