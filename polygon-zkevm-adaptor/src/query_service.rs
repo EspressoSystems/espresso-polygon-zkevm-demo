@@ -170,7 +170,6 @@ mod test {
                 0,
                 Default::default(),
                 Default::default(),
-                None,
             ))
             .boxed()
         }))

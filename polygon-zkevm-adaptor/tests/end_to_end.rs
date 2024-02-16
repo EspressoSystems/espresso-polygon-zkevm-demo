@@ -12,7 +12,7 @@ use futures::stream::{StreamExt, TryStream, TryStreamExt};
 use hotshot_query_service::availability::BlockQueryData;
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
-use sequencer_utils::{connect_rpc, wait_for_http, NonceManager};
+use sequencer_utils::{init_signer, wait_for_http, NonceManager};
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
@@ -90,8 +90,8 @@ async fn test_end_to_end() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = Arc::new(connect_rpc(&l1_provider, mnemonic, 0, None).await.unwrap());
-    let l2_signer = connect_rpc(&l2_provider, mnemonic, 0, None).await.unwrap();
+    let l1 = Arc::new(init_signer(&l1_provider, mnemonic, 0).await.unwrap());
+    let l2_signer = init_signer(&l2_provider, mnemonic, 0).await.unwrap();
     let l2_addr = l2_signer.address();
     let l2 = Arc::new(NonceManager::new(l2_signer, l2_addr));
     let zkevm = ZkEvm {
@@ -224,10 +224,8 @@ async fn test_preconfirmations() {
     let node = setup_test("test-preconfirmations", Duration::from_secs(10)).await;
     let env = node.env();
     let mnemonic = env.funded_mnemonic();
-    let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
-        .await
-        .unwrap();
-    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+    let l2 = init_signer(&env.l2_provider(), mnemonic, 0).await.unwrap();
+    let l2_preconf = init_signer(&env.l2_preconfirmations_provider(), mnemonic, 0)
         .await
         .unwrap();
     let zkevm = ZkEvm {
@@ -356,17 +354,9 @@ async fn test_reorg() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = Arc::new(
-        connect_rpc(&env.l1_provider(), mnemonic, 0, None)
-            .await
-            .unwrap(),
-    );
-    let l2 = Arc::new(
-        connect_rpc(&env.l2_provider(), mnemonic, 0, None)
-            .await
-            .unwrap(),
-    );
-    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+    let l1 = Arc::new(init_signer(&env.l1_provider(), mnemonic, 0).await.unwrap());
+    let l2 = Arc::new(init_signer(&env.l2_provider(), mnemonic, 0).await.unwrap());
+    let l2_preconf = init_signer(&env.l2_preconfirmations_provider(), mnemonic, 0)
         .await
         .unwrap();
     let l2_initial_balance = l2.get_balance(l2.address(), None).await.unwrap();
