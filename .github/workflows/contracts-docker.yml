@@ -2,7 +2,9 @@ name: Build contracts docker image
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - geth-testing
     tags:
       - 'v*'
   pull_request:
