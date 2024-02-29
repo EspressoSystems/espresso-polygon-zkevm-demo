@@ -6,8 +6,10 @@
 // You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction, utils::rlp::Rlp};
-use jf_primitives::merkle_tree::namespaced_merkle_tree::NamespaceProof;
-use sequencer::{Payload, Vm, VmId, VmTransaction};
+use hotshot_query_service::availability::{BlockQueryData, VidCommonQueryData};
+use hotshot_types::vid::{vid_scheme, VidSchemeType};
+use jf_primitives::vid::VidScheme;
+use sequencer::{SeqTypes, Vm, VmId, VmTransaction};
 
 pub mod polygon_zkevm;
 
@@ -65,9 +67,23 @@ impl Vm for ZkEvm {
 
 impl ZkEvm {
     /// Extract the VM transactions from a block payload.
-    pub fn vm_transactions(&self, block: &Payload) -> Vec<<Self as Vm>::Transaction> {
-        let proof = block.get_namespace_proof(self.id());
-        let transactions = proof.get_namespace_leaves();
+    pub fn vm_transactions(
+        &self,
+        block: &BlockQueryData<SeqTypes>,
+        common: &VidCommonQueryData<SeqTypes>,
+    ) -> Vec<<Self as Vm>::Transaction> {
+        let common = common.common();
+        let num_storage_nodes = VidSchemeType::get_num_storage_nodes(common);
+        let vid = vid_scheme(num_storage_nodes);
+
+        let proof = block
+            .payload()
+            .namespace_with_proof(block.metadata(), self.id(), &vid, common.clone())
+            .unwrap();
+        let transactions = proof
+            .verify(&vid, &block.payload_hash(), block.metadata())
+            .unwrap()
+            .0;
         // Note: this discards transactions that cannot be decoded.
         transactions
             .iter()

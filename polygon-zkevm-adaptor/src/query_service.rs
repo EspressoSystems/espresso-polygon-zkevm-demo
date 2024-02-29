@@ -20,8 +20,8 @@
 
 use crate::Options;
 use async_std::sync::RwLock;
-use futures::{FutureExt, StreamExt, TryFutureExt};
-use hotshot_query_service::availability::BlockQueryData;
+use futures::{try_join, FutureExt, StreamExt, TryFutureExt};
+use hotshot_query_service::availability::{BlockQueryData, VidCommonQueryData};
 use sequencer::SeqTypes;
 use serde::{Deserialize, Serialize};
 use tide_disco::{error::ServerError, App};
@@ -49,12 +49,17 @@ pub async fn serve(opt: &Options) {
         .get("getblock", |req, state| {
             async move {
                 let height: u64 = req.integer_param("height")?;
-                let block = state
-                    .hotshot
-                    .get(&format!("availability/block/{height}"))
-                    .send()
-                    .await?;
-                Ok(PolygonZkevmBlock::new(state.zkevm, &block))
+                let (block, vid_common) = try_join!(
+                    state
+                        .hotshot
+                        .get(&format!("availability/block/{height}"))
+                        .send(),
+                    state
+                        .hotshot
+                        .get(&format!("availability/vid/common/{height}"))
+                        .send(),
+                )?;
+                Ok(PolygonZkevmBlock::new(state.zkevm, &block, &vid_common))
             }
             .boxed()
         })
@@ -68,8 +73,15 @@ pub async fn serve(opt: &Options) {
                     .socket(&format!("availability/stream/blocks/{height}"))
                     .subscribe::<BlockQueryData<SeqTypes>>()
                     .await?;
+                let vid_common = state
+                    .hotshot
+                    .socket(&format!("availability/stream/vid/common/{height}"))
+                    .subscribe::<VidCommonQueryData<SeqTypes>>()
+                    .await?;
                 let zkevm = state.zkevm;
-                Ok(blocks.map(move |block| Ok(PolygonZkevmBlock::new(zkevm, &block?))))
+                Ok(blocks.zip(vid_common).map(move |(block, common)| {
+                    Ok(PolygonZkevmBlock::new(zkevm, &block?, &common?))
+                }))
             }
             .try_flatten_stream()
             .boxed()
@@ -103,12 +115,16 @@ struct PolygonZkevmBlock {
 }
 
 impl PolygonZkevmBlock {
-    fn new(zkevm: ZkEvm, l2_block: &BlockQueryData<SeqTypes>) -> Self {
+    fn new(
+        zkevm: ZkEvm,
+        l2_block: &BlockQueryData<SeqTypes>,
+        vid_common: &VidCommonQueryData<SeqTypes>,
+    ) -> Self {
         Self {
             timestamp: l2_block.header().timestamp,
             height: l2_block.height(),
             l1_block: l2_block.header().l1_head,
-            transactions: encode_transactions(zkevm.vm_transactions(l2_block.payload()))
+            transactions: encode_transactions(zkevm.vm_transactions(l2_block, vid_common))
                 .to_string(),
         }
     }
