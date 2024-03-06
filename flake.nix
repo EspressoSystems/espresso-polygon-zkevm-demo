@@ -96,7 +96,7 @@
             {
               buildInputs = [
                 # Rust dependencies
-                pkgconfig
+                pkg-config
                 openssl
                 curl
                 protobuf # to compile libp2p-autonat

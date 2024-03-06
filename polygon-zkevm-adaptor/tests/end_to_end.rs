@@ -8,12 +8,11 @@
 use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
 use async_std::{sync::Arc, task::sleep};
 use ethers::{prelude::*, providers::Middleware};
-use futures::stream::{StreamExt, TryStream, TryStreamExt};
-use hotshot_query_service::availability::BlockQueryData;
+use futures::stream::{Stream, StreamExt};
+use hotshot_query_service::availability::{BlockQueryData, VidCommonQueryData};
 use polygon_zkevm_adaptor::{Layer1Backend, SequencerZkEvmDemo, SequencerZkEvmDemoOptions};
 use sequencer::SeqTypes;
-use sequencer_utils::{connect_rpc, wait_for_http, NonceManager};
-use std::fmt::Debug;
+use sequencer_utils::{init_signer, wait_for_http, NonceManager};
 use std::time::{Duration, Instant};
 use zkevm::ZkEvm;
 use zkevm_contract_bindings::PolygonZkEVM;
@@ -90,8 +89,8 @@ async fn test_end_to_end() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = Arc::new(connect_rpc(&l1_provider, mnemonic, 0, None).await.unwrap());
-    let l2_signer = connect_rpc(&l2_provider, mnemonic, 0, None).await.unwrap();
+    let l1 = Arc::new(init_signer(&l1_provider, mnemonic, 0).await.unwrap());
+    let l2_signer = init_signer(&l2_provider, mnemonic, 0).await.unwrap();
     let l2_addr = l2_signer.address();
     let l2 = Arc::new(NonceManager::new(l2_signer, l2_addr));
     let zkevm = ZkEvm {
@@ -109,7 +108,14 @@ async fn test_end_to_end() {
         .socket("availability/stream/blocks/0")
         .subscribe::<BlockQueryData<SeqTypes>>()
         .await
-        .unwrap();
+        .unwrap()
+        .zip(
+            sequencer
+                .socket("availability/stream/vid/common/0")
+                .subscribe::<VidCommonQueryData<SeqTypes>>()
+                .await
+                .unwrap(),
+        );
 
     // Wait for the adaptor to start serving.
     tracing::info!("connecting to adaptor RPC at {}", env.l2_adaptor_rpc());
@@ -137,7 +143,7 @@ async fn test_end_to_end() {
 
     // Wait for the malformed transaction to be included in a block.
     'block: loop {
-        let block = blocks.next().await.unwrap().unwrap();
+        let block = blocks.next().await.unwrap().0.unwrap();
         tracing::info!("got block {:?}", block);
         for (_, txn) in block.enumerate() {
             if txn.payload() == malformed_tx_payload {
@@ -224,10 +230,8 @@ async fn test_preconfirmations() {
     let node = setup_test("test-preconfirmations", Duration::from_secs(10)).await;
     let env = node.env();
     let mnemonic = env.funded_mnemonic();
-    let l2 = connect_rpc(&env.l2_provider(), mnemonic, 0, None)
-        .await
-        .unwrap();
-    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+    let l2 = init_signer(&env.l2_provider(), mnemonic, 0).await.unwrap();
+    let l2_preconf = init_signer(&env.l2_preconfirmations_provider(), mnemonic, 0)
         .await
         .unwrap();
     let zkevm = ZkEvm {
@@ -243,7 +247,14 @@ async fn test_preconfirmations() {
         .socket("availability/stream/blocks/0")
         .subscribe::<BlockQueryData<SeqTypes>>()
         .await
-        .unwrap();
+        .unwrap()
+        .zip(
+            sequencer
+                .socket("availability/stream/vid/common/0")
+                .subscribe::<VidCommonQueryData<SeqTypes>>()
+                .await
+                .unwrap(),
+        );
 
     // Wait for the adaptor to start serving.
     tracing::info!("connecting to adaptor RPC at {}", env.l2_adaptor_rpc());
@@ -356,17 +367,9 @@ async fn test_reorg() {
     let mnemonic = env.funded_mnemonic();
     let rollup_address = node.l1().rollup.address();
 
-    let l1 = Arc::new(
-        connect_rpc(&env.l1_provider(), mnemonic, 0, None)
-            .await
-            .unwrap(),
-    );
-    let l2 = Arc::new(
-        connect_rpc(&env.l2_provider(), mnemonic, 0, None)
-            .await
-            .unwrap(),
-    );
-    let l2_preconf = connect_rpc(&env.l2_preconfirmations_provider(), mnemonic, 0, None)
+    let l1 = Arc::new(init_signer(&env.l1_provider(), mnemonic, 0).await.unwrap());
+    let l2 = Arc::new(init_signer(&env.l2_provider(), mnemonic, 0).await.unwrap());
+    let l2_preconf = init_signer(&env.l2_preconfirmations_provider(), mnemonic, 0)
         .await
         .unwrap();
     let l2_initial_balance = l2.get_balance(l2.address(), None).await.unwrap();
@@ -493,7 +496,7 @@ async fn test_reorg() {
     // from HotShot, asynchronously with respect to the verified state. But at least we will be able
     // to check the logs for issues if we are actively working on reorg handling.
     let l2_height = sequencer
-        .get::<u64>("status/latest_block_height")
+        .get::<u64>("status/block-height")
         .send()
         .await
         .unwrap();
@@ -515,15 +518,23 @@ async fn test_reorg() {
     }
 }
 
-async fn wait_for_block_containing_txn<B>(mut blocks: B, zkevm: ZkEvm, hash: H256) -> u64
-where
-    B: TryStream<Ok = BlockQueryData<SeqTypes>> + Unpin,
-    B::Error: Debug,
-{
+async fn wait_for_block_containing_txn(
+    mut blocks: impl Stream<
+            Item = (
+                Result<BlockQueryData<SeqTypes>, hotshot_query_service::Error>,
+                Result<VidCommonQueryData<SeqTypes>, hotshot_query_service::Error>,
+            ),
+        > + Unpin,
+    zkevm: ZkEvm,
+    hash: H256,
+) -> u64 {
     loop {
-        let block = blocks.try_next().await.unwrap().unwrap();
+        let (block, common) = blocks.next().await.unwrap();
+        let block = block.unwrap();
+        let common = common.unwrap();
+
         tracing::info!("got block {:?}", block);
-        for txn in zkevm.vm_transactions(block.payload()) {
+        for txn in zkevm.vm_transactions(&block, &common) {
             let sequenced_hash = txn.hash();
             if sequenced_hash == hash {
                 tracing::info!("transaction {hash} sequenced");

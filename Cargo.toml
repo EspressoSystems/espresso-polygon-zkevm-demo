@@ -1,5 +1,5 @@
 [workspace]
-
+resolver = "2"
 members = [
   "gen-bindings",
   "keygen",
@@ -7,3 +7,11 @@ members = [
   "zkevm",
   "zkevm-contract-bindings",
 ]
+
+[workspace.dependencies]
+contract-bindings = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "gg/1047" }
+hotshot-query-service = { git = "https://github.com/EspressoSystems/hotshot-query-service", tag = "0.0.10" }
+hotshot-types = { git = "https://github.com/EspressoSystems/hotshot", tag = "0.5.19" }
+jf-primitives = { git = "https://github.com/EspressoSystems/jellyfish", tag = "0.4.0" }
+sequencer = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "gg/1047" }
+sequencer-utils = { git = "https://github.com/EspressoSystems/espresso-sequencer.git", branch = "gg/1047" }
