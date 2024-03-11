@@ -14,7 +14,7 @@ use ethers::{
 };
 use http_types::{headers::HeaderValue, Url};
 use jsonrpc_v2::{Data, Error as RpcError, MapRouter, Params, RequestObject, Server};
-use sequencer::{Transaction, VmId};
+use sequencer::{NamespaceId, Transaction};
 use surf_disco::error::ClientError;
 use tide::security::{CorsMiddleware, Origin};
 
@@ -22,7 +22,7 @@ pub type RpcApiService = Arc<Server<MapRouter>>;
 pub type RpcServer = tide::Server<RpcApiService>;
 pub type RpcServerRequest = tide::Request<RpcApiService>;
 
-pub type RpcData = (Url, VmId);
+pub type RpcData = (Url, NamespaceId);
 
 /// Handle incoming HTTP JSON RPC requests.
 pub async fn handle_http_request(mut request: RpcServerRequest) -> tide::Result {

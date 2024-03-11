@@ -136,14 +136,13 @@ mod test {
     use async_compatibility_layer::logging::{setup_backtrace, setup_logging};
     use async_std::task::spawn;
     use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction};
-    use futures::future::ready;
+    use futures::future::{ready, FutureExt};
     use portpicker::pick_unused_port;
     use rand_chacha::{rand_core::SeedableRng, ChaChaRng};
     use sequencer::{
         api::{self, options},
-        context::SequencerContext,
         persistence::fs,
-        Vm,
+        testing::TestConfig,
     };
     use sequencer_utils::AnvilOptions;
     use std::str::FromStr;
@@ -168,8 +167,14 @@ mod test {
             .await;
 
         // Start a sequencer network.
-        let nodes = sequencer::testing::init_hotshot_handles().await;
-        let api_node = nodes[0].clone();
+        let cfg = TestConfig::default();
+        let mut nodes = cfg.init_nodes().await;
+        for node in &nodes {
+            node.start_consensus().await;
+        }
+        let handle = nodes[0].consensus().clone();
+
+        // Start query service.
         let sequencer_store = TempDir::new().unwrap();
         api::Options::from(options::Http {
             port: sequencer_port,
@@ -180,20 +185,9 @@ mod test {
                 path: sequencer_store.path().into(),
             },
         )
-        .serve(Box::new(move |_| {
-            ready(SequencerContext::new(
-                api_node,
-                0,
-                Default::default(),
-                Default::default(),
-            ))
-            .boxed()
-        }))
+        .serve(move |_| ready(nodes.remove(0)).boxed())
         .await
         .unwrap();
-        for node in &nodes {
-            node.hotshot.start_consensus().await;
-        }
 
         // Start the query service adaptor.
         let opt = Options {
@@ -229,7 +223,7 @@ mod test {
         let txn = EvmTransaction::new(txn, sig);
 
         // Sequence the transaction.
-        nodes[0].submit_transaction(zkevm.wrap(&txn)).await.unwrap();
+        handle.submit_transaction(zkevm.wrap(&txn)).await.unwrap();
 
         // Wait for it to be sequenced.
         let expected = encode_transactions(vec![&txn]);
