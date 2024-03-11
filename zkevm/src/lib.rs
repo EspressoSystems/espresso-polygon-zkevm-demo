@@ -9,7 +9,7 @@ use ethers::{prelude::*, types::transaction::eip2718::TypedTransaction, utils::r
 use hotshot_query_service::availability::{BlockQueryData, VidCommonQueryData};
 use hotshot_types::vid::{vid_scheme, VidSchemeType};
 use jf_primitives::vid::VidScheme;
-use sequencer::{SeqTypes, Vm, VmId, VmTransaction};
+use sequencer::{SeqTypes, Transaction};
 
 pub mod polygon_zkevm;
 
@@ -19,20 +19,18 @@ pub struct EvmTransaction {
     sig: Signature,
 }
 
-impl VmTransaction for EvmTransaction {
-    fn encode(&self) -> Vec<u8> {
-        self.rlp_signed().to_vec()
-    }
-
-    fn decode(bytes: &[u8]) -> Option<Self> {
-        let (tx, sig) = TypedTransaction::decode_signed(&Rlp::new(bytes)).ok()?;
-        Some(Self { tx, sig })
-    }
-}
-
 impl EvmTransaction {
     pub fn new(tx: TypedTransaction, sig: Signature) -> Self {
         Self { tx, sig }
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        self.rlp_signed().to_vec()
+    }
+
+    pub fn decode(bytes: &[u8]) -> Option<Self> {
+        let (tx, sig) = TypedTransaction::decode_signed(&Rlp::new(bytes)).ok()?;
+        Some(Self { tx, sig })
     }
 
     pub fn signature(&self) -> Signature {
@@ -57,11 +55,9 @@ pub struct ZkEvm {
     pub chain_id: u64,
 }
 
-impl Vm for ZkEvm {
-    type Transaction = EvmTransaction;
-
-    fn id(&self) -> VmId {
-        self.chain_id.into()
+impl ZkEvm {
+    pub fn wrap(&self, tx: &EvmTransaction) -> Transaction {
+        Transaction::new(self.chain_id.into(), tx.encode())
     }
 }
 
@@ -71,14 +67,14 @@ impl ZkEvm {
         &self,
         block: &BlockQueryData<SeqTypes>,
         common: &VidCommonQueryData<SeqTypes>,
-    ) -> Vec<<Self as Vm>::Transaction> {
+    ) -> Vec<EvmTransaction> {
         let common = common.common();
         let num_storage_nodes = VidSchemeType::get_num_storage_nodes(common);
         let vid = vid_scheme(num_storage_nodes);
 
         let proof = block
             .payload()
-            .namespace_with_proof(block.metadata(), self.id(), &vid, common.clone())
+            .namespace_with_proof(block.metadata(), self.chain_id.into(), common.clone())
             .unwrap();
         let transactions = proof
             .verify(&vid, &block.payload_hash(), block.metadata())
@@ -87,7 +83,13 @@ impl ZkEvm {
         // Note: this discards transactions that cannot be decoded.
         transactions
             .iter()
-            .flat_map(|txn| txn.as_vm(self))
+            .filter_map(|txn| {
+                if txn.namespace() == self.chain_id.into() {
+                    EvmTransaction::decode(txn.payload())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }
