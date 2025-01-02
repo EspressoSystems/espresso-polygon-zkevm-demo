@@ -36,7 +36,7 @@ services:
     command: [ "postgres", "-N", "500" ]
     healthcheck:
       # Postgres can be falsely "ready" once before running init scripts.
-      # See https://github.com/docker-library/postgres/issues/146 for discusson.
+      # See https://github.com/docker-library/postgres/issues/146 for discussion.
       test: "pg_isready -U state_user -d state_db && sleep 1 && pg_isready -U state_user -d state_db"
       interval: 5s
       timeout: 4s
